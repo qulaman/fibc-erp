@@ -1,0 +1,693 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * МОДУЛЬ ПОШИВА — ВЕРСИЯ 2.0 С АВТОМАТИЧЕСКИМ СПИСАНИЕМ ДЕТАЛЕЙ
+ * ═══════════════════════════════════════════════════════════════════════════
+ * FIBC Kazakhstan ERP | Декабрь 2025
+ * 
+ * НОВОЕ В ВЕРСИИ 2.0:
+ * - Автоматическое списание деталей со склада кроя при проведении операций
+ * - Справочник спецификаций (Справочник_Спецификации)
+ * - Проверка наличия деталей перед проведением
+ * - Трассировка расхода деталей
+ */
+
+// Принудительная загрузка Config.gs при запуске
+try { getFileById('SEWING'); } catch (e) {}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// КОНФИГУРАЦИЯ МОДУЛЯ
+// ═══════════════════════════════════════════════════════════════════════════
+
+var SEWING_CONFIG = {
+  SHEETS: {
+    OPERATIONS_MASTER: 'Справочник_Операции_Пошива',
+    SPECIFICATIONS: 'Справочник_Спецификации',        // НОВОЕ: спецификации
+    JOURNAL: JOURNAL_SHEETS.PRODUCTION_SEWING,
+    EMPLOYEES: MASTER_SHEETS.EMPLOYEES
+  }
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// СПРАВОЧНИКИ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Возвращает список швей цеха Пошив (активных)
+ */
+function getSewingOperators() {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SEWING_CONFIG.SHEETS.EMPLOYEES);
+    if (!sheet) throw new Error('Лист Справочник_Сотрудники не найден');
+
+    var data = sheet.getDataRange().getValues();
+    var operators = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[3] === 'Пошив' && (!row[6] || row[6] === 'Активно')) {
+        operators.push({
+          name: row[1] || 'Без имени'
+        });
+      }
+    }
+    return operators;
+  } catch (e) {
+    Logger.log('Ошибка getSewingOperators: ' + e);
+    return [];
+  }
+}
+
+/**
+ * Возвращает список операций пошива из справочника
+ */
+function getSewingOperations() {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SEWING_CONFIG.SHEETS.OPERATIONS_MASTER);
+    if (!sheet) {
+      Logger.log('Справочник операций не найден');
+      return [];
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var operations = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (row[0] && row[7] === 'Активно') {
+        operations.push({
+          code: row[0],
+          name: row[1] || '',
+          category: row[2] || '',
+          complexity: row[3] || 0,
+          timeNorm: row[4] || 0,
+          rate: row[5] || 0,
+          description: row[6] || '',
+          displayName: row[0] + ' - ' + row[1]
+        });
+      }
+    }
+    return operations;
+  } catch (e) {
+    Logger.log('Ошибка getSewingOperations: ' + e);
+    return [];
+  }
+}
+
+/**
+ * Находит операцию по коду
+ */
+function getSewingOperationByCode(code) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SEWING_CONFIG.SHEETS.OPERATIONS_MASTER);
+    if (!sheet) return null;
+
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === code) {
+        return {
+          code: data[i][0],
+          name: data[i][1],
+          category: data[i][2],
+          complexity: data[i][3],
+          timeNorm: data[i][4] || 0,
+          rate: data[i][5] || 0,
+          description: data[i][6] || '',
+          status: data[i][7]
+        };
+      }
+    }
+    return null;
+  } catch (e) {
+    Logger.log('Ошибка getSewingOperationByCode: ' + e);
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// СПЕЦИФИКАЦИИ (BOM - Bill of Materials)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Получить спецификацию для операции
+ * @param {string} operationCode - Код операции пошива
+ * @return {Array} Массив деталей [{code, name, quantity}]
+ */
+function getSpecificationForOperation(operationCode) {
+  Logger.log('=== getSpecificationForOperation: ' + operationCode + ' ===');
+  
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SEWING_CONFIG.SHEETS.SPECIFICATIONS);
+    if (!sheet) {
+      Logger.log('⚠️ Справочник спецификаций не найден');
+      return [];
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var parts = [];
+
+    // Структура: A=Код_операции, B=Наименование_операции, C=Код_детали, 
+    //            D=Наименование_детали, E=Количество, F=Статус
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === operationCode && data[i][5] === 'Активно') {
+        parts.push({
+          partCode: data[i][2],
+          partName: data[i][3],
+          quantity: parseFloat(data[i][4]) || 0
+        });
+      }
+    }
+
+    Logger.log('Найдено деталей в спецификации: ' + parts.length);
+    return parts;
+  } catch (e) {
+    Logger.log('Ошибка getSpecificationForOperation: ' + e);
+    return [];
+  }
+}
+
+/**
+ * Получить спецификацию для операции (для отображения в сайдбаре)
+ */
+function getOperationSpecification(operationCode) {
+  return getSpecificationForOperation(operationCode);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// РАБОТА СО СКЛАДОМ КРОЕНЫХ ДЕТАЛЕЙ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Получить остаток детали на складе кроя
+ * @param {string} partCode - Код детали
+ * @return {number} Остаток в штуках
+ */
+function getPartBalance(partCode) {
+  Logger.log('=== getPartBalance: ' + partCode + ' ===');
+  
+  try {
+    var cuttingFile = getFileById('CUTTING');
+    
+    // Пробуем разные варианты названия листа
+    var balanceSheet = cuttingFile.getSheetByName('Остатки_Склад_Кроеные_Детали');
+    if (!balanceSheet) {
+      balanceSheet = cuttingFile.getSheetByName(BALANCE_SHEETS.CUTTING);
+    }
+    if (!balanceSheet) {
+      balanceSheet = cuttingFile.getSheetByName('Остатки_Кроеные_Детали');
+    }
+    
+    if (!balanceSheet) {
+      Logger.log('⚠️ Лист остатков кроя не найден! Проверенные варианты: Остатки_Склад_Кроеные_Детали, Остатки_Кроеные_Детали');
+      return 0;
+    }
+    
+    Logger.log('Найден лист: ' + balanceSheet.getName());
+
+    var data = balanceSheet.getDataRange().getValues();
+    Logger.log('Строк в листе: ' + data.length);
+    
+    // Структура Остатки_Склад_Кроеные_Детали:
+    // A=Код_детали, B=Наименование, C=Приход, D=Расход, E=Остаток, F=Статус
+    for (var i = 1; i < data.length; i++) {
+      var code = String(data[i][0]).trim();
+      if (code === partCode) {
+        var balance = parseFloat(data[i][4]) || 0;
+        Logger.log('✅ Найден ' + partCode + ', остаток: ' + balance);
+        return balance;
+      }
+    }
+
+    Logger.log('⚠️ Деталь не найдена в листе: ' + partCode);
+    return 0;
+  } catch (e) {
+    Logger.log('❌ Ошибка getPartBalance: ' + e);
+    return 0;
+  }
+}
+
+/**
+ * Проверить наличие всех деталей для операции
+ * @param {string} operationCode - Код операции
+ * @param {number} quantity - Количество изделий
+ * @return {Object} {success: boolean, missing: [{code, name, required, available}]}
+ */
+function checkPartsAvailability(operationCode, quantity) {
+  Logger.log('=== checkPartsAvailability: ' + operationCode + ' x ' + quantity + ' ===');
+  
+  var specification = getSpecificationForOperation(operationCode);
+  
+  if (specification.length === 0) {
+    // Если нет спецификации — значит операция не требует деталей
+    return { success: true, missing: [], specification: [] };
+  }
+
+  var missing = [];
+  var partsWithBalance = [];
+
+  for (var i = 0; i < specification.length; i++) {
+    var part = specification[i];
+    var required = part.quantity * quantity;
+    var available = getPartBalance(part.partCode);
+
+    partsWithBalance.push({
+      code: part.partCode,
+      name: part.partName,
+      perUnit: part.quantity,
+      required: required,
+      available: available,
+      enough: available >= required
+    });
+
+    if (available < required) {
+      missing.push({
+        code: part.partCode,
+        name: part.partName,
+        required: required,
+        available: available,
+        shortage: required - available
+      });
+    }
+  }
+
+  return {
+    success: missing.length === 0,
+    missing: missing,
+    specification: partsWithBalance
+  };
+}
+
+/**
+ * Списать детали со склада кроя
+ * @param {string} operationCode - Код операции
+ * @param {number} quantity - Количество изделий
+ * @param {string} docNumber - Номер документа пошива
+ * @param {string} dateString - Дата
+ * @param {string} timeStr - Время
+ * @param {string} seamstress - ФИО швеи
+ */
+function writeOffPartsFromCutting(operationCode, quantity, docNumber, dateString, timeStr, seamstress) {
+  Logger.log('=== writeOffPartsFromCutting ===');
+  Logger.log('Операция: ' + operationCode + ', Кол-во: ' + quantity);
+  
+  var specification = getSpecificationForOperation(operationCode);
+  
+  if (specification.length === 0) {
+    Logger.log('Спецификация пуста — списание не требуется');
+    return { success: true, message: 'Спецификация не задана' };
+  }
+
+  try {
+    var cuttingFile = getFileById('CUTTING');
+    
+    // Пробуем разные варианты названия листа журнала
+    var warehouseSheet = cuttingFile.getSheetByName('Склад_Кроеные_Детали');
+    if (!warehouseSheet) {
+      warehouseSheet = cuttingFile.getSheetByName(WAREHOUSE_SHEETS.CUTTING);
+    }
+    
+    if (!warehouseSheet) {
+      throw new Error('Склад кроеных деталей не найден! Проверьте название листа.');
+    }
+    
+    Logger.log('Пишем в лист: ' + warehouseSheet.getName());
+
+    var writtenOff = [];
+
+    for (var i = 0; i < specification.length; i++) {
+      var part = specification[i];
+      var amountToWriteOff = part.quantity * quantity;
+
+      // Записываем расход в Склад_Кроеные_Детали
+      var row = warehouseSheet.getLastRow() + 1;
+      var expenseDoc = generateDocNumber('EXPENSE', row - 1);
+
+      // Структура Склад_Кроеные_Детали:
+      // A=Документ, B=Дата, C=Время, D=Операция, E=Код_детали, 
+      // F=Наименование, G=Категория, H=Количество, I=Рулон_источник, J=Оператор, K=Статус
+      
+      warehouseSheet.getRange(row, 1, 1, 11).setValues([[
+        expenseDoc,
+        dateString,
+        timeStr,
+        OPERATION_TYPES.EXPENSE,
+        part.partCode,
+        part.partName,
+        'Пошив',
+        amountToWriteOff,
+        docNumber,
+        seamstress,
+        STATUSES.COMPLETED
+      ]]);
+
+      writtenOff.push({
+        code: part.partCode,
+        name: part.partName,
+        amount: amountToWriteOff
+      });
+
+      Logger.log('✅ Списано: ' + part.partCode + ' x ' + amountToWriteOff);
+    }
+
+    return {
+      success: true,
+      writtenOff: writtenOff
+    };
+
+  } catch (e) {
+    Logger.log('❌ Ошибка списания: ' + e);
+    return {
+      success: false,
+      message: e.message
+    };
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ОСНОВНАЯ ФУНКЦИЯ ПРОВЕДЕНИЯ ОПЕРАЦИЙ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Основная функция проведения операций пошива
+ * ОБНОВЛЕНО: добавлено автоматическое списание деталей
+ */
+function processSewingOperations(formData) {
+  try {
+    Logger.log('=== processSewingOperations: START ===');
+    Logger.log('FormData: ' + JSON.stringify(formData));
+
+    if (!formData.date || !formData.master || !formData.operations || formData.operations.length === 0) {
+      return { success: false, message: 'Заполните обязательные поля!' };
+    }
+
+    var journalSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SEWING_CONFIG.SHEETS.JOURNAL);
+    if (!journalSheet) return { success: false, message: 'Журнал производства не найден!' };
+
+    var dateParts = formData.date.split('-');
+    var dateString = dateParts[2] + '.' + dateParts[1] + '.' + dateParts[0];
+    var now = new Date();
+    var timeStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ШАГ 1: ПРОВЕРКА НАЛИЧИЯ ДЕТАЛЕЙ ДЛЯ ВСЕХ ОПЕРАЦИЙ
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    Logger.log('--- Проверка наличия деталей ---');
+    var allMissing = [];
+
+    for (var i = 0; i < formData.operations.length; i++) {
+      var op = formData.operations[i];
+      if (!op.operationCode || !op.quantityGood || op.quantityGood <= 0) continue;
+
+      var qtyGood = parseFloat(op.quantityGood) || 0;
+      var availability = checkPartsAvailability(op.operationCode, qtyGood);
+
+      if (!availability.success) {
+        // Добавляем информацию об операции
+        availability.missing.forEach(function(m) {
+          m.operation = op.operationCode;
+          m.seamstress = op.seamstress;
+        });
+        allMissing = allMissing.concat(availability.missing);
+      }
+    }
+
+    if (allMissing.length > 0) {
+      var errorMsg = '❌ Недостаточно деталей на складе кроя!\n\n';
+      allMissing.forEach(function(m) {
+        errorMsg += '• ' + m.name + ' (' + m.code + ')\n';
+        errorMsg += '  Требуется: ' + m.required + ' шт, Доступно: ' + m.available + ' шт\n';
+        errorMsg += '  Нехватка: ' + m.shortage + ' шт\n\n';
+      });
+      return { success: false, message: errorMsg };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ШАГ 2: ПРОВЕДЕНИЕ ОПЕРАЦИЙ И СПИСАНИЕ ДЕТАЛЕЙ
+    // ═══════════════════════════════════════════════════════════════════════
+
+    Logger.log('--- Проведение операций ---');
+    var processedCount = 0;
+    var totalAmount = 0;
+    var totalGood = 0;
+    var totalDefect = 0;
+    var seamstressSummary = {};
+    var partsWrittenOff = [];
+
+    formData.operations.forEach(function(op) {
+      if (!op.seamstress || !op.operationCode || !op.quantityGood || op.quantityGood <= 0) return;
+
+      var opData = getSewingOperationByCode(op.operationCode);
+      if (!opData) return;
+
+      var qtyGood = parseFloat(op.quantityGood) || 0;
+      var qtyDefect = parseFloat(op.quantityDefect) || 0;
+      var timeNorm = qtyGood * opData.timeNorm;
+      var amount = qtyGood * opData.rate;
+
+      var row = journalSheet.getLastRow() + 1;
+      var docNumber = generateDocNumber('PRODUCTION', row - 1);
+
+      // Записываем в журнал производства
+      journalSheet.getRange(row, 1, 1, 14).setValues([[
+        docNumber,
+        dateString,
+        timeStr,
+        op.seamstress,
+        opData.code,
+        opData.name,
+        opData.category,
+        qtyGood,
+        qtyDefect,
+        timeNorm,
+        amount,
+        formData.master,
+        op.notes || '',
+        STATUSES.COMPLETED
+      ]]);
+
+      // Форматирование
+      journalSheet.getRange(row, 2).setNumberFormat('dd.mm.yyyy');
+      journalSheet.getRange(row, 8, 1, 2).setNumberFormat('0" шт"');
+      journalSheet.getRange(row, 10).setNumberFormat('#,##0.0" мин"');
+      journalSheet.getRange(row, 11).setNumberFormat('#,##0" ₸"');
+
+      // ═══════════════════════════════════════════════════════════════════
+      // СПИСАНИЕ ДЕТАЛЕЙ СО СКЛАДА КРОЯ
+      // ═══════════════════════════════════════════════════════════════════
+      var writeOffResult = writeOffPartsFromCutting(
+        op.operationCode, 
+        qtyGood, 
+        docNumber, 
+        dateString, 
+        timeStr, 
+        op.seamstress
+      );
+
+      if (writeOffResult.success && writeOffResult.writtenOff) {
+        partsWrittenOff = partsWrittenOff.concat(writeOffResult.writtenOff);
+      }
+
+      processedCount++;
+      totalAmount += amount;
+      totalGood += qtyGood;
+      totalDefect += qtyDefect;
+
+      if (!seamstressSummary[op.seamstress]) {
+        seamstressSummary[op.seamstress] = { good: 0, defect: 0, amount: 0 };
+      }
+      seamstressSummary[op.seamstress].good += qtyGood;
+      seamstressSummary[op.seamstress].defect += qtyDefect;
+      seamstressSummary[op.seamstress].amount += amount;
+    });
+
+    SpreadsheetApp.flush();
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ФОРМИРОВАНИЕ ОТЧЁТА
+    // ═══════════════════════════════════════════════════════════════════════
+
+    var message = '✅ Операции проведены!\n\n';
+    message += '📅 Дата: ' + dateString + '\n';
+    message += '👷 Мастер: ' + formData.master + '\n\n';
+    
+    message += '📊 ИТОГО:\n';
+    message += '• Операций: ' + processedCount + '\n';
+    message += '• Годных: ' + totalGood + ' шт\n';
+    message += '• Брак: ' + totalDefect + ' шт\n';
+    message += '• К оплате: ' + totalAmount.toFixed(0) + ' ₸\n\n';
+    
+    message += '👩‍🔧 По швеям:\n';
+    for (var s in seamstressSummary) {
+      var sum = seamstressSummary[s];
+      message += '• ' + s + ': ' + sum.good + ' шт, ' + sum.amount.toFixed(0) + ' ₸\n';
+    }
+
+    // Информация о списанных деталях
+    if (partsWrittenOff.length > 0) {
+      message += '\n📦 Списано деталей:\n';
+      
+      // Группируем по коду детали
+      var partsSummary = {};
+      partsWrittenOff.forEach(function(p) {
+        if (!partsSummary[p.code]) {
+          partsSummary[p.code] = { name: p.name, amount: 0 };
+        }
+        partsSummary[p.code].amount += p.amount;
+      });
+
+      for (var code in partsSummary) {
+        message += '• ' + partsSummary[code].name + ': ' + partsSummary[code].amount + ' шт\n';
+      }
+    }
+
+    Logger.log('=== processSewingOperations: END ===');
+    return { success: true, message: message };
+
+  } catch (error) {
+    Logger.log('❌ Ошибка processSewingOperations: ' + error);
+    return { success: false, message: 'Ошибка: ' + error.message };
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ САЙДБАРА
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Получить остатки всех деталей на складе кроя
+ */
+function getAllPartsBalance() {
+  Logger.log('=== getAllPartsBalance ===');
+  
+  try {
+    var cuttingFile = getFileById('CUTTING');
+    
+    // Пробуем разные варианты названия листа
+    var balanceSheet = cuttingFile.getSheetByName('Остатки_Склад_Кроеные_Детали');
+    if (!balanceSheet) {
+      balanceSheet = cuttingFile.getSheetByName(BALANCE_SHEETS.CUTTING);
+    }
+    if (!balanceSheet) {
+      balanceSheet = cuttingFile.getSheetByName('Остатки_Кроеные_Детали');
+    }
+    
+    if (!balanceSheet) {
+      Logger.log('⚠️ Лист остатков кроя не найден!');
+      return [];
+    }
+    
+    Logger.log('Читаем лист: ' + balanceSheet.getName());
+
+    var data = balanceSheet.getDataRange().getValues();
+    var parts = [];
+
+    // Структура: A=Код_детали, B=Наименование, C=Приход, D=Расход, E=Остаток, F=Статус
+    for (var i = 1; i < data.length; i++) {
+      var code = String(data[i][0]).trim();
+      if (code) {
+        var balance = parseFloat(data[i][4]) || 0;
+        parts.push({
+          code: code,
+          name: data[i][1] || '',
+          balance: balance,
+          status: data[i][5] || ''
+        });
+        Logger.log('  ' + code + ': ' + balance);
+      }
+    }
+
+    Logger.log('Всего деталей: ' + parts.length);
+    return parts;
+  } catch (e) {
+    Logger.log('❌ Ошибка getAllPartsBalance: ' + e);
+    return [];
+  }
+}
+
+/**
+ * Показать сообщение пользователю
+ */
+function showSewingMessage(message) {
+  SpreadsheetApp.getUi().alert('Пошив', message, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// МЕНЮ МОДУЛЯ
+// ═══════════════════════════════════════════════════════════════════════════
+
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('⚙️ ПОШИВ')
+    .addItem('🧵 Внести операции', 'openSewingSidebar')
+    .addSeparator()
+    .addItem('📋 Журнал производства', 'openSewingJournal')
+    .addItem('💰 Расчёт зарплаты', 'openSewingPayroll')
+    .addItem('📦 Остатки деталей', 'showPartsBalance')
+    .addSeparator()
+    .addItem('ℹ️ О системе', 'showSystemInfo')
+    .addItem('🧪 Тест конфигурации', 'testConfig')
+    .addToUi();
+}
+
+function openSewingSidebar() {
+  var html = HtmlService.createHtmlOutputFromFile('SidebarПошив')
+    .setTitle('🧵 Пошив')
+    .setWidth(480);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function openSewingJournal() {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(JOURNAL_SHEETS.PRODUCTION_SEWING);
+  if (s) SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(s);
+}
+
+function openSewingPayroll() {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Расчет_Зарплаты_Пошив');
+  if (s) SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(s);
+  else SpreadsheetApp.getUi().alert('Лист расчёта зарплаты не найден');
+}
+
+function showPartsBalance() {
+  var parts = getAllPartsBalance();
+  
+  if (parts.length === 0) {
+    SpreadsheetApp.getUi().alert('📦 Остатки деталей', 'Нет данных', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  var msg = '📦 ОСТАТКИ ДЕТАЛЕЙ НА СКЛАДЕ КРОЯ:\n\n';
+  parts.forEach(function(p) {
+    if (p.balance > 0) {
+      msg += '• ' + p.name + ': ' + p.balance + ' шт\n';
+    }
+  });
+
+  SpreadsheetApp.getUi().alert('📦 Остатки деталей', msg, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+function showSystemInfo() {
+  var name = typeof SYSTEM_INFO !== 'undefined' ? SYSTEM_INFO.NAME : 'FIBC ERP';
+  SpreadsheetApp.getUi().alert('ℹ️ О системе', name + '\n\nВерсия: 2.0\nМодуль: ПОШИВ\n\nНовое: автоматическое списание деталей', SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+function testConfig() {
+  Logger.log('=== ТЕСТ МОДУЛЯ ПОШИВ v2.0 ===');
+  if (typeof logConfigInfo === 'function') logConfigInfo();
+  
+  // Тест спецификаций
+  var ops = getSewingOperations();
+  Logger.log('Операций в справочнике: ' + ops.length);
+  
+  if (ops.length > 0) {
+    var spec = getSpecificationForOperation(ops[0].code);
+    Logger.log('Спецификация для ' + ops[0].code + ': ' + spec.length + ' деталей');
+  }
+  
+  SpreadsheetApp.getUi().alert('🧪 Тест завершён', 'Проверьте логи (Ctrl+Enter)', SpreadsheetApp.getUi().ButtonSet.OK);
+}

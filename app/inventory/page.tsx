@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
+import { Package } from "lucide-react";
 import AddMaterialForm from './AddMaterialForm';
 import DeleteButton from './DeleteButton';
 import TransactionDialog from './TransactionDialog';
@@ -20,21 +21,25 @@ export default async function InventoryPage() {
   if (error) return <div className="text-white p-8">Ошибка загрузки: {error.message}</div>;
 
   return (
-    <div className="p-8 font-sans bg-black min-h-screen text-white">
-      
+    <div className="page-container">
+
       {/* --- ВЕРХНЯЯ ЧАСТЬ: Заголовок и Кнопки --- */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-bold text-[#E60012]">Склад сырья (FIBC)</h1>
-          <p className="text-zinc-400 text-sm mt-1">Текущие остатки и управление запасами</p>
+          <h1 className="h1-bold">
+            <div className="bg-green-600 p-2 rounded-lg">
+              <Package size={24} className="text-white" />
+            </div>
+            Склад сырья (FIBC)
+          </h1>
+          <p className="page-description">Текущие остатки и управление запасами</p>
         </div>
-        
-        <div className="flex gap-4 items-center self-end md:self-auto">
-          <div className="text-right text-sm text-zinc-400 hidden md:block">
-            <p>Всего позиций: <span className="text-white font-bold">{materials?.length}</span></p>
+
+        <div className="stats-container">
+          <div className="stat-card">
+            <div className="stat-label">Всего позиций</div>
+            <div className="stat-value text-green-400">{materials?.length}</div>
           </div>
-          
-          {/* Кнопка перехода к журналу */}
           <Link href="/inventory/history">
             <Button variant="outline" className="bg-zinc-800 text-white border-zinc-700 hover:bg-zinc-700 gap-2">
               📜 История операций

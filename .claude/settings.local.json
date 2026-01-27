@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(move page.tsx employeespage.tsx)",
+      "Bash(npm run build:*)",
+      "Bash(npx shadcn@latest add:*)"
+    ]
+  }
+}

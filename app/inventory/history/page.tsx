@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Package, FileText } from "lucide-react";
 
 // Функция для красивой даты (19.01.2026 14:30)
 const formatDate = (dateString: string) => {
@@ -24,16 +24,23 @@ export default async function HistoryPage() {
   if (error) return <div className="text-white p-8">Ошибка: {error.message}</div>;
 
   return (
-    <div className="p-8 font-sans bg-black min-h-screen text-white">
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/inventory">
-          <Button variant="outline" size="icon" className="text-black bg-white hover:bg-gray-200">
-             <ArrowLeft size={20} />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-[#E60012]">Журнал операций</h1>
-          <p className="text-zinc-400 text-sm">Полная история движений по складу</p>
+    <div className="page-container">
+      <div className="page-header">
+        <div className="flex items-center gap-4">
+          <Link href="/inventory">
+            <Button variant="outline" size="icon" className="text-black bg-white hover:bg-gray-200">
+              <ArrowLeft size={20} />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="h1-bold">
+              <div className="bg-green-600 p-2 rounded-lg">
+                <FileText size={24} className="text-white" />
+              </div>
+              Журнал операций склада сырья
+            </h1>
+            <p className="page-description">Полная история движений по складу</p>
+          </div>
         </div>
       </div>
 

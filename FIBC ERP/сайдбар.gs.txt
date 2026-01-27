@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 15px;
+      font-size: 13px;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #E60012 0%, #c00010 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .header-subtitle {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+    
+    .section {
+      background: #2a2a2a;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+      border: 1px solid #3a3a3a;
+    }
+    
+    .section-title {
+      color: #E60012;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .logo-container {
+      text-align: center;
+      padding: 16px 0 20px 0;
+      border-bottom: 2px solid #333333;
+      margin-bottom: 20px;
+    }
+      
+    .logo-container svg {
+      width: 200px;
+      height: auto;
+      display: inline-block;
+    }    
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      color: #b0b0b0;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    input[type="date"],
+    input[type="text"],
+    input[type="number"],
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 13px;
+      transition: all 0.3s;
+    }
+    
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: #E60012;
+      background: #222;
+    }
+    
+    input[type="number"] {
+      text-align: right;
+    }
+    
+    .operation-card {
+      background: #1a1a1a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      position: relative;
+      transition: all 0.3s;
+    }
+    
+    .operation-card:hover {
+      border-color: #E60012;
+      box-shadow: 0 2px 8px rgba(230, 0, 18, 0.2);
+    }
+    
+    .operation-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .operation-number {
+      color: #E60012;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    
+    .delete-btn {
+      background: #3a3a3a;
+      border: none;
+      color: #ff4444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: all 0.3s;
+    }
+    
+    .delete-btn:hover {
+      background: #ff4444;
+      color: white;
+    }
+    
+    .add-btn {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a2a;
+      border: 2px dashed #3a3a3a;
+      border-radius: 8px;
+      color: #E60012;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    
+    .add-btn:hover {
+      background: #3a3a3a;
+      border-color: #E60012;
+    }
+    
+    .summary {
+      background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+      border: 2px solid #E60012;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .summary-title {
+      color: #E60012;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid #3a3a3a;
+    }
+    
+    .summary-item:last-child {
+      border-bottom: none;
+      padding-top: 10px;
+      margin-top: 5px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #E60012;
+    }
+    
+    .summary-label {
+      color: #b0b0b0;
+    }
+    
+    .summary-value {
+      color: #e0e0e0;
+      font-weight: 500;
+    }
+    
+    .btn-primary {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #E60012 0%, #c00010 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 10px;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(230, 0, 18, 0.4);
+    }
+    
+    .btn-primary:disabled {
+      background: #4a4a4a;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+    
+    .btn-secondary {
+      width: 100%;
+      padding: 10px;
+      background: #2a2a2a;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      color: #b0b0b0;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn-secondary:hover {
+      background: #3a3a3a;
+      color: #e0e0e0;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #b0b0b0;
+    }
+    
+    .spinner {
+      border: 3px solid #3a3a3a;
+      border-top: 3px solid #E60012;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .operations-container {
+      max-height: 500px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+    }
+    
+    .operations-container::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .operations-container::-webkit-scrollbar-track {
+      background: #1a1a1a;
+      border-radius: 4px;
+    }
+    
+    .operations-container::-webkit-scrollbar-thumb {
+      background: #3a3a3a;
+      border-radius: 4px;
+    }
+    
+    .operations-container::-webkit-scrollbar-thumb:hover {
+      background: #E60012;
+    }
+    
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       СТИЛИ ДЛЯ СПЕЦИФИКАЦИИ (НОВОЕ)
+       ═══════════════════════════════════════════════════════════════════════ */
+    
+    .spec-block {
+      background: #252525;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 11px;
+    }
+    
+    .spec-title {
+      color: #E60012;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .spec-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      border-bottom: 1px solid #333;
+    }
+    
+    .spec-item:last-child {
+      border-bottom: none;
+    }
+    
+    .spec-name {
+      color: #b0b0b0;
+    }
+    
+    .spec-qty {
+      color: #e0e0e0;
+      font-weight: 500;
+    }
+    
+    .spec-qty.shortage {
+      color: #ff4444;
+    }
+    
+    .spec-qty.ok {
+      color: #4ade80;
+    }
+    
+    .spec-loading {
+      color: #666;
+      font-style: italic;
+      text-align: center;
+      padding: 8px;
+    }
+    
+    .spec-empty {
+      color: #666;
+      text-align: center;
+      padding: 8px;
+    }
+
+    /* Сводка по деталям внизу */
+    .parts-summary {
+      background: #1a2d3d;
+      border: 1px solid #2a4a5a;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 15px;
+    }
+    
+    .parts-summary-title {
+      color: #4ade80;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .parts-summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      font-size: 12px;
+    }
+    
+    .parts-summary-name {
+      color: #b0b0b0;
+    }
+    
+    .parts-summary-qty {
+      color: #e0e0e0;
+    }
+    
+    .warning-block {
+      background: #3d2d1a;
+      border: 1px solid #fb923c;
+      border-radius: 6px;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 12px;
+      color: #fb923c;
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 12px;
+      display: none;
+    }
+    
+    .message.error {
+      background: #3d1a1a;
+      border: 1px solid #E60012;
+      color: #fca5a5;
+    }
+    
+    .message.success {
+      background: #1a3d1a;
+      border: 1px solid #22c55e;
+      color: #4ade80;
+    }
+  </style>
+</head>
+<body>
+  <!-- ЛОГОТИП -->
+  <div class="logo-container">
+    <svg id="_Слой_2" data-name="Слой 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 632.01 323.35">
+      <defs>
+        <style>
+          .cls-1 { fill: #ffffff; }
+          .cls-1, .cls-2, .cls-3 { stroke-width: 0px; }
+          .cls-2 { fill: #e30618; }
+          .cls-3 { fill: #d1131f; }
+        </style>
+      </defs>
+      <g id="_Слой_1-2" data-name="Слой 1">
+        <g>
+          <polygon class="cls-1" points="308.59 131.08 369.89 131.08 369.89 119.3 308.59 119.3 308.59 74.18 369.86 74.18 369.86 62.04 292.91 62.04 292.91 184.57 308.59 175.66 308.59 131.08"/>
+          <path class="cls-1" d="M522.14,168.03c1.25-4.29,1.87-9.81,1.87-16.58,0-5.19-.36-9.63-1.07-13.32-.71-3.68-1.87-6.7-3.47-9.06-1.6-2.36-3.65-4.17-6.13-5.44-2.49-1.27-5.51-2.2-9.07-2.81v-.54c2.85-.48,5.31-1.33,7.38-2.54,2.07-1.21,3.79-2.9,5.16-5.07,1.36-2.17,2.34-4.89,2.94-8.15.59-3.26.89-7.25.89-11.96,0-6.28-.59-11.44-1.78-15.49-1.19-4.05-3.17-7.22-5.96-9.51-2.79-2.29-6.52-3.86-11.21-4.71-4.68-.84-11.8-.81-18.67-.81h-51.49v122.53h56.2c6.76,0,12.45-.94,17.07-1.91,4.63-.97,8.36-2.69,11.21-5.17,2.84-2.47,4.89-5.17,6.13-9.46ZM445.93,73h37.53c4.51,0,8.24.27,11.21.82,2.96.54,5.34,1.57,7.11,3.08,1.78,1.51,3.02,3.65,3.73,6.43.71,2.78,1.07,6.4,1.07,10.87s-.33,8.28-.98,11.05c-.65,2.78-1.69,4.92-3.11,6.43-1.42,1.51-3.26,2.54-5.51,3.08-2.25.54-4.98.81-8.18.81h-42.86v-42.58ZM508.63,161.51c-.65,2.96-1.87,5.32-3.65,7.07-1.78,1.75-4.27,2.93-7.47,3.53-3.2.61-7.29.91-12.27.91h-39.3v-46.39h43.75c3.44,0,6.43.33,8.98,1,2.55.67,4.62,1.84,6.22,3.53,1.6,1.69,2.78,4.08,3.56,7.16.77,3.08,1.15,6.98,1.15,11.69s-.33,8.55-.98,11.51Z"/>
+          <path class="cls-1" d="M618.36,161.7c-.73,3.14-2.12,5.62-4.16,7.43-2.04,1.81-4.84,3.05-8.4,3.71-3.56.67-8.21,1-13.96,1h-2.35c-6.38,0-11.53-.48-15.46-1.45-3.92-.96-6.98-3.02-9.18-6.16-2.2-3.14-3.66-7.7-4.39-13.68-.73-5.98-1.1-13.98-1.1-24.01v-10.15c0-9.9.39-17.85,1.18-23.83.78-5.98,2.25-10.54,4.39-13.68,2.14-3.14,5.15-5.22,9.02-6.25,3.87-1.03,8.94-1.54,15.22-1.54h2.51c5.65,0,10.22.36,13.73,1.09,3.5.72,6.25,1.99,8.24,3.8,1.99,1.81,3.35,4.26,4.08,7.34.73,3.08,1.53,16.01,1.53,20.72v2.07l12.44-8.46c-.47-4.39-1.42-17.25-2.28-20.49-1.2-4.53-3.3-8.15-6.28-10.87-2.98-2.72-7.01-3.53-12.08-4.62-5.08-1.09-11.53-1.63-19.38-1.63h-2.82c-8.68,0-15.77.79-21.26,2.36-5.49,1.57-9.81,3.41-12.95,7.7-3.14,4.29-5.31,10.15-6.51,17.58-1.2,7.43-.97,17-.97,28.72v10.33c0,11.84-.28,21.5.82,28.99,1.1,7.49,3.22,12.66,6.35,16.89,3.14,4.23,7.48,5.8,13.02,7.37,5.54,1.57,12.76,2.36,21.66,2.36h2.98c7.64,0,14.04-.54,19.22-1.63,5.18-1.09,9.28-1.63,12.32-4.29,3.03-2.66,5.2-5.6,6.51-10.19,1.31-4.59,1.96-17.11,1.96-24.11v-3.93l-12.75,8.67-.91,12.85Z"/>
+          <g>
+            <path class="cls-1" d="M320.8,221.91h-6.59l-12.57,15.06c-1.04,1.31-2.14,2.74-3.23,4.29h-.18v-19.35h-5.31v40.12h5.31v-15.3l3.91-4.4,13.55,19.7h6.29l-16.05-23.1,14.89-17.02Z"/>
+            <path class="cls-1" d="M337.46,221.91l-13.98,40.12h5.49l4.27-12.62h14.59l4.39,12.62h5.68l-14.04-40.12h-6.41ZM334.35,245.36l4.03-11.61c.79-2.44,1.46-4.88,2.08-7.26h.12c.61,2.32,1.22,4.7,2.14,7.32l4.03,11.55h-12.39Z"/>
+            <polygon class="cls-1" points="368.16 257.51 390.87 225.06 390.87 221.91 363.1 221.91 363.1 226.25 383.97 226.25 383.97 226.43 361.14 258.99 361.14 262.03 391.17 262.03 391.17 257.68 368.16 257.68 368.16 257.51"/>
+            <path class="cls-1" d="M408.57,221.91l-13.98,40.12h5.49l4.27-12.62h14.59l4.39,12.62h5.68l-14.04-40.12h-6.41ZM405.45,245.36l4.03-11.61c.79-2.44,1.46-4.88,2.08-7.26h.12c.61,2.32,1.22,4.7,2.14,7.32l4.03,11.55h-12.39Z"/>
+            <path class="cls-1" d="M462.95,221.91h-6.59l-12.57,15.06c-1.04,1.31-2.14,2.74-3.24,4.29h-.18v-19.35h-5.31v40.12h5.31v-15.3l3.91-4.4,13.55,19.7h6.29l-16.05-23.1,14.89-17.02Z"/>
+            <polygon class="cls-1" points="493.34 238.7 473.44 238.7 473.44 221.91 468.13 221.91 468.13 262.03 473.44 262.03 473.44 243.22 493.34 243.22 493.34 262.03 498.71 262.03 498.71 221.91 493.34 221.91 493.34 238.7"/>
+            <path class="cls-1" d="M520.26,239.29c-5.68-2.14-8.18-3.99-8.18-7.74,0-2.74,2.14-6.01,7.75-6.01,3.72,0,6.47,1.19,7.81,1.9l1.47-4.23c-1.83-1.01-4.88-1.31-9.09-1.31-8,0-13.31,3.99-13.31,10.24,0,5.66,4.15,9.05,10.86,11.37,5.55,2.08,7.75,4.23,7.75,7.98,0,4.05-3.17,6.85-8.61,6.85-3.66,0-7.14-1.19-9.52-2.62l-1.34,4.35c2.2,1.43,6.53,1.96,10.5,1.96,9.71,0,14.4-4.76,14.4-10.95s-3.54-9.17-10.5-11.79Z"/>
+            <polygon class="cls-1" points="563.77 221.91 533.32 221.91 533.32 226.31 545.83 226.31 545.83 262.03 551.2 262.03 551.2 226.31 563.77 226.31 563.77 221.91"/>
+            <path class="cls-1" d="M574.64,221.91l-13.98,40.12h5.49l4.27-12.62h14.59l4.39,12.62h5.68l-14.04-40.12h-6.41ZM571.52,245.36l4.03-11.61c.79-2.44,1.46-4.88,2.08-7.26h.12c.61,2.32,1.22,4.7,2.14,7.32l4.03,11.55h-12.39Z"/>
+            <path class="cls-1" d="M627,238.7c0,6.25.12,11.13.61,16.49l-.12.06c-1.95-4.11-4.33-8.33-7.39-13.04l-13.18-20.3h-5.8v40.12h5v-17.14c0-6.67-.12-11.49-.43-16.55l.18-.06c2.07,4.35,4.82,8.93,7.69,13.39l13.06,20.36h5.37v-40.12h-5v16.79Z"/>
+          </g>
+          <polygon class="cls-2" points="408.75 62.04 392.99 70.95 392.99 184.57 408.75 175.66 408.75 62.04"/>
+          <polygon class="cls-1" points="208 76.41 123.36 29.03 38.73 76.41 123.36 123.78 208 76.41"/>
+          <polygon class="cls-3" points="177.34 279.1 192.75 270.48 192.75 284.43 177.34 293.05 177.34 279.1"/>
+          <path class="cls-2" d="M123.36,0L0,69.05v14.71l53.98,30.21v141.99l15.41,8.62V122.6l53.97,30.21,53.98-30.21v141.98l15.41-8.62V113.98l53.97-30.21v-14.71L123.36,0ZM123.36,138.3L12.79,76.41,123.36,14.52l110.57,61.89-110.57,61.89Z"/>
+          <polygon class="cls-1" points="204.31 121.47 204.31 215.85 204.31 230.36 204.31 263.53 192.75 269.99 177.34 278.62 165.78 285.09 165.78 143.04 123.36 166.78 80.95 143.04 80.95 285.09 69.39 278.63 53.98 270 42.42 263.53 42.42 230.36 42.42 215.85 42.42 121.47 0 97.73 0 239.59 0 254.3 42.42 278.05 80.95 299.62 123.36 323.35 165.78 299.62 165.78 299.61 204.31 278.05 246.72 254.3 246.72 239.59 246.72 97.73 204.31 121.47"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="header">
+    <h2>🧵 УЧЕТ ОПЕРАЦИЙ ПОШИВА</h2>
+    <div class="header-subtitle">Автоматическое списание деталей</div>
+  </div>
+
+  <div id="message" class="message"></div>
+  
+  <div class="section">
+    <div class="section-title">📋 Общие данные</div>
+    
+    <div class="form-group">
+      <label>Дата:</label>
+      <input type="date" id="date" required>
+    </div>
+    
+    <div class="form-group">
+      <label>Мастер смены:</label>
+      <input type="text" id="master" placeholder="ФИО мастера" required>
+    </div>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">👩‍🔧 Операции швей</div>
+    
+    <div id="operations-container" class="operations-container">
+      <!-- Операции добавляются динамически -->
+    </div>
+    
+    <button class="add-btn" onclick="addOperation()">
+      ➕ Добавить операцию
+    </button>
+  </div>
+
+  <!-- СВОДКА ПО ДЕТАЛЯМ (НОВОЕ) -->
+  <div id="parts-summary" class="parts-summary" style="display: none;">
+    <div class="parts-summary-title">📦 Будет списано деталей:</div>
+    <div id="parts-summary-content"></div>
+  </div>
+  
+  <div id="summary" class="summary" style="display: none;">
+    <div class="summary-title">📊 ИТОГО</div>
+    <div class="summary-item">
+      <span class="summary-label">Операций:</span>
+      <span class="summary-value" id="summary-operations">0</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Годных изделий:</span>
+      <span class="summary-value" id="summary-good">0 шт</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">Брак:</span>
+      <span class="summary-value" id="summary-defect">0 шт</span>
+    </div>
+    <div class="summary-item">
+      <span class="summary-label">К оплате:</span>
+      <span class="summary-value" id="summary-amount">0 ₸</span>
+    </div>
+  </div>
+  
+  <button class="btn-primary" id="submitBtn" onclick="submitOperations()">
+    ✅ Провести операции
+  </button>
+  
+  <button class="btn-secondary" onclick="clearForm()">
+    🔄 Очистить форму
+  </button>
+  
+  <script>
+    // ═══════════════════════════════════════════════════════════════════════
+    // ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    let operationCounter = 0;
+    let seamstresses = [];
+    let operations = [];
+    let specifications = {};  // Кэш спецификаций: { operationCode: [{partCode, partName, quantity}] }
+    let partsBalance = {};    // Остатки деталей: { partCode: balance }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // ЗАГРУЗКА ДАННЫХ
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    window.onload = function() {
+      document.getElementById('date').valueAsDate = new Date();
+      loadData();
+    };
+    
+    function loadData() {
+      console.log('📥 Загрузка данных...');
+      
+      // Загружаем швей
+      google.script.run
+        .withSuccessHandler(function(data) {
+          console.log('✅ Швеи:', data.length);
+          seamstresses = data;
+          loadOperations();
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ Ошибка загрузки швей:', error);
+          showMessage('error', '❌ Ошибка загрузки швей: ' + error.message);
+        })
+        .getSewingOperators();
+    }
+    
+    function loadOperations() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          console.log('✅ Операции:', data.length);
+          operations = data;
+          loadPartsBalance();
+        })
+        .withFailureHandler(function(error) {
+          console.error('❌ Ошибка загрузки операций:', error);
+          showMessage('error', '❌ Ошибка загрузки операций: ' + error.message);
+        })
+        .getSewingOperations();
+    }
+    
+    function loadPartsBalance() {
+      google.script.run
+        .withSuccessHandler(function(data) {
+          console.log('✅ Остатки деталей:', data.length);
+          data.forEach(function(p) {
+            partsBalance[p.code] = p.balance;
+          });
+          addOperation();
+        })
+        .withFailureHandler(function(error) {
+          console.error('⚠️ Не удалось загрузить остатки:', error);
+          addOperation();
+        })
+        .getAllPartsBalance();
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // УПРАВЛЕНИЕ ОПЕРАЦИЯМИ
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    function addOperation() {
+      operationCounter++;
+      const container = document.getElementById('operations-container');
+      
+      // Получаем предыдущую швею
+      let previousSeamstress = '';
+      const cards = container.querySelectorAll('.operation-card');
+      if (cards.length > 0) {
+        const lastCard = cards[cards.length - 1];
+        const lastSelect = lastCard.querySelector('.seamstress-select');
+        if (lastSelect) previousSeamstress = lastSelect.value;
+      }
+      
+      const operationCard = document.createElement('div');
+      operationCard.className = 'operation-card';
+      operationCard.id = 'operation-' + operationCounter;
+      
+      operationCard.innerHTML = `
+        <div class="operation-header">
+          <span class="operation-number">Операция #${operationCounter}</span>
+          <button class="delete-btn" onclick="deleteOperation(${operationCounter})">✖ Удалить</button>
+        </div>
+        
+        <div class="form-group">
+          <label>Швея:</label>
+          <select class="seamstress-select" required>
+            <option value="">Выберите швею...</option>
+            ${seamstresses.map(s => `<option value="${s.name}" ${s.name === previousSeamstress ? 'selected' : ''}>${s.name}</option>`).join('')}
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Операция:</label>
+          <select class="operation-select" onchange="onOperationChange(${operationCounter})" required>
+            <option value="">Выберите операцию...</option>
+            ${operations.map(op => `<option value="${op.code}" data-rate="${op.rate}" data-time="${op.timeNorm}">${op.displayName}</option>`).join('')}
+          </select>
+        </div>
+        
+        <div class="input-row">
+          <div class="form-group">
+            <label>Годных (шт):</label>
+            <input type="number" class="quantity-good" min="0" value="0" onchange="onQuantityChange(${operationCounter})" oninput="onQuantityChange(${operationCounter})" required>
+          </div>
+          
+          <div class="form-group">
+            <label>Брак (шт):</label>
+            <input type="number" class="quantity-defect" min="0" value="0" onchange="updateCalculations()">
+          </div>
+        </div>
+        
+        <!-- БЛОК СПЕЦИФИКАЦИИ (НОВОЕ) -->
+        <div class="spec-block" id="spec-${operationCounter}" style="display: none;">
+          <div class="spec-title">📦 Детали для 1 изделия:</div>
+          <div class="spec-content" id="spec-content-${operationCounter}"></div>
+        </div>
+        
+        <div class="form-group">
+          <label>Примечание:</label>
+          <input type="text" class="notes" placeholder="Необязательно">
+        </div>
+      `;
+      
+      container.appendChild(operationCard);
+      updateCalculations();
+    }
+    
+    function deleteOperation(id) {
+      const card = document.getElementById('operation-' + id);
+      if (card) {
+        card.remove();
+        updateCalculations();
+        updatePartsSummary();
+      }
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // РАБОТА СО СПЕЦИФИКАЦИЯМИ
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    function onOperationChange(cardId) {
+      const card = document.getElementById('operation-' + cardId);
+      const operationSelect = card.querySelector('.operation-select');
+      const operationCode = operationSelect.value;
+      const specBlock = document.getElementById('spec-' + cardId);
+      const specContent = document.getElementById('spec-content-' + cardId);
+      
+      if (!operationCode) {
+        specBlock.style.display = 'none';
+        updateCalculations();
+        updatePartsSummary();
+        return;
+      }
+      
+      // Проверяем кэш
+      if (specifications[operationCode]) {
+        showSpecification(cardId, specifications[operationCode]);
+      } else {
+        // Загружаем спецификацию
+        specContent.innerHTML = '<div class="spec-loading">⏳ Загрузка...</div>';
+        specBlock.style.display = 'block';
+        
+        google.script.run
+          .withSuccessHandler(function(spec) {
+            specifications[operationCode] = spec;
+            showSpecification(cardId, spec);
+          })
+          .withFailureHandler(function(error) {
+            specContent.innerHTML = '<div class="spec-empty">⚠️ Ошибка загрузки</div>';
+          })
+          .getOperationSpecification(operationCode);
+      }
+      
+      updateCalculations();
+    }
+    
+    function showSpecification(cardId, spec) {
+      const specBlock = document.getElementById('spec-' + cardId);
+      const specContent = document.getElementById('spec-content-' + cardId);
+      
+      if (!spec || spec.length === 0) {
+        specContent.innerHTML = '<div class="spec-empty">Спецификация не задана</div>';
+        specBlock.style.display = 'block';
+        updatePartsSummary();
+        return;
+      }
+      
+      let html = '';
+      spec.forEach(function(part) {
+        const balance = partsBalance[part.partCode] || 0;
+        const balanceClass = balance >= part.quantity ? 'ok' : 'shortage';
+        html += `
+          <div class="spec-item">
+            <span class="spec-name">${part.partName}</span>
+            <span class="spec-qty ${balanceClass}">${part.quantity} шт (ост: ${balance})</span>
+          </div>
+        `;
+      });
+      
+      specContent.innerHTML = html;
+      specBlock.style.display = 'block';
+      updatePartsSummary();
+    }
+    
+    function onQuantityChange(cardId) {
+      updateCalculations();
+      updatePartsSummary();
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // СВОДКА ПО ДЕТАЛЯМ
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    function updatePartsSummary() {
+      const cards = document.querySelectorAll('.operation-card');
+      const partsNeeded = {};  // { partCode: { name, total } }
+      
+      cards.forEach(function(card) {
+        const operationSelect = card.querySelector('.operation-select');
+        const quantityGood = parseFloat(card.querySelector('.quantity-good').value) || 0;
+        const operationCode = operationSelect.value;
+        
+        if (!operationCode || quantityGood <= 0) return;
+        
+        const spec = specifications[operationCode];
+        if (!spec) return;
+        
+        spec.forEach(function(part) {
+          if (!partsNeeded[part.partCode]) {
+            partsNeeded[part.partCode] = { name: part.partName, total: 0 };
+          }
+          partsNeeded[part.partCode].total += part.quantity * quantityGood;
+        });
+      });
+      
+      const summaryDiv = document.getElementById('parts-summary');
+      const contentDiv = document.getElementById('parts-summary-content');
+      
+      const partCodes = Object.keys(partsNeeded);
+      if (partCodes.length === 0) {
+        summaryDiv.style.display = 'none';
+        return;
+      }
+      
+      let html = '';
+      let hasShortage = false;
+      
+      partCodes.forEach(function(code) {
+        const part = partsNeeded[code];
+        const balance = partsBalance[code] || 0;
+        const isShortage = balance < part.total;
+        
+        if (isShortage) hasShortage = true;
+        
+        html += `
+          <div class="parts-summary-item">
+            <span class="parts-summary-name">${part.name}</span>
+            <span class="parts-summary-qty" style="color: ${isShortage ? '#ff4444' : '#4ade80'}">
+              ${part.total} шт ${isShortage ? '(нехватка: ' + (part.total - balance) + ')' : '✓'}
+            </span>
+          </div>
+        `;
+      });
+      
+      contentDiv.innerHTML = html;
+      summaryDiv.style.display = 'block';
+      
+      // Блокируем кнопку если не хватает деталей
+      document.getElementById('submitBtn').disabled = hasShortage;
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // РАСЧЁТЫ
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    function updateCalculations() {
+      const cards = document.querySelectorAll('.operation-card');
+      let totalOperations = cards.length;
+      let totalGood = 0;
+      let totalDefect = 0;
+      let totalAmount = 0;
+      
+      cards.forEach(card => {
+        const operationSelect = card.querySelector('.operation-select');
+        const quantityGood = parseFloat(card.querySelector('.quantity-good').value) || 0;
+        const quantityDefect = parseFloat(card.querySelector('.quantity-defect').value) || 0;
+        
+        if (operationSelect.value) {
+          const selectedOption = operationSelect.options[operationSelect.selectedIndex];
+          const rate = parseFloat(selectedOption.getAttribute('data-rate')) || 0;
+          
+          totalGood += quantityGood;
+          totalDefect += quantityDefect;
+          totalAmount += quantityGood * rate;
+        }
+      });
+      
+      document.getElementById('summary-operations').textContent = totalOperations;
+      document.getElementById('summary-good').textContent = totalGood + ' шт';
+      document.getElementById('summary-defect').textContent = totalDefect + ' шт';
+      document.getElementById('summary-amount').textContent = totalAmount.toFixed(0) + ' ₸';
+      
+      document.getElementById('summary').style.display = totalOperations > 0 ? 'block' : 'none';
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════
+    // ОТПРАВКА
+    // ═══════════════════════════════════════════════════════════════════════
+    
+    function submitOperations() {
+      const date = document.getElementById('date').value;
+      const master = document.getElementById('master').value;
+      
+      if (!date || !master) {
+        showMessage('error', '❌ Заполните дату и мастера смены!');
+        return;
+      }
+      
+      const cards = document.querySelectorAll('.operation-card');
+      
+      if (cards.length === 0) {
+        showMessage('error', '❌ Добавьте хотя бы одну операцию!');
+        return;
+      }
+      
+      const operationsData = [];
+      
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const seamstress = card.querySelector('.seamstress-select').value;
+        const operationCode = card.querySelector('.operation-select').value;
+        const quantityGood = parseFloat(card.querySelector('.quantity-good').value) || 0;
+        const quantityDefect = parseFloat(card.querySelector('.quantity-defect').value) || 0;
+        const notes = card.querySelector('.notes').value;
+        
+        if (!seamstress || !operationCode || quantityGood <= 0) {
+          showMessage('error', '❌ Операция #' + (i + 1) + ': заполните все обязательные поля!');
+          return;
+        }
+        
+        operationsData.push({
+          seamstress: seamstress,
+          operationCode: operationCode,
+          quantityGood: quantityGood,
+          quantityDefect: quantityDefect,
+          notes: notes
+        });
+      }
+      
+      const formData = {
+        date: date,
+        master: master,
+        operations: operationsData
+      };
+      
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Обработка...';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false;
+          btn.textContent = '✅ Провести операции';
+          
+          if (result.success) {
+            showMessage('success', result.message);
+            // Перезагружаем остатки
+            google.script.run
+              .withSuccessHandler(function(data) {
+                partsBalance = {};
+                data.forEach(function(p) {
+                  partsBalance[p.code] = p.balance;
+                });
+                updatePartsSummary();
+              })
+              .getAllPartsBalance();
+          } else {
+            showMessage('error', result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          btn.disabled = false;
+          btn.textContent = '✅ Провести операции';
+          showMessage('error', '❌ Ошибка: ' + error.message);
+        })
+        .processSewingOperations(formData);
+    }
+    
+    function clearForm() {
+      document.getElementById('date').valueAsDate = new Date();
+      document.getElementById('master').value = '';
+      document.getElementById('operations-container').innerHTML = '';
+      document.getElementById('parts-summary').style.display = 'none';
+      document.getElementById('message').style.display = 'none';
+      operationCounter = 0;
+      addOperation();
+      updateCalculations();
+    }
+    
+    function showMessage(type, text) {
+      const msgDiv = document.getElementById('message');
+      msgDiv.className = 'message ' + type;
+      msgDiv.textContent = text;
+      msgDiv.style.display = 'block';
+      msgDiv.style.whiteSpace = 'pre-line';
+      msgDiv.scrollIntoView({ behavior: 'smooth' });
+      
+      if (type === 'success') {
+        setTimeout(function() {
+          msgDiv.style.display = 'none';
+        }, 15000);
+      }
+    }
+  </script>
+</body>
+</html>

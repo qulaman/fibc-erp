@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/my-select"
 
 // Принимаем ID и Имя материала, с которым работаем
 export default function TransactionDialog({ materialId, materialName, currentBatch }: { materialId: string, materialName: string, currentBatch?: string }) {

@@ -1,0 +1,487 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ЦЕНТРАЛИЗОВАННАЯ КОНФИГУРАЦИЯ СИСТЕМЫ
+ * ═══════════════════════════════════════════════════════════════════════════
+ * FIBC Kazakhstan - Система управления производством
+ * 
+ * НАЗНАЧЕНИЕ:
+ * - Хранит ID всех файлов системы для межфайлового взаимодействия
+ * - Определяет названия листов, форматы документов и партий
+ * - Содержит общие функции для работы с файлами и трассировкой
+ * 
+ * ВАЖНО: Этот файл копируется в каждый модуль системы (Склад, Экструзия и т.д.)
+ * При изменении конфигурации необходимо обновить Config.gs во ВСЕХ файлах
+ * 
+ * Версия: 1.1
+ * Дата последнего обновления: 2025-12-19
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. ИНФОРМАЦИЯ О СИСТЕМЕ
+// ═══════════════════════════════════════════════════════════════════════════
+
+var SYSTEM_INFO = {
+  NAME: 'FIBC Kazakhstan ERP',
+  VERSION: '1.1',
+  COMPANY: 'FIBC Kazakhstan (с) Akdaulet Almas',
+  LAST_UPDATE: '2025-12-19'
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. ID ФАЙЛОВ GOOGLE SHEETS (КРИТИЧНО ДЛЯ МЕЖФАЙЛОВОГО ВЗАИМОДЕЙСТВИЯ)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * ВНИМАНИЕ: Без правильных ID межфайловое взаимодействие работать НЕ будет!
+ * 
+ * КАК ПОЛУЧИТЬ ID:
+ * 1. Откройте нужный файл Google Sheets
+ * 2. Скопируйте ID из URL: https://docs.google.com/spreadsheets/d/[ВОТ_ЭТОТ_ID]/edit
+ */
+
+var FILE_IDS = {
+  // Управление и отчетность
+  MANAGEMENT: '1IAbt6uGcvMUC89AU2foMhWPTX6fSPY7tNH1oQgG9nbc',
+  KANBAN: '1Ld3yb3Qmd5VewjADyTAqon8xBokEumeJ9u-Aic7kA1U',
+  TRACEABILITY: '1kBDVpq-FGPhcX1YHgleFH2sUmeebEYjAQOjMsyrZmkw',
+  
+  // Производственные цеха
+  WAREHOUSE: '1-71X4IuvG1_pnc0hwiXxnrRPGpswKhWYjYFggLqOAm8',
+  EXTRUSION: '1kvRTOjUSErOf4bthzxB7YXdFt92dKjNRE5f92WgZBf8',
+  WEAVING: '1U3LEpaiLvz7tKYexYH1fv7T8LFTcSlZ40rm6u6n_MXk',
+  STRAPS: '1TbrzoC_QRa1fJZRs71sWl4JWez2J-_RXXXxpQc2_XKA',
+  LAMINATION: '194dP0e9bzshSnbO2VQV_a0gPkXcnxVE8VV2Bj3hNyLQ',
+  CUTTING: '1HUZrZ7ZTmPgyt67mbs4mGhQYUTWMYIUtwg5CJaU7htw',
+  SEWING: '1q1ql23Y6-pFu1kuJRRCTItQLuWabIJEvvPqY9C99ZA0',
+  
+  // Вспомогательные склады
+  WAREHOUSE_REMNANTS: '1NDR-TwCehYyFBSsKGBGfHeUrD81BB3vyvVQStMvGz-A',
+  WAREHOUSE_FINISHED: '1le2TIeuoqxl6Z0srMqNjH-WAx9JzDAcNndSfJgnZKIA'
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. НАЗВАНИЯ ЛИСТОВ (СТАНДАРТИЗАЦИЯ)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Справочники (Master Data) - эталонная информация о материалах, продукции, сотрудниках
+ */
+var MASTER_SHEETS = {
+  RAW_MATERIALS: 'Справочник_Сырье',
+  YARN: 'Справочник_Нить',
+  FABRIC: 'Справочник_Ткань',
+  STRAPS: 'Справочник_Стропы',
+  CUTTING_TYPES: 'Справочник_Типы_Кроя',
+  PRODUCTS: 'Справочник_Продукция',
+  EMPLOYEES: 'Справочник_Сотрудники',
+  MACHINES: 'Справочник_Станки',
+  COUNTERPARTIES: 'Справочник_Контрагенты',
+  REMNANT_TYPES: 'Справочник_Типы_Остатков'
+};
+
+/**
+ * Транзакционные журналы (Journals) - история всех операций в хронологическом порядке
+ */
+var JOURNAL_SHEETS = {
+  WAREHOUSE_RAW: 'Журнал_Склад_Сырье',
+  WAREHOUSE_REMNANTS: 'Журнал_Склад_Остатков',
+  WAREHOUSE_FINISHED: 'Журнал_Склад_Готовая_Продукция',
+  PRODUCTION_EXTRUSION: 'Журнал_Производство_Экструзия',
+  PRODUCTION_WEAVING: 'Журнал_Производство_Ткачество',
+  PRODUCTION_STRAPS: 'Журнал_Производство_Стропы',
+  PRODUCTION_LAMINATION: 'Журнал_Производство_Ламинация',
+  PRODUCTION_CUTTING: 'Журнал_Производство_Крой',
+  PRODUCTION_SEWING: 'Журнал_Производство_Пошив'
+};
+
+/**
+ * Склады (промежуточное хранение между цехами)
+ */
+var WAREHOUSE_SHEETS = {
+  EXTRUSION: 'Склад_Экструзия',
+  WEAVING: 'Склад_Ткачество',
+  STRAPS: 'Склад_Стропы',
+  LAMINATION: 'Склад_Ламинация',
+  CUTTING: 'Склад_Кроеные_Детали'
+};
+
+/**
+ * Балансовые листы (вычисляемые остатки через формулы)
+ */
+var BALANCE_SHEETS = {
+  RAW_MATERIALS: 'Остатки_Склад_Сырье',
+  REMNANTS: 'Остатки_Склад_Остатков',
+  FINISHED_GOODS: 'Остатки_Склад_Готовая_Продукция',
+  EXTRUSION: 'Остатки_Склад_Экструзия',
+  WEAVING: 'Остатки_Склад_Ткачество',
+  STRAPS: 'Остатки_Склад_Стропы',
+  LAMINATION: 'Остатки_Склад_Ламинация',
+  CUTTING: 'Остатки_Кроеные_Детали'
+};
+
+/**
+ * Специальные листы
+ */
+var SPECIAL_SHEETS = {
+  TRACEABILITY: 'Трассировка_Партий',
+  DASHBOARD: 'Dashboard',
+  KANBAN: 'Kanban_Задачи'
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. ФОРМАТЫ И КОНСТАНТЫ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Форматы партий (номеров партий/серий)
+ * YYYY = полный год (2024), YY = короткий год (24), MM = месяц, DD = день, NNN = порядковый номер
+ */
+var BATCH_FORMATS = {
+  RAW_MATERIAL: 'LOT-YYYYMMDD-NNN',
+  YARN: 'THR-СТАНОК-YYMMDD-NNN',
+  FABRIC: 'FAB-СТАНОК-YYMMDD-NNN',
+  STRAPS: 'STR-СТАНОК-YYMMDD-NNN',
+  LAMINATION: 'LAM-YYMMDD-NNN',
+  CUTTING: 'CUT-YYMMDD-NNN',
+  PRODUCT: 'PRD-YYMMDD-NNN'
+};
+
+/**
+ * Форматы документов
+ */
+var DOC_FORMATS = {
+  RECEIPT: 'ПРХ-YYYYMMDD-NNNN',
+  EXPENSE: 'РСХ-YYYYMMDD-NNNN',
+  TRANSFER: 'ПРМ-YYYYMMDD-NNNN',
+  PRODUCTION: 'ПРВ-YYYYMMDD-NNNN'
+};
+
+/**
+ * Статусы записей
+ */
+var STATUSES = {
+  DRAFT: 'Черновик',
+  IN_PROGRESS: 'В работе',
+  COMPLETED: 'Проведено',
+  CANCELLED: 'Отменено',
+  ON_HOLD: 'На паузе'
+};
+
+/**
+ * Типы операций
+ */
+var OPERATION_TYPES = {
+  RECEIPT: 'Приход',
+  EXPENSE: 'Расход',
+  TRANSFER: 'Перемещение',
+  PRODUCTION: 'Производство',
+  WRITE_OFF: 'Списание',
+  INVENTORY: 'Инвентаризация'
+};
+
+/**
+ * Единицы измерения
+ */
+var UNITS = {
+  KG: 'кг',
+  METER: 'м',
+  PIECE: 'шт',
+  ROLL: 'рулон',
+  BAG: 'мешок'
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. ЦВЕТОВАЯ СХЕМА (КОРПОРАТИВНЫЙ ДИЗАЙН)
+// ═══════════════════════════════════════════════════════════════════════════
+
+var COLORS = {
+  BRAND_PRIMARY: '#E60012',
+  BRAND_DARK: '#c00010',
+  BACKGROUND_DARK: '#000000',
+  SURFACE_DARK: '#1e1e1e',
+  SURFACE_LIGHT: '#2d2d2d',
+  BORDER: '#333333',
+  BORDER_LIGHT: '#4d4d4d',
+  TEXT_PRIMARY: '#ffffff',
+  TEXT_SECONDARY: '#cccccc',
+  TEXT_DISABLED: '#666666',
+  TEXT_MUTED: '#999999',
+  RECEIPT_BG: '#d9ead3',
+  EXPENSE_BG: '#f4cccc',
+  TRANSFER_BG: '#cfe2f3',
+  PRODUCTION_BG: '#fff2cc',
+  BALANCE_OK: '#4ade80',
+  BALANCE_LOW: '#fb923c',
+  BALANCE_CRITICAL: '#fca5a5',
+  SUCCESS_BG: '#1a3d1a',
+  WARNING_BG: '#3d2d1a',
+  ERROR_BG: '#3d1a1a',
+  INFO_BG: '#1a2d3d'
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. НАСТРОЙКИ ФОРМУЛ (ДЛЯ БАЛАНСОВЫХ ЛИСТОВ)
+// ═══════════════════════════════════════════════════════════════════════════
+
+var FORMULA_SETTINGS = {
+  SUM_IF: 'СУММЕСЛИМН',
+  IF_ERROR: 'ЕСЛИОШИБКА',
+  IF: 'ЕСЛИ',
+  TODAY: 'СЕГОДНЯ',
+  NOW: 'ТПЕРЬ',
+  QUERY: 'QUERY',
+  VLOOKUP: 'ВПР',
+  PARAM_SEPARATOR: ';',
+  RANGE_SEPARATOR: ':',
+  DECIMAL_PLACES: 2
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ РАБОТЫ С КОНФИГУРАЦИЕЙ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Получить файл по его роли в системе
+ * @param {string} fileRole - Роль файла из FILE_IDS (например, 'WAREHOUSE', 'EXTRUSION')
+ * @return {Spreadsheet} Объект файла Google Sheets
+ */
+function getFileById(fileRole) {
+  var fileId = FILE_IDS[fileRole];
+  
+  if (!fileId || fileId === '') {
+    throw new Error('ID файла "' + fileRole + '" не настроен в Config.gs! Проверьте FILE_IDS.');
+  }
+  
+  try {
+    return SpreadsheetApp.openById(fileId);
+  } catch (error) {
+    throw new Error('Не удалось открыть файл "' + fileRole + '" (ID: ' + fileId + '). Ошибка: ' + error.message);
+  }
+}
+
+/**
+ * Получить лист из другого файла системы
+ * @param {string} fileRole - Роль файла из FILE_IDS
+ * @param {string} sheetName - Название листа
+ * @return {Sheet} Объект листа Google Sheets
+ */
+function getSheetFromFile(fileRole, sheetName) {
+  var file = getFileById(fileRole);
+  var sheet = file.getSheetByName(sheetName);
+  
+  if (!sheet) {
+    throw new Error('Лист "' + sheetName + '" не найден в файле "' + fileRole + '"');
+  }
+  
+  return sheet;
+}
+
+/**
+ * Проверить, настроены ли все ID файлов
+ * @return {Object} Результат проверки {isValid: boolean, missingFiles: Array}
+ */
+function validateFileIds() {
+  var missingFiles = [];
+  
+  for (var key in FILE_IDS) {
+    if (!FILE_IDS[key] || FILE_IDS[key] === '') {
+      missingFiles.push(key);
+    }
+  }
+  
+  return {
+    isValid: missingFiles.length === 0,
+    missingFiles: missingFiles
+  };
+}
+
+/**
+ * Вывести информацию о конфигурации в лог
+ */
+function logConfigInfo() {
+  Logger.log('═══════════════════════════════════════════');
+  Logger.log('ИНФОРМАЦИЯ О КОНФИГУРАЦИИ СИСТЕМЫ');
+  Logger.log('═══════════════════════════════════════════');
+  Logger.log('Система: ' + SYSTEM_INFO.NAME);
+  Logger.log('Версия: ' + SYSTEM_INFO.VERSION);
+  Logger.log('Компания: ' + SYSTEM_INFO.COMPANY);
+  Logger.log('Последнее обновление: ' + SYSTEM_INFO.LAST_UPDATE);
+  Logger.log('═══════════════════════════════════════════');
+  
+  var validation = validateFileIds();
+  
+  if (validation.isValid) {
+    Logger.log('✅ Все ID файлов настроены');
+  } else {
+    Logger.log('⚠️ НЕ настроены ID для файлов:');
+    validation.missingFiles.forEach(function(file) {
+      Logger.log('   - ' + file);
+    });
+  }
+  
+  Logger.log('═══════════════════════════════════════════');
+}
+
+/**
+ * Получить информацию о текущем файле
+ * @return {string} Роль текущего файла в системе (или 'UNKNOWN')
+ */
+function getCurrentFileRole() {
+  var currentFileId = SpreadsheetApp.getActiveSpreadsheet().getId();
+  
+  for (var role in FILE_IDS) {
+    if (FILE_IDS[role] === currentFileId) {
+      return role;
+    }
+  }
+  
+  return 'UNKNOWN';
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8. ФУНКЦИИ ГЕНЕРАЦИИ НОМЕРОВ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Сгенерировать номер документа
+ * @param {string} type - Тип документа из DOC_FORMATS ('RECEIPT', 'EXPENSE', 'PRODUCTION')
+ * @param {number} sequenceNumber - Порядковый номер (обычно lastRow журнала)
+ * @return {string} Номер документа (например: ПРХ-20241219-0001)
+ */
+function generateDocNumber(type, sequenceNumber) {
+  var format = DOC_FORMATS[type];
+  if (!format) {
+    throw new Error('Неизвестный тип документа: ' + type);
+  }
+  
+  var today = new Date();
+  var year = today.getFullYear().toString();
+  var month = (today.getMonth() + 1).toString().padStart(2, '0');
+  var day = today.getDate().toString().padStart(2, '0');
+  var sequence = sequenceNumber.toString().padStart(4, '0');
+  
+  return format
+    .replace('YYYYMMDD', year + month + day)
+    .replace('NNNN', sequence);
+}
+
+/**
+ * Сгенерировать номер партии
+ * @param {string} type - Тип партии из BATCH_FORMATS ('YARN', 'FABRIC', 'STRAPS')
+ * @param {string} machineCode - Код станка (опционально, для нити/ткани/строп)
+ * @param {number} sequenceNumber - Порядковый номер
+ * @return {string} Номер партии (например: THR-EKS1-241219-001)
+ */
+function generateBatchNumber(type, machineCode, sequenceNumber) {
+  var format = BATCH_FORMATS[type];
+  if (!format) {
+    throw new Error('Неизвестный тип партии: ' + type);
+  }
+  
+  var today = new Date();
+  var year = today.getFullYear().toString().slice(-2);
+  var month = (today.getMonth() + 1).toString().padStart(2, '0');
+  var day = today.getDate().toString().padStart(2, '0');
+  var sequence = sequenceNumber.toString().padStart(3, '0');
+  
+  var result = format
+    .replace('YYYYMMDD', today.getFullYear() + month + day)
+    .replace('YYMMDD', year + month + day)
+    .replace('NNN', sequence);
+  
+  if (machineCode) {
+    result = result.replace('СТАНОК', machineCode);
+  }
+  
+  return result;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 9. ТРАССИРОВКА ПАРТИЙ (УНИВЕРСАЛЬНАЯ ФУНКЦИЯ)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Записать трассировку производственной операции
+ * 
+ * НАЗНАЧЕНИЕ:
+ * Создаёт запись в центральном журнале трассировки для отслеживания происхождения материалов
+ * через всю производственную цепочку. Позволяет проследить путь от сырья до готовой продукции.
+ * 
+ * КАК ИСПОЛЬЗОВАТЬ:
+ * Вызывайте эту функцию в конце каждой производственной операции (экструзия, ткачество, и т.д.)
+ * 
+ * ПРИМЕР ВЫЗОВА:
+ * writeTraceabilityRecord({
+ *   outputBatch: 'THR-EKS1-241219-001',      // Номер созданной партии
+ *   stage: 'Экструзия',                      // Название цеха
+ *   docNumber: 'ПРВ-20241219-0001',          // Номер документа производства
+ *   inputMaterial: 'PP-H340',                // Код входящего материала
+ *   inputBatch: 'LOT-20241215-003',          // Партия входящего материала
+ *   outputMaterial: 'N-1000-W',              // Код выходящего материала
+ *   machine: 'EKS1',                         // Код станка
+ *   operator: 'Иванов И.И.',                 // Оператор
+ *   quantity: 500,                           // Количество
+ *   notes: 'Смена: День, Бобин: 10'         // Дополнительная информация
+ * });
+ * 
+ * @param {Object} data - Объект с данными трассировки
+ */
+function writeTraceabilityRecord(data) {
+  try {
+    Logger.log('=== writeTraceabilityRecord: START ===');
+    
+    // Открываем файл трассировки
+    var traceFile = getFileById('TRACEABILITY');
+    var traceSheet = traceFile.getSheetByName(SPECIAL_SHEETS.TRACEABILITY);
+    
+    if (!traceSheet) {
+      Logger.log('⚠️ Лист трассировки не найден');
+      return;
+    }
+    
+    var row = traceSheet.getLastRow() + 1;
+    var now = new Date();
+    var dateString = data.dateString || Utilities.formatDate(now, Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    var timeString = data.timeString || Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
+    
+    // СТРУКТУРА ЛИСТА ТРАССИРОВКИ:
+    // A=Партия_выход, B=Этап, C=Документ, D=Дата, E=Время
+    // F=Материал_вход, G=Партия_вход, H=Материал_выход
+    // I=Станок, J=Оператор, K=Количество, L=Примечание
+    
+    traceSheet.getRange(row, 1).setValue(data.outputBatch || '');
+    traceSheet.getRange(row, 2).setValue(data.stage || '');
+    traceSheet.getRange(row, 3).setValue(data.docNumber || '');
+    traceSheet.getRange(row, 4).setValue(dateString);
+    traceSheet.getRange(row, 5).setValue(timeString);
+    traceSheet.getRange(row, 6).setValue(data.inputMaterial || '');
+    traceSheet.getRange(row, 7).setValue(data.inputBatch || '');
+    traceSheet.getRange(row, 8).setValue(data.outputMaterial || '');
+    traceSheet.getRange(row, 9).setValue(data.machine || '');
+    traceSheet.getRange(row, 10).setValue(data.operator || '');
+    traceSheet.getRange(row, 11).setValue(data.quantity || 0);
+    traceSheet.getRange(row, 12).setValue(data.notes || '');
+    
+    Logger.log('✅ Трассировка записана: ' + data.stage + ' → ' + data.outputBatch);
+    Logger.log('=== writeTraceabilityRecord: END ===');
+    
+  } catch (error) {
+    Logger.log('⚠️ Ошибка записи трассировки: ' + error);
+    // НЕ прерываем выполнение основной операции из-за ошибки трассировки
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// КОНЕЦ ФАЙЛА CONFIG.GS
+// ═══════════════════════════════════════════════════════════════════════════

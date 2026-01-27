@@ -1,0 +1,277 @@
+table_name,column_name,data_type,is_nullable,column_default,constraint_type,foreign_table,foreign_column
+batches,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+batches,batch_number,text,NO,null,UNIQUE,null,null
+batches,product_id,uuid,YES,null,FOREIGN KEY,products,id
+batches,initial_quantity,numeric,NO,null,null,null,null
+batches,current_quantity,numeric,NO,null,null,null,null
+batches,created_at,timestamp with time zone,YES,now(),null,null,null
+batches,parent_batches,ARRAY,YES,null,null,null,null
+customer_orders,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+customer_orders,order_number,text,NO,null,UNIQUE,null,null
+customer_orders,client_name,text,NO,null,null,null,null
+customer_orders,specs,jsonb,YES,null,null,null,null
+customer_orders,status,text,YES,'planned'::text,null,null,null
+customer_orders,created_at,timestamp with time zone,YES,now(),null,null,null
+cutting_parts_warehouse,id,uuid,NO,uuid_generate_v4(),PRIMARY KEY,null,null
+cutting_parts_warehouse,doc_number,text,NO,null,null,null,null
+cutting_parts_warehouse,date,date,NO,CURRENT_DATE,null,null,null
+cutting_parts_warehouse,time,time without time zone,NO,CURRENT_TIME,null,null,null
+cutting_parts_warehouse,operation,text,NO,null,null,null,null
+cutting_parts_warehouse,cutting_type_code,text,NO,null,null,null,null
+cutting_parts_warehouse,cutting_type_name,text,NO,null,null,null,null
+cutting_parts_warehouse,category,text,NO,null,null,null,null
+cutting_parts_warehouse,quantity,integer,NO,null,null,null,null
+cutting_parts_warehouse,source_number,text,YES,null,null,null,null
+cutting_parts_warehouse,operator,text,YES,null,null,null,null
+cutting_parts_warehouse,status,text,YES,'Проведено'::text,null,null,null
+cutting_parts_warehouse,notes,text,YES,null,null,null,null
+cutting_parts_warehouse,created_at,timestamp with time zone,YES,now(),null,null,null
+cutting_parts_warehouse,updated_at,timestamp with time zone,YES,now(),null,null,null
+cutting_types,id,uuid,NO,uuid_generate_v4(),PRIMARY KEY,null,null
+cutting_types,code,text,NO,null,UNIQUE,null,null
+cutting_types,category,text,NO,null,null,null,null
+cutting_types,name,text,NO,null,null,null,null
+cutting_types,material_type,text,NO,null,null,null,null
+cutting_types,width_cm,numeric,YES,null,null,null,null
+cutting_types,length_cm,numeric,YES,null,null,null,null
+cutting_types,consumption_cm,numeric,NO,null,null,null,null
+cutting_types,weight_g,numeric,YES,null,null,null,null
+cutting_types,description,text,YES,null,null,null,null
+cutting_types,status,text,YES,'Активно'::text,null,null,null
+cutting_types,created_at,timestamp with time zone,YES,now(),null,null,null
+cutting_types,updated_at,timestamp with time zone,YES,now(),null,null,null
+employees,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+employees,created_at,timestamp with time zone,YES,now(),null,null,null
+employees,full_name,text,NO,null,null,null,null
+employees,role,USER-DEFINED,NO,null,null,null,null
+employees,shift_team,text,YES,null,null,null,null
+employees,is_active,boolean,YES,true,null,null,null
+equipment,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+equipment,name,text,NO,null,null,null,null
+equipment,code,text,NO,null,UNIQUE,null,null
+equipment,type,text,NO,null,null,null,null
+equipment,status,text,YES,'active'::text,null,null,null
+equipment,max_capacity_kg_h,numeric,YES,null,null,null,null
+equipment,is_active,boolean,YES,true,null,null,null
+fabric_inventory,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+fabric_inventory,doc_number,character varying,NO,null,UNIQUE,null,null
+fabric_inventory,date,date,NO,null,null,null,null
+fabric_inventory,time,time without time zone,YES,null,null,null,null
+fabric_inventory,operation_type,character varying,NO,null,null,null,null
+fabric_inventory,roll_number,character varying,YES,null,null,null,null
+fabric_inventory,fabric_type_id,uuid,YES,null,FOREIGN KEY,fabric_types,id
+fabric_inventory,length_meters,numeric,YES,0,null,null,null
+fabric_inventory,weight_kg,numeric,YES,0,null,null,null
+fabric_inventory,linked_doc,character varying,YES,null,null,null,null
+fabric_inventory,counterparty,character varying,YES,null,null,null,null
+fabric_inventory,status,character varying,YES,'Завершен'::character varying,null,null,null
+fabric_inventory,created_at,timestamp without time zone,YES,now(),null,null,null
+fabric_inventory,fabric_spec_id,integer,YES,null,null,null,null
+fabric_inventory,fabric_code,character varying,YES,null,null,null,null
+fabric_inventory,fabric_name,character varying,YES,null,null,null,null
+fabric_types,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+fabric_types,code,character varying,NO,null,UNIQUE,null,null
+fabric_types,name,character varying,NO,null,null,null,null
+fabric_types,width_cm,numeric,YES,null,null,null,null
+fabric_types,density,numeric,YES,null,null,null,null
+fabric_types,color,character varying,YES,null,null,null,null
+fabric_types,weft_yarn_code,character varying,YES,null,null,null,null
+fabric_types,warp_yarn_code,character varying,YES,null,null,null,null
+fabric_types,weft_consumption_per_meter,numeric,YES,0,null,null,null
+fabric_types,warp_consumption_per_meter,numeric,YES,0,null,null,null
+fabric_types,status,character varying,YES,'Активно'::character varying,null,null,null
+fabric_types,created_at,timestamp without time zone,YES,now(),null,null,null
+fabric_types,updated_at,timestamp without time zone,YES,now(),null,null,null
+inventory_transactions,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+inventory_transactions,created_at,timestamp with time zone,YES,now(),null,null,null
+inventory_transactions,type,text,NO,null,null,null,null
+inventory_transactions,doc_number,text,NO,null,null,null,null
+inventory_transactions,material_id,uuid,NO,null,FOREIGN KEY,raw_materials,id
+inventory_transactions,quantity,numeric,NO,null,null,null,null
+inventory_transactions,batch_number,text,YES,null,null,null,null
+inventory_transactions,counterparty,text,YES,null,null,null,null
+inventory_transactions,notes,text,YES,null,null,null,null
+inventory_transactions,user_id,uuid,YES,null,FOREIGN KEY,null,null
+laminated_rolls,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+laminated_rolls,roll_number,character varying,NO,null,UNIQUE,null,null
+laminated_rolls,production_id,uuid,YES,null,FOREIGN KEY,production_lamination,id
+laminated_rolls,source_roll_id,uuid,YES,null,FOREIGN KEY,weaving_rolls,id
+laminated_rolls,length,numeric,NO,null,null,null,null
+laminated_rolls,weight,numeric,NO,null,null,null,null
+laminated_rolls,status,character varying,YES,'available'::character varying,null,null,null
+laminated_rolls,created_at,timestamp without time zone,YES,now(),null,null,null
+laminated_rolls,updated_at,timestamp without time zone,YES,now(),null,null,null
+production_cutting,id,uuid,NO,uuid_generate_v4(),PRIMARY KEY,null,null
+production_cutting,doc_number,text,NO,null,UNIQUE,null,null
+production_cutting,date,date,NO,CURRENT_DATE,null,null,null
+production_cutting,time,time without time zone,NO,CURRENT_TIME,null,null,null
+production_cutting,shift,text,YES,null,null,null,null
+production_cutting,operator,text,NO,null,null,null,null
+production_cutting,roll_number,text,NO,null,null,null,null
+production_cutting,material_type,text,NO,null,null,null,null
+production_cutting,material_code,text,NO,null,null,null,null
+production_cutting,total_used_m,numeric,NO,null,null,null,null
+production_cutting,cutting_type_category,text,NO,null,null,null,null
+production_cutting,cutting_type_code,text,NO,null,null,null,null
+production_cutting,cutting_type_name,text,NO,null,null,null,null
+production_cutting,quantity,integer,NO,null,null,null,null
+production_cutting,consumption_m,numeric,NO,null,null,null,null
+production_cutting,waste_m,numeric,YES,0,null,null,null
+production_cutting,total_weight_kg,numeric,YES,null,null,null,null
+production_cutting,status,text,YES,'Проведено'::text,null,null,null
+production_cutting,created_at,timestamp with time zone,YES,now(),null,null,null
+production_cutting,updated_at,timestamp with time zone,YES,now(),null,null,null
+production_extrusion,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+production_extrusion,created_at,timestamp with time zone,YES,now(),null,null,null
+production_extrusion,doc_number,text,YES,null,null,null,null
+production_extrusion,date,date,YES,CURRENT_DATE,null,null,null
+production_extrusion,shift,text,YES,null,null,null,null
+production_extrusion,machine_id,uuid,YES,null,FOREIGN KEY,equipment,id
+production_extrusion,yarn_type_id,uuid,YES,null,FOREIGN KEY,yarn_types,id
+production_extrusion,operator_extruder_id,uuid,YES,null,FOREIGN KEY,employees,id
+production_extrusion,operator_winder1_id,uuid,YES,null,FOREIGN KEY,employees,id
+production_extrusion,operator_winder2_id,uuid,YES,null,FOREIGN KEY,employees,id
+production_extrusion,dosators_data,jsonb,YES,null,null,null,null
+production_extrusion,output_bobbins,integer,YES,0,null,null,null
+production_extrusion,output_weight_net,numeric,YES,0,null,null,null
+production_extrusion,waste_weight,numeric,YES,0,null,null,null
+production_extrusion,downtime_minutes,integer,YES,0,null,null,null
+production_extrusion,notes,text,YES,null,null,null,null
+production_extrusion,batch_number,text,YES,null,null,null,null
+production_extrusion,yarn_denier,integer,YES,null,null,null,null
+production_extrusion,yarn_code,character varying,YES,null,null,null,null
+production_extrusion,yarn_name,character varying,YES,null,null,null,null
+production_lamination,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+production_lamination,created_at,timestamp with time zone,YES,now(),null,null,null
+production_lamination,doc_number,text,YES,null,null,null,null
+production_lamination,date,date,YES,CURRENT_DATE,null,null,null
+production_lamination,shift,text,YES,null,null,null,null
+production_lamination,machine_id,uuid,YES,null,FOREIGN KEY,equipment,id
+production_lamination,operator_id,uuid,YES,null,FOREIGN KEY,employees,id
+production_lamination,input_roll_id,uuid,YES,null,FOREIGN KEY,weaving_rolls,id
+production_lamination,input_length,numeric,YES,null,null,null,null
+production_lamination,input_weight,numeric,YES,null,null,null,null
+production_lamination,dosators_data,jsonb,YES,null,null,null,null
+production_lamination,output_roll_id,uuid,YES,null,FOREIGN KEY,weaving_rolls,id
+production_lamination,output_length,numeric,YES,null,null,null,null
+production_lamination,output_weight,numeric,YES,null,null,null,null
+production_lamination,waste_weight,numeric,YES,0,null,null,null
+production_lamination,notes,text,YES,null,null,null,null
+production_lamination,waste,numeric,YES,0,null,null,null
+production_lamination,dosators,jsonb,YES,null,null,null,null
+production_straps,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+production_straps,date,date,NO,null,null,null,null
+production_straps,shift,character varying,NO,null,null,null,null
+production_straps,machine_id,uuid,YES,null,null,null,null
+production_straps,operator_id,uuid,YES,null,null,null,null
+production_straps,strap_type_id,uuid,NO,null,FOREIGN KEY,strap_types,id
+production_straps,produced_length,numeric,NO,null,null,null,null
+production_straps,produced_weight,numeric,NO,null,null,null,null
+production_straps,notes,text,YES,null,null,null,null
+production_straps,created_at,timestamp without time zone,YES,now(),null,null,null
+production_straps,updated_at,timestamp without time zone,YES,now(),null,null,null
+production_weaving,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+production_weaving,created_at,timestamp with time zone,YES,now(),null,null,null
+production_weaving,date,date,YES,CURRENT_DATE,null,null,null
+production_weaving,shift,text,YES,null,null,null,null
+production_weaving,roll_id,uuid,YES,null,FOREIGN KEY,weaving_rolls,id
+production_weaving,operator_id,uuid,YES,null,FOREIGN KEY,employees,id
+production_weaving,produced_length,numeric,YES,0,null,null,null
+production_weaving,produced_weight,numeric,YES,0,null,null,null
+production_weaving,notes,text,YES,null,null,null,null
+products,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+products,name,text,NO,null,null,null,null
+products,type,text,NO,null,null,null,null
+products,params,jsonb,YES,'{}'::jsonb,null,null,null
+raw_materials,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+raw_materials,name,text,NO,null,null,null,null
+raw_materials,unit,text,YES,'kg'::text,null,null,null
+raw_materials,min_stock,numeric,YES,0,null,null,null
+raw_materials,type,text,YES,'Основное сырье'::text,null,null,null
+raw_materials,supplier,text,YES,null,null,null,null
+raw_materials,current_price,numeric,YES,0,null,null,null
+strap_types,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+strap_types,created_at,timestamp with time zone,YES,now(),null,null,null
+strap_types,code,text,NO,null,UNIQUE,null,null
+strap_types,name,text,NO,null,null,null,null
+strap_types,width_mm,numeric,NO,null,null,null,null
+strap_types,color,text,YES,null,null,null,null
+strap_types,standard_weight_g_m,numeric,YES,null,null,null,null
+strap_types,description,text,YES,null,null,null,null
+straps_warehouse,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+straps_warehouse,roll_number,character varying,YES,null,UNIQUE,null,null
+straps_warehouse,production_id,uuid,YES,null,FOREIGN KEY,production_straps,id
+straps_warehouse,strap_type_id,uuid,NO,null,FOREIGN KEY,strap_types,id
+straps_warehouse,produced_length,numeric,NO,null,null,null,null
+straps_warehouse,produced_weight,numeric,NO,null,null,null,null
+straps_warehouse,length,numeric,YES,null,null,null,null
+straps_warehouse,weight,numeric,YES,null,null,null,null
+straps_warehouse,status,character varying,YES,'available'::character varying,null,null,null
+straps_warehouse,created_at,timestamp without time zone,YES,now(),null,null,null
+straps_warehouse,updated_at,timestamp without time zone,YES,now(),null,null,null
+tkan_specifications,id,integer,NO,nextval('tkan_specifications_id_seq'::regclass),PRIMARY KEY,null,null
+tkan_specifications,kod_tkani,character varying,YES,null,null,null,null
+tkan_specifications,nazvanie_tkani,character varying,NO,null,null,null,null
+tkan_specifications,shirina_polotna_sm,integer,NO,null,null,null,null
+tkan_specifications,plotnost_polotna_gr_m2,integer,NO,null,null,null,null
+tkan_specifications,tip,character varying,NO,null,null,null,null
+tkan_specifications,osobennosti_polotna,character varying,YES,null,null,null,null
+tkan_specifications,osnova_denye,integer,YES,null,null,null,null
+tkan_specifications,osnova_shirina_niti_sm,numeric,YES,null,null,null,null
+tkan_specifications,osnova_plotnost_na_10sm,integer,YES,null,null,null,null
+tkan_specifications,utok_denye,integer,YES,null,null,null,null
+tkan_specifications,utok_shirina_niti_sm,numeric,YES,null,null,null,null
+tkan_specifications,utok_plotnost_na_10sm,integer,YES,null,null,null,null
+tkan_specifications,math_plotnost_gr_m2,numeric,YES,null,null,null,null
+tkan_specifications,razryv_po_osnove_kg_s,numeric,YES,null,null,null,null
+tkan_specifications,elastichnost_po_osnove,character varying,YES,null,null,null,null
+tkan_specifications,razryv_po_utku_kg_s,numeric,YES,null,null,null,null
+tkan_specifications,elastichnost_po_utku,character varying,YES,null,null,null,null
+tkan_specifications,ves_1_pogonnogo_m_gr,numeric,YES,null,null,null,null
+tkan_specifications,shirina_v_razvorote_mm,integer,YES,null,null,null,null
+tkan_specifications,shirina_v_razvorote_m,numeric,YES,null,null,null,null
+tkan_specifications,udelny_ves_m,numeric,YES,null,null,null,null
+tkan_specifications,percent_othodov,numeric,YES,null,null,null,null
+tkan_specifications,perevod_gr_na_kg,numeric,YES,null,null,null,null
+tkan_specifications,osnova_kol_nitey_shpulyarnik,integer,YES,null,null,null,null
+tkan_specifications,osnova_ves_9m_gr,numeric,YES,null,null,null,null
+tkan_specifications,osnova_itogo_kg,numeric,YES,null,null,null,null
+tkan_specifications,utok_kol_nitey_shpulyarnik,integer,YES,null,null,null,null
+tkan_specifications,utok_ves_9m_gr,numeric,YES,null,null,null,null
+tkan_specifications,utok_itogo_kg,numeric,YES,null,null,null,null
+tkan_specifications,receptura_itogo_percent,numeric,YES,null,null,null,null
+tkan_specifications,receptura_pp_kg,numeric,YES,null,null,null,null
+tkan_specifications,receptura_karbonat_kg,numeric,YES,null,null,null,null
+tkan_specifications,receptura_uf_stabilizator_kg,numeric,YES,null,null,null,null
+tkan_specifications,receptura_krasitel_kg,numeric,YES,null,null,null,null
+tkan_specifications,created_at,timestamp without time zone,YES,CURRENT_TIMESTAMP,null,null,null
+tkan_specifications,updated_at,timestamp without time zone,YES,CURRENT_TIMESTAMP,null,null,null
+weaving_rolls,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+weaving_rolls,created_at,timestamp with time zone,YES,now(),null,null,null
+weaving_rolls,roll_number,text,NO,null,UNIQUE,null,null
+weaving_rolls,loom_id,uuid,YES,null,FOREIGN KEY,equipment,id
+weaving_rolls,fabric_spec_id,bigint,YES,null,FOREIGN KEY,tkan_specifications,id
+weaving_rolls,status,text,YES,'active'::text,null,null,null
+weaving_rolls,total_length,numeric,YES,0,null,null,null
+weaving_rolls,total_weight,numeric,YES,0,null,null,null
+yarn_inventory,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+yarn_inventory,yarn_type_id,uuid,YES,null,UNIQUE,null,null
+yarn_inventory,yarn_type_id,uuid,YES,null,FOREIGN KEY,yarn_types,id
+yarn_inventory,batch_number,text,NO,null,UNIQUE,null,null
+yarn_inventory,quantity_kg,numeric,YES,0,null,null,null
+yarn_inventory,bobbin_count,integer,YES,0,null,null,null
+yarn_inventory,location,text,YES,'Склад 1'::text,null,null,null
+yarn_inventory,last_updated,timestamp with time zone,YES,now(),null,null,null
+yarn_inventory,yarn_denier,integer,YES,null,null,null,null
+yarn_inventory,yarn_code,character varying,YES,null,null,null,null
+yarn_inventory,yarn_name,character varying,YES,null,null,null,null
+yarn_inventory,name,text,YES,null,null,null,null
+yarn_inventory,quantity,numeric,YES,0,null,null,null
+yarn_inventory,color,text,YES,null,null,null,null
+yarn_types,id,uuid,NO,gen_random_uuid(),PRIMARY KEY,null,null
+yarn_types,name,text,NO,null,null,null,null
+yarn_types,sku,text,YES,null,UNIQUE,null,null
+yarn_types,denier,integer,NO,null,null,null,null
+yarn_types,color,text,YES,null,null,null,null
+yarn_types,standard_weight,numeric,YES,null,null,null,null
+yarn_types,created_at,timestamp with time zone,YES,now(),null,null,null

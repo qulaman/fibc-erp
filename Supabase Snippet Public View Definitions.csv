@@ -1,0 +1,62 @@
+view_name,definition
+view_material_balances," SELECT m.id,
+    m.name,
+    m.unit,
+    m.min_stock,
+    m.type,
+    COALESCE(sum(
+        CASE
+            WHEN (t.type = 'in'::text) THEN t.quantity
+            ELSE (0)::numeric
+        END), (0)::numeric) AS total_in,
+    COALESCE(sum(
+        CASE
+            WHEN (t.type = 'out'::text) THEN t.quantity
+            ELSE (0)::numeric
+        END), (0)::numeric) AS total_out,
+    COALESCE(sum(
+        CASE
+            WHEN (t.type = 'in'::text) THEN t.quantity
+            ELSE (- t.quantity)
+        END), (0)::numeric) AS current_balance
+   FROM (raw_materials m
+     LEFT JOIN inventory_transactions t ON ((m.id = t.material_id)))
+  GROUP BY m.id;"
+cutting_parts_balance," SELECT cutting_type_code,
+    cutting_type_name,
+    category,
+    sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE 0
+        END) AS total_received,
+    sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END) AS total_used,
+    sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE (- quantity)
+        END) AS balance
+   FROM cutting_parts_warehouse
+  WHERE (status = 'Проведено'::text)
+  GROUP BY cutting_type_code, cutting_type_name, category
+ HAVING (sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE (- quantity)
+        END) > 0);"
+fabric_stock_balance," SELECT ts.id AS fabric_type_id,
+    ts.nazvanie_tkani AS name,
+    ts.kod_tkani AS code,
+    ts.shirina_polotna_sm AS width_cm,
+    COALESCE(sum(wr.total_weight), (0)::numeric) AS balance_kg,
+    COALESCE(sum(wr.total_length), (0)::numeric) AS balance_meters,
+    COALESCE(sum(wr.total_weight), (0)::numeric) AS total_receipt_kg,
+    0 AS total_expense_kg
+   FROM (tkan_specifications ts
+     LEFT JOIN weaving_rolls wr ON (((ts.id = wr.fabric_spec_id) AND (wr.status = 'completed'::text))))
+  GROUP BY ts.id, ts.nazvanie_tkani, ts.kod_tkani, ts.shirina_polotna_sm
+ HAVING ((COALESCE(sum(wr.total_weight), (0)::numeric) > (0)::numeric) OR (COALESCE(sum(wr.total_length), (0)::numeric) > (0)::numeric));"
