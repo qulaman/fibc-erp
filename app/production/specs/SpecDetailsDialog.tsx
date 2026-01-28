@@ -17,6 +17,8 @@ export type TkanSpecFull = {
   plotnost_polotna_gr_m2: number;
   tip: string;               // рукав / фальц
   osobennosti_polotna: string; // обычное / шахматное
+  is_colored?: boolean;      // цветная ткань
+  color_name?: string;       // название цвета
   
   // Основа
   osnova_denye: number;
@@ -127,9 +129,16 @@ export default function SpecDetailsDialog({ spec }: { spec: TkanSpecFull }) {
               <div className="grid grid-cols-2 gap-y-2 text-sm">
                 <span className="text-zinc-500">Тип полотна:</span>
                 <span className="font-mono text-white capitalize">{spec.tip}</span>
-                
+
                 <span className="text-zinc-500">Плетение:</span>
                 <span className="font-mono text-[#E60012] font-bold uppercase">{spec.osobennosti_polotna}</span>
+
+                {spec.is_colored && spec.color_name && (
+                  <>
+                    <span className="text-zinc-500">Цвет:</span>
+                    <span className="font-mono text-purple-400 font-bold uppercase">🎨 {spec.color_name}</span>
+                  </>
+                )}
 
                 <span className="text-zinc-500 mt-2">Разрыв (Основа):</span>
                 <span className="font-mono mt-2">{spec.razryv_po_osnove_kg_s} кг/с</span>
@@ -145,19 +154,52 @@ export default function SpecDetailsDialog({ spec }: { spec: TkanSpecFull }) {
             {/* Карточка Рецептуры */}
             <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800">
               <h3 className="text-sm font-bold text-zinc-400 uppercase mb-3 border-b border-zinc-700 pb-2">🧪 Расход сырья (Рецепт)</h3>
-              <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <span className="text-zinc-500">Полипропилен:</span>
-                <span className="font-mono text-green-400">{spec.receptura_pp_kg?.toFixed(4)} кг</span>
-                
-                <span className="text-zinc-500">Карбонат (Мел):</span>
-                <span className="font-mono">{spec.receptura_karbonat_kg?.toFixed(4)} кг</span>
-                
-                <span className="text-zinc-500">УФ-стабилизатор:</span>
-                <span className="font-mono">{spec.receptura_uf_stabilizator_kg?.toFixed(4)} кг</span>
-                
-                <span className="text-zinc-500">Краситель:</span>
-                <span className="font-mono">{spec.receptura_krasitel_kg?.toFixed(4)} кг</span>
-              </div>
+              {(() => {
+                const totalWeight = (spec.receptura_pp_kg || 0) +
+                                   (spec.receptura_karbonat_kg || 0) +
+                                   (spec.receptura_uf_stabilizator_kg || 0) +
+                                   (spec.receptura_krasitel_kg || 0);
+
+                const ppPercent = totalWeight > 0 ? (spec.receptura_pp_kg / totalWeight * 100) : 0;
+                const carbonatPercent = totalWeight > 0 ? (spec.receptura_karbonat_kg / totalWeight * 100) : 0;
+                const ufPercent = totalWeight > 0 ? (spec.receptura_uf_stabilizator_kg / totalWeight * 100) : 0;
+                const krasitelPercent = totalWeight > 0 ? (spec.receptura_krasitel_kg / totalWeight * 100) : 0;
+
+                return (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-y-2 text-sm">
+                      <span className="text-zinc-500">Полипропилен:</span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono text-green-400">{spec.receptura_pp_kg?.toFixed(4)} кг</span>
+                        <span className="text-xs text-green-600">({ppPercent.toFixed(1)}%)</span>
+                      </div>
+
+                      <span className="text-zinc-500">Карбонат (Мел):</span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono">{spec.receptura_karbonat_kg?.toFixed(4)} кг</span>
+                        <span className="text-xs text-zinc-600">({carbonatPercent.toFixed(1)}%)</span>
+                      </div>
+
+                      <span className="text-zinc-500">УФ-стабилизатор:</span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono">{spec.receptura_uf_stabilizator_kg?.toFixed(4)} кг</span>
+                        <span className="text-xs text-zinc-600">({ufPercent.toFixed(1)}%)</span>
+                      </div>
+
+                      <span className="text-zinc-500">Краситель:</span>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono">{spec.receptura_krasitel_kg?.toFixed(4)} кг</span>
+                        <span className="text-xs text-zinc-600">({krasitelPercent.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-zinc-800 flex justify-between text-sm">
+                      <span className="text-zinc-400 font-medium">Итого:</span>
+                      <span className="font-mono text-white font-bold">{totalWeight.toFixed(4)} кг</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

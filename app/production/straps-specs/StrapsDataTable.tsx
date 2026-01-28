@@ -1,20 +1,19 @@
 'use client'
 
 import { useState } from 'react';
-import { Search, Layers, Box, Palette, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Package, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import SpecDetailsDialog, { TkanSpecFull } from './SpecDetailsDialog';
+import StrapsDetailsDialog, { StrapSpecFull } from './StrapsDetailsDialog';
 
 type SortField = 'name' | 'width' | 'density' | 'weight' | 'osnova' | 'utok';
 type SortDirection = 'asc' | 'desc' | null;
 
-export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
+export default function StrapsDataTable({ specs }: { specs: StrapSpecFull[] }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'sleeve', 'fold'
-  const [colorFilter, setColorFilter] = useState('all'); // 'all', 'colored', 'plain'
+  const [osnovaFilter, setOsnovaFilter] = useState('all'); // 'all', 'pp', 'mfn'
+  const [purchaseFilter, setPurchaseFilter] = useState('all'); // 'all', 'fully', 'mixed'
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
@@ -38,20 +37,20 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
   const filteredSpecs = specs
     .filter(item => {
       // 1. Фильтр по поиску (ищем по названию или ширине)
-      const matchesSearch = item.nazvanie_tkani.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            item.shirina_polotna_sm.toString().includes(searchTerm);
+      const matchesSearch = item.nazvanie.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            item.shirina_mm.toString().includes(searchTerm);
 
-      // 2. Фильтр по вкладкам (Рукав / Фальц)
-      let matchesTab = true;
-      if (activeTab === 'sleeve') matchesTab = item.tip.toLowerCase().includes('рукав');
-      if (activeTab === 'fold') matchesTab = item.tip.toLowerCase().includes('фальц');
+      // 2. Фильтр по типу основы
+      let matchesOsnova = true;
+      if (osnovaFilter === 'pp') matchesOsnova = item.osnova_nit_type === 'ПП';
+      if (osnovaFilter === 'mfn') matchesOsnova = item.osnova_nit_type === 'МФН';
 
-      // 3. Фильтр по цветности
-      let matchesColor = true;
-      if (colorFilter === 'colored') matchesColor = item.is_colored === true;
-      if (colorFilter === 'plain') matchesColor = !item.is_colored;
+      // 3. Фильтр по типу производства
+      let matchesPurchase = true;
+      if (purchaseFilter === 'fully') matchesPurchase = item.is_fully_purchased === true;
+      if (purchaseFilter === 'mixed') matchesPurchase = !item.is_fully_purchased;
 
-      return matchesSearch && matchesTab && matchesColor;
+      return matchesSearch && matchesOsnova && matchesPurchase;
     })
     .sort((a, b) => {
       if (!sortField || !sortDirection) return 0;
@@ -60,17 +59,17 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
 
       switch (sortField) {
         case 'name':
-          return direction * a.nazvanie_tkani.localeCompare(b.nazvanie_tkani);
+          return direction * a.nazvanie.localeCompare(b.nazvanie);
         case 'width':
-          return direction * (a.shirina_polotna_sm - b.shirina_polotna_sm);
+          return direction * (a.shirina_mm - b.shirina_mm);
         case 'density':
-          return direction * (a.plotnost_polotna_gr_m2 - b.plotnost_polotna_gr_m2);
+          return direction * (a.plotnost_gr_mp - b.plotnost_gr_mp);
         case 'weight':
-          return direction * (a.ves_1_pogonnogo_m_gr - b.ves_1_pogonnogo_m_gr);
+          return direction * ((a.ves_1_pogonnogo_m_gr || 0) - (b.ves_1_pogonnogo_m_gr || 0));
         case 'osnova':
-          return direction * (a.osnova_denye - b.osnova_denye);
+          return direction * ((a.osnova_denye || 0) - (b.osnova_denye || 0));
         case 'utok':
-          return direction * (a.utok_denye - b.utok_denye);
+          return direction * ((a.utok_denye || 0) - (b.utok_denye || 0));
         default:
           return 0;
       }
@@ -82,9 +81,8 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
       {/* --- ПАНЕЛЬ УПРАВЛЕНИЯ --- */}
       <div className="flex flex-col gap-4 bg-zinc-900 p-4 rounded-xl border border-zinc-800">
 
-        {/* Первая строка: Поиск и Тип (Рукав/Фальц) */}
+        {/* Первая строка: Поиск */}
         <div className="flex flex-col md:flex-row justify-between gap-4 items-center">
-          {/* Поиск */}
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 h-4 w-4" />
             <Input
@@ -94,31 +92,18 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-
-          {/* Вкладки (Tabs) */}
-          <Tabs defaultValue="all" className="w-full md:w-auto" onValueChange={setActiveTab}>
-            <TabsList className="bg-zinc-950 border border-zinc-800 text-zinc-400">
-              <TabsTrigger value="all" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white">Все</TabsTrigger>
-              <TabsTrigger value="sleeve" className="data-[state=active]:bg-blue-900/30 data-[state=active]:text-blue-400">
-                 <Box className="w-4 h-4 mr-2" /> Рукав
-              </TabsTrigger>
-              <TabsTrigger value="fold" className="data-[state=active]:bg-orange-900/30 data-[state=active]:text-orange-400">
-                 <Layers className="w-4 h-4 mr-2" /> Фальц
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
 
-        {/* Вторая строка: Фильтр по цветности */}
+        {/* Вторая строка: Фильтр по типу основы */}
         <div className="flex items-center gap-3">
-          <Palette className="text-zinc-500 h-5 w-5" />
-          <span className="text-zinc-400 text-sm font-medium">Цветность:</span>
+          <Package className="text-zinc-500 h-5 w-5" />
+          <span className="text-zinc-400 text-sm font-medium">Основа:</span>
           <div className="flex gap-2">
             <Button
-              variant={colorFilter === 'all' ? 'default' : 'outline'}
+              variant={osnovaFilter === 'all' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setColorFilter('all')}
-              className={colorFilter === 'all'
+              onClick={() => setOsnovaFilter('all')}
+              className={osnovaFilter === 'all'
                 ? 'bg-zinc-700 text-white hover:bg-zinc-600'
                 : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
               }
@@ -126,27 +111,67 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
               Все
             </Button>
             <Button
-              variant={colorFilter === 'colored' ? 'default' : 'outline'}
+              variant={osnovaFilter === 'pp' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setColorFilter('colored')}
-              className={colorFilter === 'colored'
+              onClick={() => setOsnovaFilter('pp')}
+              className={osnovaFilter === 'pp'
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }
+            >
+              ПП (своё)
+            </Button>
+            <Button
+              variant={osnovaFilter === 'mfn' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setOsnovaFilter('mfn')}
+              className={osnovaFilter === 'mfn'
                 ? 'bg-purple-600 text-white hover:bg-purple-700'
                 : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
               }
             >
-              <Palette className="w-4 h-4 mr-1" />
-              Цветные
+              МФН (покупная)
             </Button>
+          </div>
+        </div>
+
+        {/* Третья строка: Фильтр по типу производства */}
+        <div className="flex items-center gap-3">
+          <Package className="text-zinc-500 h-5 w-5" />
+          <span className="text-zinc-400 text-sm font-medium">Производство:</span>
+          <div className="flex gap-2">
             <Button
-              variant={colorFilter === 'plain' ? 'default' : 'outline'}
+              variant={purchaseFilter === 'all' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setColorFilter('plain')}
-              className={colorFilter === 'plain'
-                ? 'bg-zinc-600 text-white hover:bg-zinc-700'
+              onClick={() => setPurchaseFilter('all')}
+              className={purchaseFilter === 'all'
+                ? 'bg-zinc-700 text-white hover:bg-zinc-600'
                 : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
               }
             >
-              Бесцветные
+              Все
+            </Button>
+            <Button
+              variant={purchaseFilter === 'mixed' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPurchaseFilter('mixed')}
+              className={purchaseFilter === 'mixed'
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }
+            >
+              Смешанное (ПП+МФН)
+            </Button>
+            <Button
+              variant={purchaseFilter === 'fully' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPurchaseFilter('fully')}
+              className={purchaseFilter === 'fully'
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }
+            >
+              100% МФН
             </Button>
           </div>
         </div>
@@ -163,15 +188,14 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-2">
-                    <span>Ткань</span>
+                    <span>Стропа</span>
                     {sortField === 'name' && (
                       sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
                     )}
                   </div>
                 </th>
                 <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs tracking-wider">Инфо</th>
-                <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs tracking-wider">Тип / Плетение</th>
-                <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs tracking-wider">Цвет</th>
+                <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs tracking-wider">Тип производства</th>
                 <th
                   className="px-4 py-4 text-right font-bold text-zinc-500 uppercase text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors"
                   onClick={() => handleSort('width')}
@@ -235,7 +259,7 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
             <tbody className="divide-y divide-zinc-800">
               {filteredSpecs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-zinc-500">
+                  <td colSpan={7} className="text-center py-12 text-zinc-500">
                     Ничего не найдено по запросу "{searchTerm}"
                   </td>
                 </tr>
@@ -245,43 +269,37 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
                     {/* Название */}
                     <td className="px-4 py-4 font-medium text-white sticky left-0 bg-zinc-900 group-hover:bg-zinc-800 transition-colors z-10 border-r border-zinc-800/50">
                       <div className="flex flex-col">
-                        <span className="text-base">{item.nazvanie_tkani}</span>
-                        {item.kod_tkani && <span className="text-xs text-zinc-500 font-mono">{item.kod_tkani}</span>}
+                        <span className="text-base">{item.nazvanie}</span>
+                        {item.kod_almas && <span className="text-xs text-zinc-500 font-mono">{item.kod_almas}</span>}
                       </div>
                     </td>
 
                     {/* Кнопка Глаз */}
                     <td className="px-4 py-4 text-center">
-                      <SpecDetailsDialog spec={item} />
+                      <StrapsDetailsDialog spec={item} />
                     </td>
 
-                    {/* Тип с Бейджами */}
+                    {/* Тип производства */}
                     <td className="px-4 py-4 align-middle">
-                      <div className="flex flex-col gap-1 items-start">
-                        {item.tip.toLowerCase().includes('рукав') ? (
-                           <Badge variant="outline" className="border-blue-900 text-blue-400 bg-blue-900/10 hover:bg-blue-900/20">Рукав</Badge>
+                      <div className="flex flex-col gap-1 items-center">
+                        {item.is_fully_purchased ? (
+                          <Badge variant="outline" className="border-purple-900 text-purple-400 bg-purple-900/10 hover:bg-purple-900/20">
+                            100% МФН
+                          </Badge>
                         ) : (
-                           <Badge variant="outline" className="border-orange-900 text-orange-400 bg-orange-900/10 hover:bg-orange-900/20">Фальц</Badge>
+                          <Badge variant="outline" className="border-green-900 text-green-400 bg-green-900/10 hover:bg-green-900/20">
+                            ПП + МФН
+                          </Badge>
                         )}
-                        <span className="text-[10px] text-zinc-500 uppercase tracking-wide ml-1">{item.osobennosti_polotna}</span>
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-wide">
+                          Основа: {item.osnova_nit_type}
+                        </span>
                       </div>
                     </td>
 
-                    {/* Цвет */}
-                    <td className="px-4 py-4 text-center">
-                      {item.is_colored && item.color_name ? (
-                        <Badge variant="outline" className="border-purple-700 text-purple-300 bg-purple-900/20 hover:bg-purple-900/30">
-                          <Palette className="w-3 h-3 mr-1" />
-                          {item.color_name}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-zinc-600">—</span>
-                      )}
-                    </td>
-
                     {/* Цифры */}
-                    <td className="px-4 py-4 text-right font-mono text-zinc-300 text-base">{item.shirina_polotna_sm} <span className="text-zinc-600 text-xs">см</span></td>
-                    <td className="px-4 py-4 text-right font-mono text-zinc-300 text-base">{item.plotnost_polotna_gr_m2} <span className="text-zinc-600 text-xs">г/м²</span></td>
+                    <td className="px-4 py-4 text-right font-mono text-zinc-300 text-base">{item.shirina_mm} <span className="text-zinc-600 text-xs">мм</span></td>
+                    <td className="px-4 py-4 text-right font-mono text-zinc-300 text-base">{item.plotnost_gr_mp} <span className="text-zinc-600 text-xs">гр/мп</span></td>
                     <td className="px-4 py-4 text-right font-mono font-bold text-[#E60012] text-lg bg-zinc-900/50">
                       {item.ves_1_pogonnogo_m_gr}
                     </td>
@@ -289,16 +307,20 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
                     {/* Нити (комбинированные) */}
                     <td className="px-4 py-4 text-center">
                       <div className="flex justify-center gap-2 text-xs">
-                         <div className="bg-zinc-950 px-2 py-1 rounded border border-zinc-800 text-zinc-400" title="Основа">
+                         <div className={`px-2 py-1 rounded border ${
+                           item.osnova_nit_type === 'ПП'
+                             ? 'bg-green-950 border-green-800 text-green-400'
+                             : 'bg-purple-950 border-purple-800 text-purple-400'
+                         }`} title="Основа">
                            <div className="flex flex-col items-center">
                              <span>↕ {item.osnova_denye}D</span>
-                             <span className="text-[10px] text-zinc-600">{item.osnova_shirina_niti_sm} мм</span>
+                             <span className="text-[10px] text-zinc-600">{item.osnova_shirina_niti_sm} см</span>
                            </div>
                          </div>
-                         <div className="bg-zinc-950 px-2 py-1 rounded border border-zinc-800 text-zinc-400" title="Уток">
+                         <div className="bg-purple-950 px-2 py-1 rounded border border-purple-800 text-purple-400" title="Уток (МФН)">
                            <div className="flex flex-col items-center">
                              <span>↔ {item.utok_denye}D</span>
-                             <span className="text-[10px] text-zinc-600">{item.utok_shirina_niti_sm} мм</span>
+                             <span className="text-[10px] text-zinc-600">МФН</span>
                            </div>
                          </div>
                       </div>
@@ -309,7 +331,7 @@ export default function SpecsDataTable({ specs }: { specs: TkanSpecFull[] }) {
             </tbody>
           </table>
         </div>
-        
+
         {/* Футер таблицы */}
         <div className="bg-zinc-950 p-3 text-center text-xs text-zinc-600 border-t border-zinc-800">
            Показано {filteredSpecs.length} из {specs.length} позиций

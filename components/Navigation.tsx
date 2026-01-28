@@ -14,7 +14,8 @@ import {
   Warehouse,
   ShieldCheck,
   Layers,
-  Scissors
+  Scissors,
+  Calculator
 } from 'lucide-react';
 import { Logo } from './Logo';
 
@@ -25,22 +26,83 @@ const navigationItems = [
     icon: Home
   },
   {
-    name: 'Производство',
-    href: '/production',
+    name: '🧵 Экструзия',
+    href: '/production/extrusion',
     icon: Factory,
     submenu: [
-      { name: 'Экструзия', href: '/production/extrusion' },
-      { name: 'Журнал Экструзии', href: '/production/extrusion/history' },
-      { name: 'Ткачество', href: '/production/weaving' },
-      { name: 'Журнал Ткачества', href: '/production/weaving/history' },
-      { name: 'Ламинация', href: '/production/lamination' },
-      { name: 'Журнал Ламинации', href: '/production/lamination/history' },
-      { name: 'Стропы', href: '/production/straps' },
-      { name: 'Журнал Строп', href: '/production/straps/history' },
-      { name: 'Крой', href: '/production/cutting' },
-      { name: 'Журнал Кроя', href: '/production/cutting/history' },
-      { name: 'Пошив', href: '/production/sewing' },
-      { name: 'Спецификации', href: '/production/specs' },
+      { name: 'Производство', href: '/production/extrusion' },
+      { name: 'Журнал', href: '/production/extrusion/history' },
+      { name: 'Табель', href: '/production/extrusion/timesheet' },
+    ]
+  },
+  {
+    name: '🚜 Ткачество',
+    href: '/production/weaving',
+    icon: Layers,
+    submenu: [
+      { name: 'Производство', href: '/production/weaving' },
+      { name: 'Журнал', href: '/production/weaving/history' },
+      { name: 'Табель', href: '/production/weaving/timesheet' },
+    ]
+  },
+  {
+    name: '🔆 Ламинация',
+    href: '/production/lamination',
+    icon: Layers,
+    submenu: [
+      { name: 'Производство', href: '/production/lamination' },
+      { name: 'Журнал', href: '/production/lamination/history' },
+      { name: 'Табель', href: '/production/lamination/timesheet' },
+    ]
+  },
+  {
+    name: '🎗️ Стропы',
+    href: '/production/straps',
+    icon: Layers,
+    submenu: [
+      { name: 'Производство', href: '/production/straps' },
+      { name: 'Журнал', href: '/production/straps/history' },
+      { name: 'Табель', href: '/production/straps/timesheet' },
+    ]
+  },
+  {
+    name: '✂️ Крой',
+    href: '/production/cutting',
+    icon: Scissors,
+    submenu: [
+      { name: 'Производство', href: '/production/cutting' },
+      { name: 'Журнал', href: '/production/cutting/history' },
+      { name: 'Табель', href: '/production/cutting/timesheet' },
+    ]
+  },
+  {
+    name: '🧷 Пошив',
+    href: '/production/sewing',
+    icon: Scissors,
+    submenu: [
+      { name: 'Производство', href: '/production/sewing' },
+      { name: 'Дневной отчет', href: '/production/sewing/daily' },
+      { name: 'Журнал', href: '/production/sewing/history' },
+      { name: 'Спецификации (BOM)', href: '/production/sewing-specs' },
+      { name: 'Табель', href: '/production/sewing/timesheet' },
+    ]
+  },
+  {
+    name: 'Спецификации',
+    href: '/production/specs',
+    icon: FileText,
+    submenu: [
+      { name: 'Спецификации тканей', href: '/production/specs' },
+      { name: 'Спецификации строп', href: '/production/straps-specs' },
+    ]
+  },
+  {
+    name: 'Инструменты',
+    href: '/tools/calculatorBB',
+    icon: Calculator,
+    submenu: [
+      { name: 'Калькулятор Биг-Бэг', href: '/tools/calculatorBB' },
+      { name: 'Калькулятор Денье', href: '/tools/calculatorDN' },
     ]
   },
   {

@@ -71,23 +71,37 @@ export default function SewingPage() {
     setLoadError('');
 
     try {
+      // Проверяем аутентификацию
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 Текущий пользователь:', user?.email || 'не аутентифицирован');
+
       // Загружаем операции пошива
-      const { data: operationsData, error: opError } = await supabase
+      console.log('🔍 Попытка загрузки операций пошива...');
+      const { data: operationsData, error: opError, status, statusText } = await supabase
         .from('sewing_operations')
         .select('*')
-        .eq('status', 'Активно')
         .order('category', { ascending: true });
 
+      console.log('📊 Результат запроса операций:', {
+        data: operationsData,
+        error: opError,
+        status,
+        statusText,
+        dataLength: operationsData?.length
+      });
+
       if (opError) {
-        console.error('Ошибка загрузки операций:', opError);
+        console.error('❌ Ошибка загрузки операций:', opError);
         setLoadError(`❌ Таблица sewing_operations не найдена! Выполните SQL-скрипт: supabase/sewing-module-schema.sql`);
         setLoading(false);
         return;
-      } else if (operationsData) {
+      }
+
+      if (operationsData) {
+        console.log('✅ Загружено операций пошива:', operationsData.length, operationsData);
         setSewingOperations(operationsData);
-        if (operationsData.length === 0) {
-          setLoadError(`⚠️ В таблице sewing_operations нет данных. Проверьте SQL-скрипт.`);
-        }
+      } else {
+        console.warn('⚠️ operationsData is null или undefined');
       }
 
       // Загружаем швей из таблицы employees (все активные сотрудники)
@@ -531,6 +545,11 @@ function OperationCardComponent({
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
+    console.log('OperationCard - Количество операций:', sewingOperations.length);
+    console.log('OperationCard - Количество сотрудников:', employees.length);
+  }, []);
+
+  useEffect(() => {
     if (operation.operationCode) {
       loadSpecs();
     } else {
@@ -585,15 +604,21 @@ function OperationCardComponent({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs text-zinc-500">Операция *</label>
+            <label className="text-xs text-zinc-500">Операция * ({sewingOperations.length})</label>
             <Select
               value={operation.operationCode}
-              onValueChange={(v) => updateOperation(operation.id, 'operationCode', v)}
+              onValueChange={(v) => {
+                console.log('Выбрана операция:', v);
+                updateOperation(operation.id, 'operationCode', v);
+              }}
             >
               <SelectTrigger className="h-9 bg-zinc-900 border-zinc-700 text-white text-sm">
                 <SelectValue placeholder="Выберите..." />
               </SelectTrigger>
               <SelectContent>
+                {sewingOperations.length === 0 && (
+                  <div className="p-2 text-xs text-zinc-500">Нет операций</div>
+                )}
                 {sewingOperations.map((op: SewingOperation) => (
                   <SelectItem key={op.code} value={op.code}>
                     {op.name} - {op.rate_kzt}₸

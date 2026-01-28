@@ -1,0 +1,39 @@
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Ribbon } from "lucide-react";
+import StrapsDataTable from './StrapsDataTable';
+
+export default async function StrapsSpecsPage() {
+  const { data: specs, error } = await supabase
+    .from('strop_specifications')
+    .select('*')
+    .order('shirina_mm', { ascending: true });
+
+  if (error) return <div className="text-white p-8">Ошибка: {error.message}</div>;
+
+  return (
+    <div className="p-8 font-sans bg-black min-h-screen text-white">
+      {/* Заголовок */}
+      <div className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-4">
+          <Link href="/production">
+            <Button variant="outline" size="icon" className="text-black bg-white hover:bg-gray-200">
+               <ArrowLeft size={20} />
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold text-[#E60012] flex items-center gap-2">
+              <Ribbon /> Спецификации Строп
+            </h1>
+            <p className="text-zinc-400 text-sm">База стандартов производства строп и лент-тесьмы</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Вставляем интерактивную таблицу */}
+      <StrapsDataTable specs={specs || []} />
+
+    </div>
+  );
+}
