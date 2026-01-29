@@ -397,8 +397,16 @@ export default function ReportsPage() {
 
       const operatorTotals: { [key: string]: number } = {};
 
-      (sewingData || []).forEach(record => {
-        const name = record.employees?.full_name || 'Неизвестно';
+      // Используем any для record, чтобы избежать ошибки типов
+      (sewingData || []).forEach((record: any) => {
+        // ИСПРАВЛЕНИЕ: Supabase при join часто возвращает массив, даже если там 1 запись.
+        // Проверяем: если массив, берем первый элемент. Иначе берем как есть.
+        const employeeData = Array.isArray(record.employees) 
+          ? record.employees[0] 
+          : record.employees;
+
+        const name = employeeData?.full_name || 'Неизвестно';
+        
         operatorTotals[name] = (operatorTotals[name] || 0) + (record.quantity || 0);
       });
 
@@ -419,37 +427,35 @@ export default function ReportsPage() {
   };
 
   const getTotalProduction = () => {
-    const extTotal = extrusionData.reduce((sum, d) => sum + d.value, 0);
-    const weavTotal = weavingData.reduce((sum, d) => sum + d.value, 0);
-    const lamTotal = laminationData.reduce((sum, d) => sum + d.value, 0);
-    const strapTotal = strapsData.reduce((sum, d) => sum + d.value, 0);
+    const extTotal = (extrusionData || []).reduce((sum, d) => sum + (d.value || 0), 0);
+    const weavTotal = (weavingData || []).reduce((sum, d) => sum + (d.value || 0), 0);
+    const lamTotal = (laminationData || []).reduce((sum, d) => sum + (d.value || 0), 0);
+    const strapTotal = (strapsData || []).reduce((sum, d) => sum + (d.value || 0), 0);
+    
     return Math.round(extTotal + weavTotal + lamTotal + strapTotal);
   };
 
   const getCombinedChartData = () => {
     const combined: { [key: string]: any } = {};
 
-    extrusionData.forEach(d => {
-      if (!combined[d.date]) combined[d.date] = { date: d.date };
-      combined[d.date].Экструзия = d.value;
-    });
+    const mergeData = (data: any[], keyName: string) => {
+      (data || []).forEach(d => {
+        if (!d.date) return;
+        if (!combined[d.date]) {
+            combined[d.date] = { date: d.date };
+        }
+        combined[d.date][keyName] = d.value;
+      });
+    };
 
-    weavingData.forEach(d => {
-      if (!combined[d.date]) combined[d.date] = { date: d.date };
-      combined[d.date].Ткачество = d.value;
-    });
+    mergeData(extrusionData, 'Экструзия');
+    mergeData(weavingData, 'Ткачество');
+    mergeData(laminationData, 'Ламинация');
+    mergeData(strapsData, 'Стропы');
 
-    laminationData.forEach(d => {
-      if (!combined[d.date]) combined[d.date] = { date: d.date };
-      combined[d.date].Ламинация = d.value;
-    });
-
-    strapsData.forEach(d => {
-      if (!combined[d.date]) combined[d.date] = { date: d.date };
-      combined[d.date].Стропы = d.value;
-    });
-
-    return Object.values(combined);
+    return Object.values(combined).sort((a: any, b: any) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
   };
 
   if (loading) {
