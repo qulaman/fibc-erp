@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Package, TrendingUp, TrendingDown, Search } from "lucide-react";
+import { Package, TrendingUp, TrendingDown, Search, Trash2 } from "lucide-react";
 
 export default function CuttingPartsWarehousePage() {
+  const { isAdmin } = useAuth();
   const [balances, setBalances] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,36 @@ export default function CuttingPartsWarehousePage() {
     if (historyData) setHistory(historyData);
 
     setLoading(false);
+  };
+
+  const handleDelete = async (id: string, docNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить операцию ${docNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('cutting_parts_warehouse')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchData();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить операцию ${docNumber}.\n\nЭта запись связана с другими данными в системе (возможно используется в пошиве).`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    }
   };
 
   const filteredBalances = balances.filter(b =>
@@ -175,6 +207,9 @@ export default function CuttingPartsWarehousePage() {
                   <TableHead className="text-zinc-400 text-right">Количество</TableHead>
                   <TableHead className="text-zinc-400">Оператор</TableHead>
                   <TableHead className="text-zinc-400">Источник/Назначение</TableHead>
+                  {isAdmin && (
+                    <TableHead className="text-center text-zinc-400">Действия</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -213,6 +248,17 @@ export default function CuttingPartsWarehousePage() {
                       <TableCell className="text-zinc-400 text-sm">
                         {record.operation === 'Приход' ? record.source_roll_number : record.destination_doc}
                       </TableCell>
+                      {isAdmin && (
+                        <TableCell className="text-center">
+                          <button
+                            onClick={() => handleDelete(record.id, record.doc_number)}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                            title="Удалить запись"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 )}

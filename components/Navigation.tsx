@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Factory,
   Package,
@@ -18,9 +18,12 @@ import {
   Calculator,
   CheckCircle2,
   Grid3x3,
-  Ribbon
+  Ribbon,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { useAuth } from '@/lib/auth-context';
 
 const navigationItems = [
   {
@@ -147,14 +150,14 @@ const navigationItems = [
   {
     name: 'Отчеты',
     href: '/reports',
-    icon: TrendingUp,
-    badge: 'Скоро'
+    icon: TrendingUp
   },
   {
     name: 'Администрирование',
     href: '/admin',
     icon: ShieldCheck,
     submenu: [
+      { name: 'Пользователи', href: '/admin/users' },
       { name: 'Сотрудники', href: '/admin/employees' },
       { name: 'Оборудование', href: '/admin/equipment' },
     ]
@@ -163,6 +166,15 @@ const navigationItems = [
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    if (confirm('Вы уверены, что хотите выйти?')) {
+      await signOut();
+      router.push('/login');
+    }
+  };
 
   const isActive = (item: any) => {
     if (item.href === '/') return pathname === '/';
@@ -242,14 +254,48 @@ export default function Navigation() {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-zinc-800">
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all text-base"
-        >
-          <Settings size={20} />
-          <span className="font-medium">Настройки</span>
-        </Link>
+      <div className="p-4 border-t border-zinc-800 space-y-2">
+        {/* User Info */}
+        {profile && (
+          <div className="px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-800">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-[#E60012] flex items-center justify-center">
+                <UserIcon size={16} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">
+                  {profile.full_name || profile.email || 'Пользователь'}
+                </p>
+                <p className="text-xs text-zinc-500 truncate">
+                  {profile.role === 'admin' && 'Администратор'}
+                  {profile.role === 'manager' && 'Менеджер'}
+                  {profile.role === 'operator' && 'Оператор'}
+                  {profile.role === 'warehouse' && 'Кладовщик'}
+                  {profile.role === 'qc' && 'ОТК'}
+                  {profile.role === 'accountant' && 'Бухгалтер'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings & Logout */}
+        <div className="space-y-1">
+          <Link
+            href="/settings"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all text-sm"
+          >
+            <Settings size={18} />
+            <span className="font-medium">Настройки</span>
+          </Link>
+          <button
+            onClick={handleSignOut}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-900/10 transition-all text-sm"
+          >
+            <LogOut size={18} />
+            <span className="font-medium">Выход</span>
+          </button>
+        </div>
       </div>
     </nav>
   );

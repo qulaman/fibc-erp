@@ -1,0 +1,307 @@
+view_name,definition
+view_material_balances," SELECT m.id,
+    m.name,
+    m.unit,
+    m.min_stock,
+    m.type,
+    COALESCE(sum(
+        CASE
+            WHEN (t.type = 'in'::text) THEN t.quantity
+            ELSE (0)::numeric
+        END), (0)::numeric) AS total_in,
+    COALESCE(sum(
+        CASE
+            WHEN (t.type = 'out'::text) THEN t.quantity
+            ELSE (0)::numeric
+        END), (0)::numeric) AS total_out,
+    COALESCE(sum(
+        CASE
+            WHEN (t.type = 'in'::text) THEN t.quantity
+            ELSE (- t.quantity)
+        END), (0)::numeric) AS current_balance
+   FROM (raw_materials m
+     LEFT JOIN inventory_transactions t ON ((m.id = t.material_id)))
+  GROUP BY m.id;"
+cutting_parts_balance," SELECT cutting_type_code,
+    cutting_type_name,
+    category,
+    sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE 0
+        END) AS total_received,
+    sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END) AS total_used,
+    sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE (- quantity)
+        END) AS balance
+   FROM cutting_parts_warehouse
+  WHERE (status = 'Проведено'::text)
+  GROUP BY cutting_type_code, cutting_type_name, category
+ HAVING (sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE (- quantity)
+        END) > 0);"
+view_cutting_parts_balance," SELECT cutting_type_code AS code,
+    max(cutting_type_name) AS name,
+    max(category) AS category,
+    COALESCE(sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint) AS total_in,
+    COALESCE(sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint) AS total_out,
+    (COALESCE(sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint) - COALESCE(sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint)) AS balance,
+    max(created_at) AS last_movement
+   FROM cutting_parts_warehouse
+  WHERE (status = 'Проведено'::text)
+  GROUP BY cutting_type_code
+ HAVING ((COALESCE(sum(
+        CASE
+            WHEN (operation = 'Приход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint) - COALESCE(sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint)) <> 0)
+  ORDER BY cutting_type_code;"
+view_finished_goods_balance," SELECT product_code AS code,
+    max(product_name) AS name,
+    COALESCE(sum(
+        CASE
+            WHEN (operation = ANY (ARRAY['Приход'::text, 'Возврат'::text])) THEN quantity
+            ELSE 0
+        END), (0)::bigint) AS total_in,
+    COALESCE(sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint) AS total_out,
+    (COALESCE(sum(
+        CASE
+            WHEN (operation = ANY (ARRAY['Приход'::text, 'Возврат'::text])) THEN quantity
+            ELSE 0
+        END), (0)::bigint) - COALESCE(sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint)) AS balance,
+    max(created_at) AS last_movement
+   FROM finished_goods_warehouse
+  WHERE (status = 'Проведено'::text)
+  GROUP BY product_code
+ HAVING ((COALESCE(sum(
+        CASE
+            WHEN (operation = ANY (ARRAY['Приход'::text, 'Возврат'::text])) THEN quantity
+            ELSE 0
+        END), (0)::bigint) - COALESCE(sum(
+        CASE
+            WHEN (operation = 'Расход'::text) THEN quantity
+            ELSE 0
+        END), (0)::bigint)) <> 0)
+  ORDER BY product_code;"
+fabric_stock_balance," SELECT ts.id AS fabric_type_id,
+    ts.nazvanie_tkani AS name,
+    ts.kod_tkani AS code,
+    ts.shirina_polotna_sm AS width_cm,
+    COALESCE(sum(wr.total_weight), (0)::numeric) AS balance_kg,
+    COALESCE(sum(wr.total_length), (0)::numeric) AS balance_meters,
+    COALESCE(sum(wr.total_weight), (0)::numeric) AS total_receipt_kg,
+    0 AS total_expense_kg
+   FROM (tkan_specifications ts
+     LEFT JOIN weaving_rolls wr ON (((ts.id = wr.fabric_spec_id) AND (wr.status = 'completed'::text))))
+  GROUP BY ts.id, ts.nazvanie_tkani, ts.kod_tkani, ts.shirina_polotna_sm
+ HAVING ((COALESCE(sum(wr.total_weight), (0)::numeric) > (0)::numeric) OR (COALESCE(sum(wr.total_length), (0)::numeric) > (0)::numeric));"
+view_sewn_products_balance," SELECT product_code,
+    product_name,
+    product_type,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Приход'::text) THEN quantity
+            ELSE 0
+        END) AS total_received,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Расход'::text) THEN quantity
+            ELSE 0
+        END) AS total_issued,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Приход'::text) THEN quantity
+            ELSE (- quantity)
+        END) AS balance,
+    max(operation_date) AS last_movement_date,
+    now() AS calculated_at
+   FROM sewn_products_warehouse
+  WHERE ((status)::text = 'Активно'::text)
+  GROUP BY product_code, product_name, product_type
+ HAVING (sum(
+        CASE
+            WHEN ((operation_type)::text = 'Приход'::text) THEN quantity
+            ELSE (- quantity)
+        END) > 0)
+  ORDER BY product_name;"
+view_qc_statistics," SELECT product_code,
+    product_name,
+    product_type,
+    sum((quantity_good + quantity_defect)) AS total_inspected,
+    sum(quantity_good) AS total_good,
+    sum(quantity_defect) AS total_defect,
+    round(
+        CASE
+            WHEN (sum((quantity_good + quantity_defect)) > 0) THEN (((sum(quantity_defect))::numeric / (sum((quantity_good + quantity_defect)))::numeric) * (100)::numeric)
+            ELSE (0)::numeric
+        END, 2) AS defect_percentage,
+    count(*) AS inspection_count,
+    min(inspection_date) AS first_inspection,
+    max(inspection_date) AS last_inspection
+   FROM qc_journal
+  WHERE ((status)::text = 'Активно'::text)
+  GROUP BY product_code, product_name, product_type
+  ORDER BY (sum((quantity_good + quantity_defect))) DESC;"
+view_straps_defect_stats," SELECT strap_type_id,
+    date_trunc('month'::text, (date)::timestamp with time zone) AS month,
+    count(*) AS production_count,
+    sum(produced_length) AS total_length,
+    sum(produced_weight) AS total_weight,
+    sum(calculated_weight) AS total_calc_weight,
+    sum(defect_weight) AS total_defect,
+    avg(defect_weight) AS avg_defect,
+        CASE
+            WHEN (sum(produced_weight) > (0)::numeric) THEN round(((sum(defect_weight) / sum(produced_weight)) * (100)::numeric), 2)
+            ELSE (0)::numeric
+        END AS defect_percentage,
+        CASE
+            WHEN (sum(calculated_weight) > (0)::numeric) THEN round((((sum(produced_weight) - sum(calculated_weight)) / sum(calculated_weight)) * (100)::numeric), 2)
+            ELSE (0)::numeric
+        END AS weight_deviation_percentage
+   FROM production_straps
+  WHERE (date >= (CURRENT_DATE - '1 year'::interval))
+  GROUP BY strap_type_id, (date_trunc('month'::text, (date)::timestamp with time zone))
+  ORDER BY (date_trunc('month'::text, (date)::timestamp with time zone)) DESC, strap_type_id;"
+view_mfn_balance," SELECT material_code,
+    material_name,
+    denier,
+    color,
+    sum(
+        CASE
+            WHEN (((operation_type)::text = 'Приход'::text) OR ((operation_type)::text = 'Возврат'::text)) THEN quantity_kg
+            ELSE (0)::numeric
+        END) AS total_in,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Расход'::text) THEN quantity_kg
+            ELSE (0)::numeric
+        END) AS total_out,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = ANY ((ARRAY['Приход'::character varying, 'Возврат'::character varying])::text[])) THEN quantity_kg
+            WHEN ((operation_type)::text = 'Расход'::text) THEN (- quantity_kg)
+            ELSE (0)::numeric
+        END) AS balance_kg,
+    avg(price_per_kg) FILTER (WHERE (price_per_kg IS NOT NULL)) AS avg_price_per_kg,
+    max(operation_date) AS last_movement_date,
+    count(*) AS operation_count,
+    now() AS calculated_at
+   FROM mfn_warehouse
+  WHERE ((status)::text = 'Активно'::text)
+  GROUP BY material_code, material_name, denier, color
+ HAVING (sum(
+        CASE
+            WHEN ((operation_type)::text = ANY ((ARRAY['Приход'::character varying, 'Возврат'::character varying])::text[])) THEN quantity_kg
+            WHEN ((operation_type)::text = 'Расход'::text) THEN (- quantity_kg)
+            ELSE (0)::numeric
+        END) > (0)::numeric)
+  ORDER BY material_name, denier;"
+view_mfn_statistics," SELECT material_code,
+    material_name,
+    denier,
+    color,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Приход'::text) THEN quantity_kg
+            ELSE (0)::numeric
+        END) AS total_received,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Расход'::text) THEN quantity_kg
+            ELSE (0)::numeric
+        END) AS total_consumed,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Возврат'::text) THEN quantity_kg
+            ELSE (0)::numeric
+        END) AS total_returned,
+    sum(
+        CASE
+            WHEN ((operation_type)::text = 'Приход'::text) THEN total_amount
+            ELSE (0)::numeric
+        END) AS total_purchase_amount,
+    avg(price_per_kg) FILTER (WHERE ((operation_type)::text = 'Приход'::text)) AS avg_purchase_price,
+    min(operation_date) AS first_operation,
+    max(operation_date) AS last_operation,
+    count(*) AS total_operations
+   FROM mfn_warehouse
+  WHERE ((status)::text = 'Активно'::text)
+  GROUP BY material_code, material_name, denier, color
+  ORDER BY (sum(
+        CASE
+            WHEN ((operation_type)::text = 'Приход'::text) THEN quantity_kg
+            ELSE (0)::numeric
+        END)) DESC;"
+view_straps_production," SELECT ps.id,
+    ps.date,
+    ps.shift,
+    ps.machine_id,
+    ps.operator_id,
+    ps.strap_type_id,
+    ps.produced_length,
+    ps.produced_weight,
+    ps.notes,
+    ps.created_at,
+    ps.updated_at,
+    ps.defect_weight,
+    ps.calculated_weight,
+    ps.spec_name,
+    e.name AS equipment_name,
+    emp.full_name AS operator_name,
+    ss.nazvanie AS specification_name,
+    ss.shirina_mm,
+    ss.plotnost_gr_mp,
+    ss.osnova_nit_type,
+    ss.utok_denye
+   FROM (((production_straps ps
+     LEFT JOIN equipment e ON ((ps.machine_id = e.id)))
+     LEFT JOIN employees emp ON ((ps.operator_id = emp.id)))
+     LEFT JOIN strop_specifications ss ON (((ps.spec_name)::text = (ss.nazvanie)::text)))
+  ORDER BY ps.date DESC, ps.created_at DESC;"
+user_profiles_with_employee," SELECT up.id,
+    up.employee_id,
+    up.role,
+    up.is_active,
+    up.created_at,
+    e.full_name,
+    e.role AS ""position"",
+    au.email
+   FROM ((user_profiles up
+     LEFT JOIN employees e ON ((up.employee_id = e.id)))
+     LEFT JOIN auth.users au ON ((up.id = au.id)));"

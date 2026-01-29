@@ -6,7 +6,9 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(node scripts/generate-timesheets.js:*)",
       "Bash(psql:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(ls:*)",
+      "Bash(cut:*)"
     ]
   }
 }

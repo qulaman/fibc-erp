@@ -1,8 +1,12 @@
+'use client'
+
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, Calendar, Plus } from "lucide-react";
+import { ArrowLeft, FileText, Calendar, Plus, Trash2 } from "lucide-react";
 import ExtrusionDetailsDialog from './ExtrusionDetailsDialog';
 
 // Форматирование даты
@@ -10,22 +14,69 @@ const formatDate = (dateStr: string) => {
   return new Date(dateStr).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-export default async function ExtrusionHistoryPage() {
-  
-  // Сложный запрос с "подтягиванием" связей (JOIN)
-  const { data: logs, error } = await supabase
-    .from('production_extrusion')
-    .select(`
-      *,
-      equipment (name),
-      operator_extruder:employees!operator_extruder_id (full_name),
-      operator_winder1:employees!operator_winder1_id (full_name),
-      operator_winder2:employees!operator_winder2_id (full_name)
-    `)
-    .order('created_at', { ascending: false })
-    .limit(50); // Берем последние 50 записей
+export default function ExtrusionHistoryPage() {
+  const { isAdmin } = useAuth();
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (error) return <div className="text-white p-8">Ошибка загрузки: {error.message}</div>;
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    // Сложный запрос с "подтягиванием" связей (JOIN)
+    const { data, error } = await supabase
+      .from('production_extrusion')
+      .select(`
+        *,
+        equipment (name),
+        operator_extruder:employees!operator_extruder_id (full_name),
+        operator_winder1:employees!operator_winder1_id (full_name),
+        operator_winder2:employees!operator_winder2_id (full_name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setLogs(data || []);
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async (id: string, batchNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить запись производства партии ${batchNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('production_extrusion')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchLogs();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить запись партии ${batchNumber}.\n\nЭта запись связана с другими данными в системе (склад нити).`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    }
+  };
+
+  if (error) return <div className="text-white p-8">Ошибка загрузки: {error}</div>;
 
   return (
     <div className="page-container">
@@ -57,27 +108,33 @@ export default async function ExtrusionHistoryPage() {
       </div>
 
       {/* Таблица */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-zinc-800 text-sm">
-            <thead className="bg-zinc-950">
-              <tr>
-                <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs">Дата / Смена</th>
-                <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs">Партия</th>
-                <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs">Продукт</th>
-                <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs hidden md:table-cell">Оператор</th>
-                <th className="px-4 py-4 text-right font-bold text-zinc-500 uppercase text-xs">Бобин</th>
-                <th className="px-4 py-4 text-right font-bold text-[#E60012] uppercase text-xs">Вес Нетто</th>
-                <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs">Детали</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800">
-              {logs?.length === 0 ? (
+      {loading ? (
+        <div className="text-center text-zinc-500 py-10">Загрузка данных...</div>
+      ) : (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-zinc-800 text-sm">
+              <thead className="bg-zinc-950">
                 <tr>
-                   <td colSpan={7} className="text-center py-12 text-zinc-500">Записей пока нет</td>
+                  <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs">Дата / Смена</th>
+                  <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs">Партия</th>
+                  <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs">Продукт</th>
+                  <th className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs hidden md:table-cell">Оператор</th>
+                  <th className="px-4 py-4 text-right font-bold text-zinc-500 uppercase text-xs">Бобин</th>
+                  <th className="px-4 py-4 text-right font-bold text-[#E60012] uppercase text-xs">Вес Нетто</th>
+                  <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs">Детали</th>
+                  {isAdmin && (
+                    <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs">Действия</th>
+                  )}
                 </tr>
-              ) : (
-                logs?.map((row) => (
+              </thead>
+              <tbody className="divide-y divide-zinc-800">
+                {logs.length === 0 ? (
+                  <tr>
+                     <td colSpan={isAdmin ? 8 : 7} className="text-center py-12 text-zinc-500">Записей пока нет</td>
+                  </tr>
+                ) : (
+                  logs.map((row) => (
                   <tr key={row.id} className="hover:bg-zinc-800/50 transition-colors">
                     
                     {/* Дата и Смена */}
@@ -126,6 +183,19 @@ export default async function ExtrusionHistoryPage() {
                       <ExtrusionDetailsDialog record={row} />
                     </td>
 
+                    {/* Кнопка Удаления */}
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleDelete(row.id, row.batch_number)}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                          title="Удалить запись"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
+
                   </tr>
                 ))
               )}
@@ -133,6 +203,7 @@ export default async function ExtrusionHistoryPage() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

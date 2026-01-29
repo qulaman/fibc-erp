@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 
 interface RollRecord {
   id: string;
@@ -26,6 +28,7 @@ interface RollRecord {
 }
 
 export default function LaminatedWarehousePage() {
+  const { isAdmin } = useAuth();
   const [view, setView] = useState<'available' | 'all'>('available');
   const [rolls, setRolls] = useState<RollRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,36 @@ export default function LaminatedWarehousePage() {
       console.error('Error fetching rolls:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, rollNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить рулон ${rollNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('laminated_rolls')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchRolls();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить рулон ${rollNumber}.\n\nЭта запись связана с другими данными в системе (крой или другие операции).\nСначала удалите связанные записи.`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
     }
   };
 
@@ -217,6 +250,9 @@ export default function LaminatedWarehousePage() {
                   <th className="px-4 py-3 text-right text-sm font-semibold">Вес (кг)</th>
                   <th className="px-4 py-3 text-center text-sm font-semibold">Статус</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold">Дата ламинации</th>
+                  {isAdmin && (
+                    <th className="px-4 py-3 text-center text-sm font-semibold">Действия</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -250,6 +286,17 @@ export default function LaminatedWarehousePage() {
                         ? new Date(record.production_lamination.date).toLocaleDateString('ru-RU')
                         : '-'}
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleDelete(record.id, record.roll_number)}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                          title="Удалить запись"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

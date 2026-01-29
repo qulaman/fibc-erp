@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Scissors, Calendar, User, Factory } from "lucide-react";
+import { Scissors, Calendar, User, Factory, Trash2 } from "lucide-react";
 
 export default function StrapsHistoryPage() {
+  const { isAdmin } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,49 +18,98 @@ export default function StrapsHistoryPage() {
   }, []);
 
   const fetchHistory = async () => {
+    // Загружаем основные данные с лимитом (последние 200 записей)
     const { data, error } = await supabase
       .from('production_straps')
       .select('*')
       .order('date', { ascending: false })
-      .order('created_at', { ascending: false });
-
-    console.log('Straps history data:', data);
-    console.log('Straps history error:', error);
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (error) {
       console.error('Ошибка загрузки истории:', error);
-    } else if (data) {
-      // Загружаем связанные данные отдельно
-      for (const record of data) {
-        // Загружаем спецификацию по названию
-        if (record.spec_name) {
-          const { data: spec } = await supabase
+      setLoading(false);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      setRecords([]);
+      setLoading(false);
+      return;
+    }
+
+    // Собираем уникальные ID для batch-запросов
+    const uniqueSpecNames = [...new Set(data.map(r => r.spec_name).filter(Boolean))];
+    const uniqueMachineIds = [...new Set(data.map(r => r.machine_id).filter(Boolean))];
+    const uniqueOperatorIds = [...new Set(data.map(r => r.operator_id).filter(Boolean))];
+
+    // Параллельная загрузка всех связанных данных одним пакетом
+    const [specsResponse, machinesResponse, operatorsResponse] = await Promise.all([
+      uniqueSpecNames.length > 0
+        ? supabase
             .from('strop_specifications')
             .select('nazvanie, shirina_mm, plotnost_gr_mp')
-            .eq('nazvanie', record.spec_name)
-            .single();
-          record.specification = spec;
-        }
-        if (record.machine_id) {
-          const { data: machine } = await supabase
+            .in('nazvanie', uniqueSpecNames)
+        : Promise.resolve({ data: [] }),
+      uniqueMachineIds.length > 0
+        ? supabase
             .from('equipment')
-            .select('name')
-            .eq('id', record.machine_id)
-            .single();
-          record.equipment = machine;
-        }
-        if (record.operator_id) {
-          const { data: operator } = await supabase
+            .select('id, name')
+            .in('id', uniqueMachineIds)
+        : Promise.resolve({ data: [] }),
+      uniqueOperatorIds.length > 0
+        ? supabase
             .from('employees')
-            .select('full_name')
-            .eq('id', record.operator_id)
-            .single();
-          record.employees = operator;
-        }
-      }
-      setRecords(data);
-    }
+            .select('id, full_name')
+            .in('id', uniqueOperatorIds)
+        : Promise.resolve({ data: [] })
+    ]);
+
+    // Создаем Map для быстрого поиска
+    const specsMap = new Map((specsResponse.data || []).map(s => [s.nazvanie, s]));
+    const machinesMap = new Map((machinesResponse.data || []).map(m => [m.id, m]));
+    const operatorsMap = new Map((operatorsResponse.data || []).map(o => [o.id, o]));
+
+    // Присваиваем связанные данные к записям
+    const enrichedData = data.map(record => ({
+      ...record,
+      specification: record.spec_name ? specsMap.get(record.spec_name) : null,
+      equipment: record.machine_id ? machinesMap.get(record.machine_id) : null,
+      employees: record.operator_id ? operatorsMap.get(record.operator_id) : null
+    }));
+
+    setRecords(enrichedData);
     setLoading(false);
+  };
+
+  const handleDelete = async (id: string, date: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить запись производства от ${new Date(date).toLocaleDateString('ru-RU')}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('production_straps')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchHistory();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить запись.\n\nЭта запись связана с другими данными в системе.`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    }
   };
 
   const totalLength = records.reduce((sum, r) => sum + Number(r.produced_length || 0), 0);
@@ -126,6 +177,9 @@ export default function StrapsHistoryPage() {
                       <TableHead className="text-zinc-400">Станок</TableHead>
                       <TableHead className="text-zinc-400">Оператор</TableHead>
                       <TableHead className="text-zinc-400">Примечания</TableHead>
+                      {isAdmin && (
+                        <TableHead className="text-center text-zinc-400">Действия</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -184,6 +238,17 @@ export default function StrapsHistoryPage() {
                         <TableCell className="text-xs text-zinc-500 max-w-xs truncate" title={record.notes}>
                           {record.notes || '-'}
                         </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-center">
+                            <button
+                              onClick={() => handleDelete(record.id, record.date)}
+                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                              title="Удалить запись"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

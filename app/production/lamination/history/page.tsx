@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Layers, Calendar, User, Factory } from "lucide-react";
+import { Layers, Calendar, User, Factory, Trash2 } from "lucide-react";
 
 export default function LaminationHistoryPage() {
+  const { isAdmin } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +48,36 @@ export default function LaminationHistoryPage() {
       setRecords(data);
     }
     setLoading(false);
+  };
+
+  const handleDelete = async (id: string, docNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить запись производства ${docNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('production_lamination')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchHistory();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить запись ${docNumber}.\n\nЭта запись связана с другими данными в системе.`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    }
   };
 
   const totalLength = records.reduce((sum, r) => sum + Number(r.output_length || 0), 0);
@@ -99,6 +131,9 @@ export default function LaminationHistoryPage() {
                       <TableHead className="text-zinc-400">Станок</TableHead>
                       <TableHead className="text-zinc-400">Оператор</TableHead>
                       <TableHead className="text-zinc-400">Примечания</TableHead>
+                      {isAdmin && (
+                        <TableHead className="text-center text-zinc-400">Действия</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -136,6 +171,17 @@ export default function LaminationHistoryPage() {
                         <TableCell className="text-xs text-zinc-500 max-w-xs truncate" title={record.notes}>
                           {record.notes || '-'}
                         </TableCell>
+                        {isAdmin && (
+                          <TableCell className="text-center">
+                            <button
+                              onClick={() => handleDelete(record.id, record.doc_number)}
+                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                              title="Удалить запись"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>

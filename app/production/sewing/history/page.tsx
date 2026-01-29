@@ -1,8 +1,12 @@
+'use client'
+
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, Calendar, Plus, Scissors } from "lucide-react";
+import { ArrowLeft, FileText, Calendar, Plus, Scissors, Trash2 } from "lucide-react";
 import SewingDetailsDialog from './SewingDetailsDialog';
 
 // Форматирование даты
@@ -14,21 +18,67 @@ const formatTime = (timeStr: string) => {
   return timeStr?.slice(0, 5) || '—';
 }
 
-export default async function SewingHistoryPage() {
+export default function SewingHistoryPage() {
+  const { isAdmin } = useAuth();
+  const [logs, setLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Загружаем записи производства пошива
-  const { data: logs, error } = await supabase
-    .from('production_sewing')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(100); // Берем последние 100 записей
+  useEffect(() => {
+    fetchLogs();
+  }, []);
 
-  if (error) return <div className="text-white p-8">Ошибка загрузки: {error.message}</div>;
+  const fetchLogs = async () => {
+    const { data, error } = await supabase
+      .from('production_sewing')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setLogs(data || []);
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async (id: string, date: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить запись пошива от ${new Date(date).toLocaleDateString('ru-RU')}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('production_sewing')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchLogs();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить запись.\n\nЭта запись связана с другими данными в системе.`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    }
+  };
+
+  if (error) return <div className="text-white p-8">Ошибка загрузки: {error}</div>;
 
   // Группируем по дате для статистики
-  const totalAmount = logs?.reduce((sum, log) => sum + (log.amount_kzt || 0), 0) || 0;
-  const totalGood = logs?.reduce((sum, log) => sum + (log.quantity_good || 0), 0) || 0;
-  const totalDefect = logs?.reduce((sum, log) => sum + (log.quantity_defect || 0), 0) || 0;
+  const totalAmount = logs.reduce((sum, log) => sum + (log.amount_kzt || 0), 0);
+  const totalGood = logs.reduce((sum, log) => sum + (log.quantity_good || 0), 0);
+  const totalDefect = logs.reduce((sum, log) => sum + (log.quantity_defect || 0), 0);
 
   return (
     <div className="page-container">

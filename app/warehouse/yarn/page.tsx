@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
-import { Package, Ruler, Palette } from 'lucide-react';
+import { Package, Ruler, Palette, Trash2 } from 'lucide-react';
 
 // Обновленный интерфейс под вашу реальную структуру БД
 interface YarnRecord {
@@ -23,6 +24,7 @@ interface YarnRecord {
 }
 
 export default function YarnWarehousePage() {
+  const { isAdmin } = useAuth();
   const [view, setView] = useState<'available' | 'all'>('available');
   const [items, setItems] = useState<YarnRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,9 +58,39 @@ export default function YarnWarehousePage() {
     }
   };
 
+  const handleDelete = async (id: string, batchNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить партию ${batchNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('yarn_inventory')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchInventory();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить партию ${batchNumber}.\n\nЭта запись связана с другими данными в системе.\nСначала удалите связанные записи.`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    }
+  };
+
   const filteredItems = items.filter(item => {
     const searchLower = searchQuery.toLowerCase();
-    
+
     // Поиск теперь идет по прямым полям
     return !searchQuery ||
       item.batch_number?.toLowerCase().includes(searchLower) ||
@@ -72,7 +104,7 @@ export default function YarnWarehousePage() {
   const itemsWithStock = filteredItems.filter(i => i.quantity_kg > 0).length;
 
   return (
-    <div className="page-container max-w-7xl mx-auto p-6">
+    <div className="page-container">
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -175,6 +207,9 @@ export default function YarnWarehousePage() {
                   <th className="px-4 py-3 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">Остаток (кг)</th>
                   <th className="px-4 py-3 text-right text-xs font-bold text-zinc-500 uppercase tracking-wider">Бобин</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-zinc-500 uppercase tracking-wider">Обновлено</th>
+                  {isAdmin && (
+                    <th className="px-4 py-3 text-center text-xs font-bold text-zinc-500 uppercase tracking-wider">Действия</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -222,6 +257,17 @@ export default function YarnWarehousePage() {
                         ? new Date(item.last_updated).toLocaleDateString('ru-RU')
                         : '-'}
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-4 text-center">
+                        <button
+                          onClick={() => handleDelete(item.id, item.batch_number)}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                          title="Удалить запись"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

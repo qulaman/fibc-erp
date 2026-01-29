@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { History, Scissors, Scale, Calendar, Scroll, User } from "lucide-react";
+import { History, Scissors, Scale, Calendar, Scroll, User, Trash2 } from "lucide-react";
 
 export default function WeavingHistoryPage() {
+  const { isAdmin } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +42,36 @@ export default function WeavingHistoryPage() {
 
     if (data) setRecords(data);
     setLoading(false);
+  };
+
+  const handleDelete = async (id: string, docNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить запись производства ${docNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('production_weaving')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchRecords();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить запись ${docNumber}.\n\nЭта запись связана с другими данными в системе.`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
+    }
   };
 
   return (
@@ -79,7 +111,7 @@ export default function WeavingHistoryPage() {
                           {fabricName}
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-1 text-sm text-zinc-400">
-                           <Calendar size={14}/> 
+                           <Calendar size={14}/>
                            <span>{new Date(record.date).toLocaleDateString('ru-RU')}</span>
                            <span className="text-zinc-600">|</span>
                            <span>{record.shift === 'День' ? '☀️ День' : '🌙 Ночь'}</span>
@@ -87,11 +119,22 @@ export default function WeavingHistoryPage() {
                            <span className="text-zinc-300 font-medium">{record.doc_number}</span>
                         </div>
                       </div>
-                      {roll && (
-                        <Badge variant="outline" className={roll.status === 'completed' ? 'text-green-400 border-green-900 bg-green-900/10' : 'text-blue-400 border-blue-900 bg-blue-900/10'}>
-                          {roll.status === 'completed' ? 'Рулон Завершен' : 'В работе'}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {roll && (
+                          <Badge variant="outline" className={roll.status === 'completed' ? 'text-green-400 border-green-900 bg-green-900/10' : 'text-blue-400 border-blue-900 bg-blue-900/10'}>
+                            {roll.status === 'completed' ? 'Рулон Завершен' : 'В работе'}
+                          </Badge>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(record.id, record.doc_number)}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                            title="Удалить запись"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>

@@ -158,7 +158,12 @@ export default function EquipmentPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="font-bold text-lg text-white mb-1">{eq.name}</div>
-                  <div className="text-sm text-zinc-400 mb-4">{typeLabel}</div>
+                  <div className="text-sm text-zinc-400">{typeLabel}</div>
+                  {eq.code && (
+                    <div className="text-xs font-mono text-blue-400 mt-1 bg-blue-950/30 px-2 py-1 rounded inline-block">
+                      {eq.code}
+                    </div>
+                  )}
 
                   <div className="flex gap-2 mt-4">
                     <Button variant="outline" size="sm" className="flex-1 bg-zinc-950 border-zinc-800 hover:bg-zinc-800" onClick={() => startEdit(eq)}>
@@ -188,14 +193,14 @@ export default function EquipmentPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm text-zinc-400">Код {editingId && <span className="text-zinc-600">(только для нового)</span>}</label>
+              <label className="text-sm text-zinc-400">Код</label>
               <Input
                 value={formData.code}
                 onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})}
-                placeholder="EXT-01"
+                placeholder="СКН-1"
                 className="bg-zinc-900 border-zinc-700 font-mono"
-                disabled={!!editingId}
               />
+              <p className="text-xs text-zinc-500">Используется в номерах партий и документов</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm text-zinc-400">Название</label>

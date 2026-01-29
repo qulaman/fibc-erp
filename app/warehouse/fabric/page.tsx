@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 
 interface BalanceRecord {
   fabric_type_id: string;
@@ -29,6 +31,7 @@ interface RollRecord {
 }
 
 export default function FabricWarehousePage() {
+  const { isAdmin } = useAuth();
   const [view, setView] = useState<'balance' | 'rolls'>('balance');
   const [balances, setBalances] = useState<BalanceRecord[]>([]);
   const [rolls, setRolls] = useState<RollRecord[]>([]);
@@ -75,6 +78,64 @@ export default function FabricWarehousePage() {
       console.error('Error fetching rolls:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, rollNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить рулон ${rollNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      // Проверяем использование рулона в производстве
+      const { data: usageCheck } = await supabase
+        .from('production_weaving')
+        .select('id')
+        .eq('roll_id', id)
+        .limit(1);
+
+      if (usageCheck && usageCheck.length > 0) {
+        alert(`Невозможно удалить рулон ${rollNumber}.\n\nЭтот рулон используется в записях производства ткачества.\nСначала удалите связанные записи производства.`);
+        return;
+      }
+
+      // Проверяем использование в ламинации
+      const { data: laminationCheck } = await supabase
+        .from('laminated_rolls')
+        .select('id')
+        .eq('source_roll_id', id)
+        .limit(1);
+
+      if (laminationCheck && laminationCheck.length > 0) {
+        alert(`Невозможно удалить рулон ${rollNumber}.\n\nЭтот рулон был использован для создания ламинированных рулонов.\nСначала удалите связанные ламинированные рулоны.`);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('weaving_rolls')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      if (view === 'rolls') {
+        fetchRolls();
+      } else {
+        fetchBalances();
+      }
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить рулон ${rollNumber}.\n\nЭта запись связана с другими данными в системе.`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
     }
   };
 
@@ -304,6 +365,9 @@ export default function FabricWarehousePage() {
                     <th className="px-4 py-3 text-right text-sm font-semibold">Вес (кг)</th>
                     <th className="px-4 py-3 text-center text-sm font-semibold">Статус</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Дата создания</th>
+                    {isAdmin && (
+                      <th className="px-4 py-3 text-center text-sm font-semibold">Действия</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
@@ -335,6 +399,17 @@ export default function FabricWarehousePage() {
                       <td className="px-4 py-3 text-sm text-zinc-400">
                         {new Date(record.created_at).toLocaleDateString('ru-RU')}
                       </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleDelete(record.id, record.roll_number)}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                            title="Удалить запись"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
