@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Calculator, Printer, Layers, Scale, Scissors } from "lucide-react";
+import { Calculator, Printer, Layers, Scale } from "lucide-react";
 
 export default function FibcCalculatorPage() {
   // --- ВХОДНЫЕ ДАННЫЕ ---
@@ -22,25 +22,31 @@ export default function FibcCalculatorPage() {
   const [mainDensity, setMainDensity] = useState<number>(180);
   const [auxDensity, setAuxDensity] = useState<number>(95);
 
-  // 3. Люки
-  const [hasTopSpout, setHasTopSpout] = useState<boolean>(true);
+  // 3. КОНФИГУРАЦИЯ ВЕРХА (Люк или Юбка)
+  const [topType, setTopType] = useState<'spout' | 'skirt' | 'open'>('spout');
+  
+  // Параметры Люка
   const [topSpoutDia, setTopSpoutDia] = useState<number>(40);
   const [topSpoutHeight, setTopSpoutHeight] = useState<number>(48);
+  
+  // Параметры Юбки
+  const [skirtHeight, setSkirtHeight] = useState<number>(80);
 
+  // 4. КОНФИГУРАЦИЯ НИЗА
   const [hasBottomSpout, setHasBottomSpout] = useState<boolean>(true);
   const [bottomSpoutDia, setBottomSpoutDia] = useState<number>(40);
   const [bottomSpoutHeight, setBottomSpoutHeight] = useState<number>(48);
   
-  // НОВОЕ: Завязки (Лента)
-  const [tieWeightPerM, setTieWeightPerM] = useState<number>(10); // г/м (легкая лента)
-  const [tieLength, setTieLength] = useState<number>(150); // см (длина одного куска)
+  // 5. Завязки (Лента)
+  const [tieWeightPerM, setTieWeightPerM] = useState<number>(10);
+  const [tieLength, setTieLength] = useState<number>(150);
 
-  // 4. Стропы
+  // 6. Стропы
   const [strapLoopHeight, setStrapLoopHeight] = useState<number>(25);
   const [strapRatioType, setStrapRatioType] = useState<"1/3" | "2/3">("2/3"); 
   const [strapWeightPerM, setStrapWeightPerM] = useState<number>(35);
 
-  // 5. Нить
+  // 7. Нить
   const [threadWeightPerCm, setThreadWeightPerCm] = useState<number>(0.077);
 
   // --- РЕЗУЛЬТАТЫ ---
@@ -58,43 +64,51 @@ export default function FibcCalculatorPage() {
     const bottomGrams = bottomSize * bottomSize * 1 * K_main;
     const bottomFormula = `${bottomSize}×${bottomSize} × ${K_main}`;
 
-    // === 3. ЛЮКИ (Ткань) ===
-    const seamAllowance = 3; 
+    // === 3. ВЕРХ (Люк или Юбка) ===
+    const seamAllowance = 3; // +3 см на шов трубы (для люка)
 
-    // Верхний
-    let topSpoutGrams = 0;
+    let topGrams = 0;
     let topFormula = "-";
-    if (hasTopSpout) {
+    let topName = "Открытый";
+
+    if (topType === 'spout') {
+        topName = "Люк (Верх)";
         const widthFlat = (topSpoutDia * 3.14159) + seamAllowance;
         const area = widthFlat * topSpoutHeight;
-        topSpoutGrams = area * K_aux;
+        topGrams = area * K_aux;
         topFormula = `((Ø${topSpoutDia}×π)+3)×${topSpoutHeight} × ${K_aux}`;
+    } 
+    else if (topType === 'skirt') {
+        topName = "Юбка (Сборка)";
+        // Периметр мешка * (Высота + 5см)
+        const bagPerimeter = width * 4;
+        const area = bagPerimeter * (skirtHeight + 5);
+        topGrams = area * K_aux;
+        topFormula = `(${width}×4)×(${skirtHeight}+5) × ${K_aux}`;
     }
 
-    // Нижний
-    let botSpoutGrams = 0;
+    // === 4. НИЗ (Люк) ===
+    let botGrams = 0;
     let botFormula = "-";
     if (hasBottomSpout) {
         const widthFlat = (bottomSpoutDia * 3.14159) + seamAllowance;
         const area = widthFlat * bottomSpoutHeight;
-        botSpoutGrams = area * K_aux;
+        botGrams = area * K_aux;
         botFormula = `((Ø${bottomSpoutDia}×π)+3)×${bottomSpoutHeight} × ${K_aux}`;
     }
 
     const totalFabricGrams = bodyGrams + bottomGrams;
-    const totalAuxGrams = topSpoutGrams + botSpoutGrams;
+    const totalAuxGrams = topGrams + botGrams;
 
-    // === НОВОЕ: ЗАВЯЗКИ (ЛЕНТА) ===
-    // Если есть люк -> нужна завязка.
-    // Обычно 1 завязка на люк (иногда 2, но считаем 1 пока)
+    // === 5. ЗАВЯЗКИ (ЛЕНТА) ===
     let tiesCount = 0;
-    if (hasTopSpout) tiesCount++;
+    if (topType !== 'open') tiesCount++; // И для люка, и для юбки нужна завязка
     if (hasBottomSpout) tiesCount++;
-
+    
     const tieGrams = tiesCount * (tieLength / 100) * tieWeightPerM;
     const tieFormula = `${tiesCount}шт × ${tieLength}см × ${tieWeightPerM}г/м`;
 
-    // === 4. СТРОПЫ ===
+    // === 6. СТРОПЫ ===
     const strapWeightPerCm = strapWeightPerM / 100;
     let sewnLength = 0;
     if (strapRatioType === "2/3") sewnLength = height * (2 / 3);
@@ -106,26 +120,51 @@ export default function FibcCalculatorPage() {
     const ratioStr = strapRatioType === "2/3" ? "2/3" : "1/3";
     const strapFormula = `((${height}×${ratioStr}×2)+${strapLoopHeight}×2)×4 × ${strapWeightPerCm}`;
 
-    // === 5. НИТЬ (КОРРЕКТНЫЙ РАСЧЕТ) ===
+    // === 7. НИТЬ (МЕТОД ТЕХНОЛОГА) ===
     
-    // 1. Периметр Дна (всегда)
-    const seamBottom = width * 4; 
-    
-    // 2. Периметр Верха (всегда, крышка или сборка пришивается к телу)
-    const seamTop = width * 4;
+    // А. Швы Верх
+    const seamPerimeter = width * 4; // 360
+    let seamTopPart = 0;
+    let topThreadDesc = "";
 
-    // 3. Стропы (Пришив * 2 стороны * 4 стропы)
-    const seamStraps = (sewnLength * 2 * 4); 
+    if (topType === 'spout') {
+        // (Периметр + Высота + Окружность)
+        seamTopPart = seamPerimeter + topSpoutHeight + (topSpoutDia * 3.14159);
+        topThreadDesc = `(360+${topSpoutHeight}+${(topSpoutDia*3.14).toFixed(0)})`;
+    } 
+    else if (topType === 'skirt') {
+        // Пришив к телу (Периметр) + Подгиб верха (Периметр) + Боковой шов юбки (Высота)
+        seamTopPart = seamPerimeter + seamPerimeter + skirtHeight;
+        topThreadDesc = `Юбка: 360(низ)+360(верх)+${skirtHeight}(бок)`;
+    }
+    else {
+        seamTopPart = seamPerimeter; // Просто обметка верха
+        topThreadDesc = "Обметка верха (360)";
+    }
+
+    // Б. Швы Низ
+    let seamBotPart = 0;
+    let botThreadDesc = "";
+    if (hasBottomSpout) {
+        seamBotPart = seamPerimeter + bottomSpoutHeight + (bottomSpoutDia * 3.14159);
+        botThreadDesc = `(360+${bottomSpoutHeight}+${(bottomSpoutDia*3.14).toFixed(0)})`;
+    } else {
+        seamBotPart = seamPerimeter;
+        botThreadDesc = "Пришив дна (360)";
+    }
+
+    // В. Стропы (Одинарный проход)
+    const seamStraps = sewnLength * 4; 
     
-    // 4. Пришив Люков (Окружность * 1 шов)
-    const seamSpoutTop = hasTopSpout ? (topSpoutDia * 3.14159) : 0;
-    const seamSpoutBot = hasBottomSpout ? (bottomSpoutDia * 3.14159) : 0;
-    
-    const totalSeamCm = seamBottom + seamTop + seamStraps + seamSpoutTop + seamSpoutBot;
+    const totalSeamCm = seamTopPart + seamBotPart + seamStraps;
     const totalThreadGrams = totalSeamCm * threadWeightPerCm;
     
-    const threadFormulaDetails = `Дно(${seamBottom}) + Верх(${seamTop}) + Стропы(${seamStraps.toFixed(0)}) + Люки(${(seamSpoutTop+seamSpoutBot).toFixed(0)})`;
-    const threadFormulaFinal = `${totalSeamCm.toFixed(0)} см × ${threadWeightPerCm} г/см`;
+    const threadFormulaDetails = `
+       Верх: ${seamTopPart.toFixed(0)} ${topThreadDesc}
+       Низ: ${seamBotPart.toFixed(0)} ${botThreadDesc}
+       Стропы: ${seamStraps.toFixed(0)} (${sewnLength.toFixed(1)}×4)
+    `;
+    const threadFormulaFinal = `${totalSeamCm.toFixed(1)} см × ${threadWeightPerCm} г/см`;
 
     // === ИТОГ ===
     const totalWeightGrams = totalFabricGrams + totalAuxGrams + totalStrapGrams + totalThreadGrams + tieGrams;
@@ -135,8 +174,8 @@ export default function FibcCalculatorPage() {
       fabric: {
         bodyGrams: bodyGrams.toFixed(1), bodyFormula,
         bottomGrams: bottomGrams.toFixed(1), bottomFormula,
-        topGrams: topSpoutGrams.toFixed(1), topFormula,
-        botGrams: botSpoutGrams.toFixed(1), botFormula,
+        topName, topGrams: topGrams.toFixed(1), topFormula,
+        botGrams: botGrams.toFixed(1), botFormula,
       },
       tie: {
         grams: tieGrams.toFixed(1),
@@ -148,7 +187,7 @@ export default function FibcCalculatorPage() {
         formula: strapFormula
       },
       thread: {
-        lenCm: totalSeamCm.toFixed(0),
+        lenCm: totalSeamCm.toFixed(1),
         grams: totalThreadGrams.toFixed(1),
         details: threadFormulaDetails,
         final: threadFormulaFinal
@@ -156,7 +195,7 @@ export default function FibcCalculatorPage() {
       totalKg: (totalWeightGrams / 1000).toFixed(3)
     });
 
-  }, [height, width, bottomSize, mainDensity, auxDensity, hasTopSpout, topSpoutDia, topSpoutHeight, hasBottomSpout, bottomSpoutDia, bottomSpoutHeight, strapLoopHeight, strapRatioType, strapWeightPerM, threadWeightPerCm, tieWeightPerM, tieLength]);
+  }, [height, width, bottomSize, mainDensity, auxDensity, topType, topSpoutDia, topSpoutHeight, skirtHeight, hasBottomSpout, bottomSpoutDia, bottomSpoutHeight, strapLoopHeight, strapRatioType, strapWeightPerM, threadWeightPerCm, tieWeightPerM, tieLength]);
 
   const handlePrint = () => window.print();
 
@@ -165,7 +204,7 @@ export default function FibcCalculatorPage() {
       <div className="flex justify-between items-center mb-8 no-print">
         <h1 className="text-3xl font-bold flex items-center gap-3">
           <Calculator className="text-[#E60012]" size={32} />
-          Калькулятор МКР (Финал)
+          Калькулятор МКР (Финал v2)
         </h1>
         <Button variant="outline" onClick={handlePrint}><Printer size={16} className="mr-2"/> Печать</Button>
       </div>
@@ -196,7 +235,7 @@ export default function FibcCalculatorPage() {
 
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader className="pb-3 border-b border-zinc-800 flex justify-between">
-                <CardTitle className="text-white text-lg">2. Люки & Завязки</CardTitle>
+                <CardTitle className="text-white text-lg">2. Верх / Низ / Завязки</CardTitle>
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] text-zinc-400">Ткань:</span>
                     <Input type="number" value={auxDensity} onChange={e => setAuxDensity(Number(e.target.value))} className="w-14 h-6 text-xs bg-zinc-950 border-emerald-900 text-emerald-400"/>
@@ -204,25 +243,39 @@ export default function FibcCalculatorPage() {
             </CardHeader>
             <CardContent className="pt-4 space-y-5">
                
-               {/* Верхний */}
+               {/* ВЕРХ (Select) */}
                <div className="space-y-2">
-                   <div className="flex items-center gap-3">
-                      <Checkbox checked={hasTopSpout} onCheckedChange={(v:any) => setHasTopSpout(v)} />
-                      <Label className="flex-1 font-bold">Верхний</Label>
-                   </div>
-                   {hasTopSpout && (
-                       <div className="flex gap-2 pl-2 border-l-2 border-zinc-800">
+                   <Label className="text-emerald-400">Конструкция Верха</Label>
+                   <Select value={topType} onValueChange={(v:any) => setTopType(v)}>
+                      <SelectTrigger className="bg-zinc-950 border-zinc-700"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                         <SelectItem value="spout">Люк (Загрузочный)</SelectItem>
+                         <SelectItem value="skirt">Юбка (Сборка)</SelectItem>
+                         <SelectItem value="open">Открытый</SelectItem>
+                      </SelectContent>
+                   </Select>
+
+                   {/* Настройки выбранного типа */}
+                   {topType === 'spout' && (
+                       <div className="flex gap-2 pl-2 border-l-2 border-zinc-800 animate-in fade-in">
                           <div><Label className="text-[9px]">D</Label><Input value={topSpoutDia} onChange={e=>setTopSpoutDia(Number(e.target.value))} className="w-14 h-7 bg-zinc-950"/></div>
                           <div><Label className="text-[9px]">H</Label><Input value={topSpoutHeight} onChange={e=>setTopSpoutHeight(Number(e.target.value))} className="w-14 h-7 bg-zinc-950"/></div>
                        </div>
                    )}
+                   {topType === 'skirt' && (
+                       <div className="pl-2 border-l-2 border-zinc-800 animate-in fade-in">
+                          <div><Label className="text-[10px]">Высота юбки (+5см)</Label><Input value={skirtHeight} onChange={e=>setSkirtHeight(Number(e.target.value))} className="h-7 bg-zinc-950"/></div>
+                       </div>
+                   )}
                </div>
 
-               {/* Нижний */}
+               <Separator className="bg-zinc-800"/>
+
+               {/* НИЖНИЙ ЛЮК */}
                <div className="space-y-2">
                    <div className="flex items-center gap-3">
                       <Checkbox checked={hasBottomSpout} onCheckedChange={(v:any) => setHasBottomSpout(v)} />
-                      <Label className="flex-1 font-bold">Нижний</Label>
+                      <Label className="flex-1 font-bold">Нижний люк</Label>
                    </div>
                    {hasBottomSpout && (
                        <div className="flex gap-2 pl-2 border-l-2 border-zinc-800">
@@ -234,7 +287,7 @@ export default function FibcCalculatorPage() {
 
                <Separator className="bg-zinc-800"/>
 
-               {/* Завязки */}
+               {/* ЗАВЯЗКИ */}
                <div>
                    <Label className="text-yellow-400 mb-2 block">Лента для завязки</Label>
                    <div className="grid grid-cols-2 gap-4">
@@ -274,6 +327,7 @@ export default function FibcCalculatorPage() {
           {results && (
              <div className="space-y-6 sticky top-6">
                 
+                {/* ГЛАВНАЯ ЦИФРА */}
                 <Card className="bg-[#E60012] border-[#E60012] text-white shadow-2xl">
                    <CardContent className="p-6 flex justify-between items-center">
                       <div>
@@ -286,6 +340,7 @@ export default function FibcCalculatorPage() {
                    </CardContent>
                 </Card>
 
+                {/* ДЕТАЛЬНАЯ ТАБЛИЦА */}
                 <Card className="bg-white text-black border-zinc-200 shadow-xl overflow-hidden">
                    <CardHeader className="bg-zinc-50 border-b border-zinc-100 pb-3 flex flex-row items-center justify-between">
                       <CardTitle className="flex items-center gap-2 text-zinc-800">
@@ -321,14 +376,16 @@ export default function FibcCalculatorPage() {
                                <td className="p-4 text-right font-bold text-zinc-900 text-sm">{results.fabric.bottomGrams}</td>
                             </tr>
 
-                            {/* ЛЮКИ */}
-                            {hasTopSpout && (
+                            {/* ВЕРХ (Люк или Юбка) */}
+                            {topType !== 'open' && (
                                 <tr className="bg-emerald-50/30">
-                                   <td className="p-4 pl-6 font-sans font-bold text-emerald-900 text-sm">Люк (Верх)</td>
+                                   <td className="p-4 pl-6 font-sans font-bold text-emerald-900 text-sm">{results.fabric.topName}</td>
                                    <td className="p-4 text-emerald-800/70 bg-emerald-50/50">{results.fabric.topFormula}</td>
                                    <td className="p-4 text-right font-bold text-emerald-800 text-sm">{results.fabric.topGrams}</td>
                                 </tr>
                             )}
+
+                            {/* НИЗ (Люк) */}
                             {hasBottomSpout && (
                                 <tr className="bg-emerald-50/30">
                                    <td className="p-4 pl-6 font-sans font-bold text-emerald-900 text-sm">Люк (Низ)</td>
@@ -338,7 +395,7 @@ export default function FibcCalculatorPage() {
                             )}
                             
                             {/* ЗАВЯЗКИ */}
-                            {(hasTopSpout || hasBottomSpout) && (
+                            {(topType !== 'open' || hasBottomSpout) && (
                                 <tr className="bg-yellow-50/50">
                                    <td className="p-4 pl-6 font-sans font-bold text-yellow-900 text-sm">Завязка (Лента)</td>
                                    <td className="p-4 text-yellow-800/70 bg-yellow-50/50">{results.tie.formula}</td>
