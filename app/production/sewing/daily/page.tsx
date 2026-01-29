@@ -42,6 +42,19 @@ interface PartBalance {
   balance: number;
 }
 
+interface Product {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+}
+
+interface FinishedProductItem {
+  id: string;
+  productCode: string;
+  quantity: number;
+}
+
 export default function SewingDailyReportPage() {
   const [loading, setLoading] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -53,6 +66,10 @@ export default function SewingDailyReportPage() {
 
   const [specificationsCache, setSpecificationsCache] = useState<{ [key: string]: Specification[] }>({});
   const [partBalances, setPartBalances] = useState<PartBalance[]>([]);
+
+  // Готовая продукция
+  const [products, setProducts] = useState<Product[]>([]);
+  const [finishedProducts, setFinishedProducts] = useState<FinishedProductItem[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -80,9 +97,17 @@ export default function SewingDailyReportPage() {
         .from('view_cutting_parts_balance')
         .select('*');
 
+      // Загружаем справочник готовой продукции
+      const { data: productsData } = await supabase
+        .from('product_catalog')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
       setEmployees(empData || []);
       setSewingOperations(opData || []);
       setPartBalances(balancesData || []);
+      setProducts(productsData || []);
     } catch (error: any) {
       console.error('Ошибка загрузки:', error);
     }
@@ -150,6 +175,25 @@ export default function SewingDailyReportPage() {
     }, 0);
   };
 
+  // Функции для готовой продукции
+  const addFinishedProduct = () => {
+    setFinishedProducts([...finishedProducts, {
+      id: Date.now().toString(),
+      productCode: '',
+      quantity: 1
+    }]);
+  };
+
+  const updateFinishedProduct = (id: string, field: keyof FinishedProductItem, value: any) => {
+    setFinishedProducts(finishedProducts.map(fp =>
+      fp.id === id ? { ...fp, [field]: value } : fp
+    ));
+  };
+
+  const deleteFinishedProduct = (id: string) => {
+    setFinishedProducts(finishedProducts.filter(fp => fp.id !== id));
+  };
+
   // Расчет потребности в деталях
   const calculatePartsSummary = async () => {
     const partsNeeded: { [key: string]: { name: string; total: number } } = {};
@@ -195,10 +239,23 @@ export default function SewingDailyReportPage() {
       return;
     }
 
-    // Проверка заполненности
+    if (finishedProducts.length === 0) {
+      alert('Добавьте хотя бы один готовый продукт!');
+      return;
+    }
+
+    // Проверка заполненности операций
     for (const op of employeeOperations) {
       if (!op.operationCode || op.quantityGood <= 0) {
         alert('Заполните все операции!');
+        return;
+      }
+    }
+
+    // Проверка заполненности готовой продукции
+    for (const fp of finishedProducts) {
+      if (!fp.productCode || fp.quantity <= 0) {
+        alert('Заполните все поля готовой продукции!');
         return;
       }
     }
@@ -277,37 +334,55 @@ export default function SewingDailyReportPage() {
           throw new Error(`Ошибка записи производства: ${productionError.message}`);
         }
 
-        // 3. Создаем приход готовой продукции на склад
-        await supabase
-          .from('finished_goods_warehouse')
-          .insert([{
-            doc_number: docNumber,
-            date: date,
-            time: new Date().toTimeString().split(' ')[0],
-            operation: 'Приход',
-            product_code: operation.code,
-            product_name: operation.name,
-            quantity: empOp.quantityGood,
-            source_doc: docNumber,
-            status: 'Проведено',
-            notes: `Произведено швеей: ${employee.full_name}`
-          }]);
-
         successCount++;
+      }
+
+      // 3. Создаем приход готовой продукции на склад отшитой продукции (для последующей проверки ОТК)
+      for (const fp of finishedProducts) {
+        const product = products.find(p => p.code === fp.productCode);
+        if (!product) continue;
+
+        const fpDocNumber = `SEW-${new Date().toISOString().slice(2, 10).replace(/-/g, '')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+
+        await supabase
+          .from('sewn_products_warehouse')
+          .insert([{
+            doc_number: fpDocNumber,
+            operation_date: date,
+            operation_time: new Date().toTimeString().split(' ')[0],
+            operation_type: 'Приход',
+            product_code: product.code,
+            product_name: product.name,
+            product_type: product.category,
+            quantity: fp.quantity,
+            source_doc_number: fpDocNumber,
+            source_doc_type: 'Пошив',
+            employee_name: shiftMaster,
+            shift: shiftMaster,
+            notes: `Готовая продукция после пошива`,
+            status: 'Активно'
+          }]);
       }
 
       const partsInfo = Object.entries(partsNeeded).map(([code, data]) =>
         `${data.name}: ${data.total} шт`
       ).join('\n');
 
+      const productsInfo = finishedProducts.map(fp => {
+        const product = products.find(p => p.code === fp.productCode);
+        return `${product?.name}: ${fp.quantity} шт`;
+      }).join('\n');
+
       alert(
         `✅ Успешно проведено ${successCount} операций!\n\n` +
         `📦 Списано деталей:\n${partsInfo}\n\n` +
+        `📦 Готовая продукция:\n${productsInfo}\n\n` +
         `💰 К оплате: ${getGrandTotal().toFixed(0)}₸`
       );
 
       // Очистка формы
       setEmployeeOperations([]);
+      setFinishedProducts([]);
       setDate(new Date().toISOString().split('T')[0]);
       setShiftMaster('');
 
@@ -478,6 +553,87 @@ export default function SewingDailyReportPage() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Готовая продукция */}
+      <Card className="bg-zinc-900 border-zinc-800 mb-4">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-white">Готовая продукция к проверке ОТК</CardTitle>
+            <Button
+              onClick={addFinishedProduct}
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 h-8"
+            >
+              <Plus size={16} className="mr-1" /> Добавить
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {finishedProducts.length === 0 ? (
+            <div className="text-center text-zinc-500 py-8">
+              <Package className="mx-auto mb-2" size={40} />
+              Добавьте готовую продукцию
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {finishedProducts.map(fp => {
+                const product = products.find(p => p.code === fp.productCode);
+                return (
+                  <div key={fp.id} className="bg-zinc-950 border border-zinc-800 rounded p-3 flex items-center gap-3">
+                    {/* Продукт */}
+                    <div className="flex-1">
+                      <Select
+                        value={fp.productCode}
+                        onValueChange={(v) => updateFinishedProduct(fp.id, 'productCode', v)}
+                      >
+                        <SelectTrigger className="h-9 bg-zinc-900 border-zinc-700 text-sm">
+                          <SelectValue placeholder="Выберите продукт..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map(p => (
+                            <SelectItem key={p.code} value={p.code}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Количество */}
+                    <div className="w-32">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={fp.quantity}
+                        onChange={e => updateFinishedProduct(fp.id, 'quantity', parseInt(e.target.value) || 1)}
+                        className="h-9 bg-zinc-900 border-zinc-700 text-center text-sm"
+                        placeholder="Кол-во"
+                      />
+                    </div>
+
+                    {/* Категория */}
+                    {product && (
+                      <Badge variant="outline" className="text-blue-400 border-blue-700">
+                        {product.category}
+                      </Badge>
+                    )}
+
+                    {/* Удалить */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteFinishedProduct(fp.id)}
+                      className="h-9 w-9 p-0 text-red-400 hover:text-red-300"
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

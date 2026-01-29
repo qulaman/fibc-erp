@@ -11,11 +11,13 @@ import InventoryCharts from './InventoryCharts'; // Импорт графико�
 const formatNumber = (num: number) => new Intl.NumberFormat('ru-RU').format(num);
 
 export default async function InventoryPage() {
-  // 1. Запрашиваем данные из "Умного вида" (VIEW), 
+  // 1. Запрашиваем данные из "Умного вида" (VIEW),
   // который сам считает остатки (Приход - Расход)
+  // Исключаем МФН нить (она теперь в отдельном складе)
   const { data: materials, error } = await supabase
     .from('view_material_balances')
     .select('*')
+    .neq('type', 'МФН')
     .order('name');
 
   if (error) return <div className="text-white p-8">Ошибка загрузки: {error.message}</div>;

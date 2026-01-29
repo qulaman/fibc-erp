@@ -30,13 +30,14 @@ export default function StrapsHistoryPage() {
     } else if (data) {
       // Загружаем связанные данные отдельно
       for (const record of data) {
-        if (record.strap_type_id) {
-          const { data: strapType } = await supabase
-            .from('strap_types')
-            .select('code, name')
-            .eq('id', record.strap_type_id)
+        // Загружаем спецификацию по названию
+        if (record.spec_name) {
+          const { data: spec } = await supabase
+            .from('strop_specifications')
+            .select('nazvanie, shirina_mm, plotnost_gr_mp')
+            .eq('nazvanie', record.spec_name)
             .single();
-          record.strap_types = strapType;
+          record.specification = spec;
         }
         if (record.machine_id) {
           const { data: machine } = await supabase
@@ -62,6 +63,8 @@ export default function StrapsHistoryPage() {
 
   const totalLength = records.reduce((sum, r) => sum + Number(r.produced_length || 0), 0);
   const totalWeight = records.reduce((sum, r) => sum + Number(r.produced_weight || 0), 0);
+  const totalDefect = records.reduce((sum, r) => sum + Number(r.defect_weight || 0), 0);
+  const defectPercentage = totalWeight > 0 ? ((totalDefect / totalWeight) * 100).toFixed(1) : 0;
 
   return (
     <div className="page-container">
@@ -89,7 +92,11 @@ export default function StrapsHistoryPage() {
           </div>
           <div className="stat-card">
             <div className="stat-label">Общий вес</div>
-            <div className="stat-value text-blue-400">{Math.round(totalWeight)} кг</div>
+            <div className="stat-value text-green-400">{Math.round(totalWeight)} кг</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Брак</div>
+            <div className="stat-value text-red-400">{totalDefect.toFixed(1)} кг ({defectPercentage}%)</div>
           </div>
         </div>
       </div>
@@ -112,9 +119,10 @@ export default function StrapsHistoryPage() {
                       <TableHead className="text-zinc-400">Дата</TableHead>
                       <TableHead className="text-zinc-400">Смена</TableHead>
                       <TableHead className="text-zinc-400">Тип стропы</TableHead>
-                      <TableHead className="text-zinc-400">Ширина</TableHead>
                       <TableHead className="text-zinc-400 text-right">Длина (м)</TableHead>
-                      <TableHead className="text-zinc-400 text-right">Вес (кг)</TableHead>
+                      <TableHead className="text-zinc-400 text-right">Расч. вес</TableHead>
+                      <TableHead className="text-zinc-400 text-right">Факт. вес</TableHead>
+                      <TableHead className="text-zinc-400 text-right">Брак</TableHead>
                       <TableHead className="text-zinc-400">Станок</TableHead>
                       <TableHead className="text-zinc-400">Оператор</TableHead>
                       <TableHead className="text-zinc-400">Примечания</TableHead>
@@ -138,19 +146,28 @@ export default function StrapsHistoryPage() {
                           <div className="flex items-center gap-2">
                             <Scissors size={14} className="text-blue-400" />
                             <div>
-                              <div className="text-white">{record.strap_types?.code || 'N/A'}</div>
-                              <div className="text-xs text-zinc-500">{record.strap_types?.name || ''}</div>
+                              <div className="text-white">{record.spec_name || record.strap_types?.code || 'N/A'}</div>
+                              <div className="text-xs text-zinc-500">
+                                {record.specification?.shirina_mm && record.specification?.plotnost_gr_mp
+                                  ? `${record.specification.shirina_mm}мм, ${record.specification.plotnost_gr_mp}гр/мп`
+                                  : record.strap_types?.name || ''}
+                              </div>
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-zinc-400 text-sm">
-                          -
                         </TableCell>
                         <TableCell className="text-right font-mono font-bold text-white">
                           {Math.round(record.produced_length)}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-zinc-300">
-                          {Math.round(record.produced_weight)}
+                        <TableCell className="text-right font-mono text-blue-400 text-sm">
+                          {record.calculated_weight ? Number(record.calculated_weight).toFixed(1) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-green-400 font-bold">
+                          {Number(record.produced_weight).toFixed(1)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-red-400">
+                          {record.defect_weight && Number(record.defect_weight) > 0
+                            ? Number(record.defect_weight).toFixed(1)
+                            : '-'}
                         </TableCell>
                         <TableCell className="text-zinc-400 text-sm">
                           <div className="flex items-center gap-1">

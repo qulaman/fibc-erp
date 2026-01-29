@@ -15,7 +15,10 @@ import {
   ShieldCheck,
   Layers,
   Scissors,
-  Calculator
+  Calculator,
+  CheckCircle2,
+  Grid3x3,
+  Ribbon
 } from 'lucide-react';
 import { Logo } from './Logo';
 
@@ -26,7 +29,7 @@ const navigationItems = [
     icon: Home
   },
   {
-    name: '🧵 Экструзия',
+    name: 'Экструзия',
     href: '/production/extrusion',
     icon: Factory,
     submenu: [
@@ -36,9 +39,9 @@ const navigationItems = [
     ]
   },
   {
-    name: '🚜 Ткачество',
+    name: 'Ткачество',
     href: '/production/weaving',
-    icon: Layers,
+    icon: Grid3x3,
     submenu: [
       { name: 'Производство', href: '/production/weaving' },
       { name: 'Журнал', href: '/production/weaving/history' },
@@ -46,7 +49,7 @@ const navigationItems = [
     ]
   },
   {
-    name: '🔆 Ламинация',
+    name: 'Ламинация',
     href: '/production/lamination',
     icon: Layers,
     submenu: [
@@ -56,9 +59,9 @@ const navigationItems = [
     ]
   },
   {
-    name: '🎗️ Стропы',
+    name: 'Стропы',
     href: '/production/straps',
-    icon: Layers,
+    icon: Ribbon,
     submenu: [
       { name: 'Производство', href: '/production/straps' },
       { name: 'Журнал', href: '/production/straps/history' },
@@ -66,7 +69,7 @@ const navigationItems = [
     ]
   },
   {
-    name: '✂️ Крой',
+    name: 'Крой',
     href: '/production/cutting',
     icon: Scissors,
     submenu: [
@@ -76,15 +79,23 @@ const navigationItems = [
     ]
   },
   {
-    name: '🧷 Пошив',
-    href: '/production/sewing',
-    icon: Scissors,
+    name: 'Пошив',
+    href: '/production/sewing/daily',
+    icon: Package,
     submenu: [
-      { name: 'Производство', href: '/production/sewing' },
-      { name: 'Дневной отчет', href: '/production/sewing/daily' },
+      { name: 'Производство', href: '/production/sewing/daily' },
       { name: 'Журнал', href: '/production/sewing/history' },
       { name: 'Спецификации (BOM)', href: '/production/sewing-specs' },
       { name: 'Табель', href: '/production/sewing/timesheet' },
+    ]
+  },
+  {
+    name: 'ОТК',
+    href: '/production/qc',
+    icon: CheckCircle2,
+    submenu: [
+      { name: 'Приёмка ОТК', href: '/production/qc' },
+      { name: 'Журнал', href: '/production/qc/history' },
     ]
   },
   {
@@ -110,13 +121,14 @@ const navigationItems = [
     href: '/warehouse',
     icon: Warehouse,
     submenu: [
-      { name: 'Склад нити', href: '/warehouse/yarn' },
+      { name: 'Склад нити (ПП)', href: '/warehouse/yarn' },
+      { name: 'Склад МФН', href: '/warehouse/mfn' },
       { name: 'Склад ткани', href: '/warehouse/fabric' },
       { name: 'Ламинированная ткань', href: '/warehouse/laminated' },
       { name: 'Склад строп', href: '/warehouse/straps' },
       { name: 'Кроеные детали', href: '/warehouse/cutting-parts' },
       { name: 'Готовая продукция', href: '/warehouse/finished-goods' },
-      { name: 'Сырье', href: '/inventory' },
+      { name: 'Сырье (прочее)', href: '/inventory' },
       { name: 'История операций', href: '/inventory/history' },
     ]
   },

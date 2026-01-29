@@ -1,0 +1,841 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * МОДУЛЬ "ОТК И ГОТОВАЯ ПРОДУКЦИЯ"
+ * ═══════════════════════════════════════════════════════════════════════════
+ * FIBC Kazakhstan - Система управления производством
+ * 
+ * ФУНКЦИОНАЛ:
+ * 1. Приемка ОТК (контроль качества готовых изделий)
+ * 2. Отгрузка готовой продукции покупателям
+ * 
+ * ВЕРСИЯ: 1.0
+ * ДАТА: 2024-12-18
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Создание меню при открытии файла
+ */
+function onOpen() {
+  var ui = SpreadsheetApp.getUi();
+  
+  ui.createMenu('🏭 ОТК и Готовая Продукция')
+    .addSubMenu(ui.createMenu('✅ ОТК (Контроль качества)')
+      .addItem('📝 Приемка ОТК', 'openQCSidebar')
+      .addSeparator()
+      .addItem('📊 Журнал ОТК', 'openQCJournal'))
+    
+    .addSeparator()
+    
+    .addSubMenu(ui.createMenu('📦 Готовая продукция')
+      .addItem('🚚 Отгрузка покупателю', 'openShipmentSidebar')
+      .addSeparator()
+      .addItem('📊 Журнал склада', 'openWarehouseJournal')
+      .addItem('📦 Остатки на складе', 'openWarehouseBalance'))
+    
+    .addSeparator()
+    .addItem('ℹ️ О системе', 'showSystemInfo')
+    
+    .addToUi();
+}
+
+
+/**
+ * Открыть сайдбар приемки ОТК
+ */
+function openQCSidebar() {
+  var html = HtmlService.createHtmlOutputFromFile('ОТК_Сайдбар')
+    .setTitle('✅ Приемка ОТК')
+    .setWidth(350);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+
+/**
+ * Открыть сайдбар отгрузки готовой продукции
+ */
+function openShipmentSidebar() {
+  var html = HtmlService.createHtmlOutputFromFile('Отгрузка_Сайдбар')
+    .setTitle('📦 Отгрузка продукции')
+    .setWidth(350);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+
+/**
+ * Открыть журнал ОТК
+ */
+function openQCJournal() {
+  var config = getQCFinishedConfig();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(config.SHEETS.QC_JOURNAL);
+  
+  if (sheet) {
+    sheet.activate();
+  } else {
+    SpreadsheetApp.getUi().alert('Лист "' + config.SHEETS.QC_JOURNAL + '" не найден!');
+  }
+}
+
+
+/**
+ * Открыть журнал склада готовой продукции
+ */
+function openWarehouseJournal() {
+  var config = getQCFinishedConfig();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(config.SHEETS.WAREHOUSE);
+  
+  if (sheet) {
+    sheet.activate();
+  } else {
+    SpreadsheetApp.getUi().alert('Лист "' + config.SHEETS.WAREHOUSE + '" не найден!');
+  }
+}
+
+
+/**
+ * Открыть остатки готовой продукции
+ */
+function openWarehouseBalance() {
+  var config = getQCFinishedConfig();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(config.SHEETS.BALANCE);
+  
+  if (sheet) {
+    sheet.activate();
+  } else {
+    SpreadsheetApp.getUi().alert('Лист "' + config.SHEETS.BALANCE + '" не найден!');
+  }
+}
+
+
+/**
+ * Показать информацию о системе
+ */
+function showSystemInfo() {
+  var message = '═══════════════════════════════════\n';
+  message += SYSTEM_INFO.NAME + '\n';
+  message += '═══════════════════════════════════\n\n';
+  message += 'Модуль: ОТК и Готовая Продукция\n';
+  message += 'Версия: ' + SYSTEM_INFO.VERSION + '\n';
+  message += 'Компания: ' + SYSTEM_INFO.COMPANY + '\n';
+  message += 'Обновлено: ' + SYSTEM_INFO.LAST_UPDATE + '\n\n';
+  message += '═══════════════════════════════════\n';
+  message += 'Функционал:\n';
+  message += '• Приемка ОТК (контроль качества)\n';
+  message += '• Отгрузка готовой продукции\n';
+  message += '• Учет остатков на складе\n';
+  message += '• Трассировка партий\n';
+  
+  SpreadsheetApp.getUi().alert(message);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// КОНФИГУРАЦИЯ МОДУЛЯ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Получить конфигурацию модуля ОТК и Готовой продукции
+ * ВАЖНО: Используется функция вместо константы для избежания проблем с загрузкой Config.gs
+ */
+function getQCFinishedConfig() {
+  return {
+    SHEETS: {
+      // Справочники
+      PRODUCTS_MASTER: MASTER_SHEETS.PRODUCTS,
+      EMPLOYEES: MASTER_SHEETS.EMPLOYEES,
+      
+      // Журналы операций
+      QC_JOURNAL: 'Журнал_ОТК_Готовая_Продукция',
+      WAREHOUSE: JOURNAL_SHEETS.WAREHOUSE_FINISHED,
+      
+      // Балансы
+      BALANCE: BALANCE_SHEETS.FINISHED_GOODS
+    }
+  };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// РАЗДЕЛ 1: ФУНКЦИИ ПОЛУЧЕНИЯ ДАННЫХ ДЛЯ ФОРМ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Получить список контролеров ОТК из справочника сотрудников
+ */
+function getQCInspectors() {
+  try {
+    Logger.log('=== getQCInspectors: START ===');
+    
+    var config = getQCFinishedConfig();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(config.SHEETS.EMPLOYEES);
+    
+    if (!sheet) {
+      Logger.log('Справочник сотрудников не найден');
+      return [];
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    var inspectors = [];
+    
+    // Ищем необходимые колонки
+    var headers = data[0];
+    var nameCol = -1;
+    var departmentCol = -1;
+    var statusCol = -1;
+    
+    for (var i = 0; i < headers.length; i++) {
+      if (headers[i] === 'ФИО') nameCol = i;
+      if (headers[i] === 'Цех') departmentCol = i;
+      if (headers[i] === 'Статус') statusCol = i;
+    }
+    
+    if (nameCol === -1 || departmentCol === -1) {
+      Logger.log('Не найдены необходимые колонки (ФИО, Цех)');
+      return [];
+    }
+    
+    // Собираем контролеров ОТК (только активные)
+    for (var j = 1; j < data.length; j++) {
+      var row = data[j];
+      
+      if (row[departmentCol] === 'ОТК' && 
+          (statusCol === -1 || row[statusCol] === 'Активно')) {
+        inspectors.push({
+          name: row[nameCol],
+          department: row[departmentCol]
+        });
+      }
+    }
+    
+    Logger.log('Найдено контролеров ОТК: ' + inspectors.length);
+    Logger.log('=== getQCInspectors: END ===');
+    
+    return inspectors;
+    
+  } catch (error) {
+    Logger.log('Ошибка getQCInspectors: ' + error.toString());
+    Logger.log('Stack: ' + error.stack);
+    return [];
+  }
+}
+
+
+/**
+ * Получить список ответственных за отгрузку
+ * (Администрация + ОТК)
+ */
+function getShipmentResponsible() {
+  try {
+    Logger.log('=== getShipmentResponsible: START ===');
+    
+    var config = getQCFinishedConfig();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(config.SHEETS.EMPLOYEES);
+    
+    if (!sheet) {
+      Logger.log('Справочник сотрудников не найден');
+      return [];
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    var responsible = [];
+    
+    var headers = data[0];
+    var nameCol = -1;
+    var departmentCol = -1;
+    var statusCol = -1;
+    
+    for (var i = 0; i < headers.length; i++) {
+      if (headers[i] === 'ФИО') nameCol = i;
+      if (headers[i] === 'Цех') departmentCol = i;
+      if (headers[i] === 'Статус') statusCol = i;
+    }
+    
+    if (nameCol === -1) {
+      Logger.log('Не найдена колонка ФИО');
+      return [];
+    }
+    
+    // Собираем ответственных (Администрация или ОТК)
+    for (var j = 1; j < data.length; j++) {
+      var row = data[j];
+      
+      if ((departmentCol === -1 || 
+           row[departmentCol] === 'Администрация' || 
+           row[departmentCol] === 'ОТК') && 
+          (statusCol === -1 || row[statusCol] === 'Активно')) {
+        responsible.push({
+          name: row[nameCol]
+        });
+      }
+    }
+    
+    Logger.log('Найдено ответственных: ' + responsible.length);
+    Logger.log('=== getShipmentResponsible: END ===');
+    
+    return responsible;
+    
+  } catch (error) {
+    Logger.log('Ошибка getShipmentResponsible: ' + error.toString());
+    return [];
+  }
+}
+
+
+/**
+ * Получить список готовых изделий из справочника продукции
+ */
+function getFinishedProducts() {
+  try {
+    Logger.log('=== getFinishedProducts: START ===');
+    
+    var config = getQCFinishedConfig();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(config.SHEETS.PRODUCTS_MASTER);
+    
+    if (!sheet) {
+      Logger.log('Справочник готовой продукции не найден');
+      return [];
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    var products = [];
+    
+    Logger.log('Всего строк в справочнике: ' + data.length);
+    
+    // Структура справочника (предполагаем):
+    // A: Код | B: Наименование | C: Тип | D: Грузоподъемность | 
+    // E: Размеры | F: Описание | G: Цена | H: Статус
+    
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      
+      // Только активные изделия с заполненным кодом
+      if (row[0] && row[7] === 'Активно') {
+        products.push({
+          code: row[0],
+          name: row[1],
+          type: row[2],
+          capacity: row[3] || 0,
+          dimensions: row[4] || '',
+          description: row[5] || '',
+          price: row[6] || 0,
+          displayName: row[0] + ' - ' + row[1]
+        });
+        
+        Logger.log('Добавлено изделие: ' + row[0] + ' - ' + row[1]);
+      }
+    }
+    
+    Logger.log('Найдено активных изделий: ' + products.length);
+    Logger.log('=== getFinishedProducts: END ===');
+    
+    return products;
+    
+  } catch (error) {
+    Logger.log('Ошибка getFinishedProducts: ' + error.toString());
+    Logger.log('Stack: ' + error.stack);
+    return [];
+  }
+}
+
+
+/**
+ * Получить данные изделия по коду
+ */
+function getFinishedProductByCode(code) {
+  try {
+    Logger.log('=== getFinishedProductByCode: START ===');
+    Logger.log('Запрос изделия с кодом: ' + code);
+    
+    var config = getQCFinishedConfig();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(config.SHEETS.PRODUCTS_MASTER);
+    
+    if (!sheet) {
+      Logger.log('Справочник готовой продукции не найден');
+      return null;
+    }
+    
+    var data = sheet.getDataRange().getValues();
+    
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === code) {
+        var product = {
+          code: data[i][0],
+          name: data[i][1],
+          type: data[i][2],
+          capacity: data[i][3] || 0,
+          dimensions: data[i][4] || '',
+          description: data[i][5] || '',
+          price: data[i][6] || 0,
+          status: data[i][7]
+        };
+        
+        Logger.log('Изделие найдено: ' + product.name);
+        Logger.log('=== getFinishedProductByCode: END ===');
+        
+        return product;
+      }
+    }
+    
+    Logger.log('Изделие с кодом ' + code + ' не найдено');
+    Logger.log('=== getFinishedProductByCode: END ===');
+    return null;
+    
+  } catch (error) {
+    Logger.log('Ошибка getFinishedProductByCode: ' + error.toString());
+    return null;
+  }
+}
+
+
+/**
+ * Получить остаток готовой продукции по коду изделия
+ */
+function getProductBalance(productCode) {
+  Logger.log('=== getProductBalance START ===');
+  Logger.log('productCode = "' + productCode + '"');
+  
+  var config = getQCFinishedConfig();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(config.SHEETS.BALANCE);
+  
+  if (!sheet) {
+    Logger.log('Sheet not found');
+    return 0;
+  }
+  
+  var data = sheet.getDataRange().getValues();
+  Logger.log('Total rows: ' + data.length);
+  Logger.log('Row 2: code="' + data[1][0] + '", balance=' + data[1][5]);
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === productCode) {
+      Logger.log('MATCH at row ' + i);
+      return parseFloat(data[i][5]) || 0;
+    }
+  }
+  
+  Logger.log('NO MATCH FOUND');
+  return 0;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// РАЗДЕЛ 2: ОСНОВНЫЕ ФУНКЦИИ ОБРАБОТКИ ДАННЫХ
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Проведение приемки ОТК готовой продукции
+ * 
+ * @param {Object} formData - Данные формы приемки
+ * @return {Object} Результат операции {success: boolean, message: string, docNumber: string}
+ */
+function processQCAcceptance(formData) {
+  try {
+    Logger.log('=== processQCAcceptance: START ===');
+    Logger.log('Данные формы: ' + JSON.stringify(formData));
+    
+    var config = getQCFinishedConfig();
+    
+    // ========================================
+    // ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ
+    // ========================================
+    
+    if (!formData.date) {
+      return {
+        success: false,
+        message: 'Не указана дата!'
+      };
+    }
+    
+    if (!formData.inspector) {
+      return {
+        success: false,
+        message: 'Не указан контролер ОТК!'
+      };
+    }
+    
+    if (!formData.productCode) {
+      return {
+        success: false,
+        message: 'Не выбрано изделие!'
+      };
+    }
+    
+    if (!formData.quantityGood || formData.quantityGood <= 0) {
+      return {
+        success: false,
+        message: 'Количество годных должно быть больше 0!'
+      };
+    }
+    
+    // ========================================
+    // ПОЛУЧЕНИЕ ДАННЫХ ИЗДЕЛИЯ
+    // ========================================
+    
+    var product = getFinishedProductByCode(formData.productCode);
+    
+    if (!product) {
+      return {
+        success: false,
+        message: 'Изделие ' + formData.productCode + ' не найдено в справочнике!'
+      };
+    }
+    
+    // ========================================
+    // ПОДГОТОВКА ДАННЫХ
+    // ========================================
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    var quantityGood = parseFloat(formData.quantityGood) || 0;
+    var quantityDefect = parseFloat(formData.quantityDefect) || 0;
+    
+    // Формируем дату в формате DD.MM.YYYY
+    var dateParts = formData.date.split('-');
+    var dateString = dateParts[2] + '.' + dateParts[1] + '.' + dateParts[0];
+    
+    var now = new Date();
+    var timeStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
+    
+    // ========================================
+    // 1. ЗАПИСЬ В ЖУРНАЛ ОТК
+    // ========================================
+    
+    var journalSheet = ss.getSheetByName(config.SHEETS.QC_JOURNAL);
+    
+    if (!journalSheet) {
+      return {
+        success: false,
+        message: 'Журнал ОТК не найден!'
+      };
+    }
+    
+    var lastRow = journalSheet.getLastRow();
+    var targetRow = lastRow + 1;
+    var docNumber = 'QC-' + String(targetRow - 1).padStart(5, '0');
+    
+    // Структура журнала ОТК:
+    // A: Номер документа | B: Дата | C: Время | D: Контролер | E: Код изделия |
+    // F: Наименование | G: Тип | H: Годных | I: Брак | J: Причина брака |
+    // K: Примечание | L: Статус
+    
+    journalSheet.getRange(targetRow, 1).setValue(docNumber);                  // A
+    journalSheet.getRange(targetRow, 2).setValue(dateString);                 // B
+    journalSheet.getRange(targetRow, 3).setValue(timeStr);                    // C
+    journalSheet.getRange(targetRow, 4).setValue(formData.inspector);         // D
+    journalSheet.getRange(targetRow, 5).setValue(product.code);               // E
+    journalSheet.getRange(targetRow, 6).setValue(product.name);               // F
+    journalSheet.getRange(targetRow, 7).setValue(product.type);               // G
+    journalSheet.getRange(targetRow, 8).setValue(quantityGood);               // H
+    journalSheet.getRange(targetRow, 9).setValue(quantityDefect);             // I
+    journalSheet.getRange(targetRow, 10).setValue(formData.defectReason || ''); // J
+    journalSheet.getRange(targetRow, 11).setValue(formData.notes || '');      // K
+    journalSheet.getRange(targetRow, 12).setValue(STATUSES.COMPLETED);        // L
+    
+    // Форматирование
+    journalSheet.getRange(targetRow, 2).setNumberFormat('dd.mm.yyyy');
+    journalSheet.getRange(targetRow, 8).setNumberFormat('0" шт"');
+    journalSheet.getRange(targetRow, 9).setNumberFormat('0" шт"');
+    
+    Logger.log('Записано в журнал ОТК: ' + docNumber);
+    
+    // ========================================
+    // 2. ОПРИХОДОВАНИЕ НА СКЛАД ГОТОВОЙ ПРОДУКЦИИ
+    // ========================================
+    
+    var warehouseSheet = ss.getSheetByName(config.SHEETS.WAREHOUSE);
+    
+    if (!warehouseSheet) {
+      return {
+        success: false,
+        message: 'Склад готовой продукции не найден!'
+      };
+    }
+    
+    var whLastRow = warehouseSheet.getLastRow();
+    var whTargetRow = whLastRow + 1;
+    var whDocNumber = 'WH-FP-' + String(whTargetRow - 1).padStart(5, '0');
+    
+    // Структура склада готовой продукции:
+    // A: Номер документа | B: Дата | C: Время | D: Тип операции | E: Код изделия |
+    // F: Наименование | G: Тип | H: Количество | I: Документ основание |
+    // J: Отправитель | K: Примечание | L: Статус
+    
+    warehouseSheet.getRange(whTargetRow, 1).setValue(whDocNumber);            // A
+    warehouseSheet.getRange(whTargetRow, 2).setValue(dateString);             // B
+    warehouseSheet.getRange(whTargetRow, 3).setValue(timeStr);                // C
+    warehouseSheet.getRange(whTargetRow, 4).setValue(OPERATION_TYPES.RECEIPT); // D
+    warehouseSheet.getRange(whTargetRow, 5).setValue(product.code);           // E
+    warehouseSheet.getRange(whTargetRow, 6).setValue(product.name);           // F
+    warehouseSheet.getRange(whTargetRow, 7).setValue(product.type);           // G
+    warehouseSheet.getRange(whTargetRow, 8).setValue(quantityGood);           // H
+    warehouseSheet.getRange(whTargetRow, 9).setValue(docNumber);              // I
+    warehouseSheet.getRange(whTargetRow, 10).setValue('ОТК');                 // J
+    warehouseSheet.getRange(whTargetRow, 11).setValue(formData.notes || '');  // K
+    warehouseSheet.getRange(whTargetRow, 12).setValue(STATUSES.COMPLETED);    // L
+    
+    // Форматирование
+    warehouseSheet.getRange(whTargetRow, 2).setNumberFormat('dd.mm.yyyy');
+    warehouseSheet.getRange(whTargetRow, 8).setNumberFormat('0" шт"');
+    
+    Logger.log('Оприходовано на склад: ' + whDocNumber);
+    
+    // ========================================
+    // ПРИНУДИТЕЛЬНЫЙ ПЕРЕСЧЕТ
+    // ========================================
+    
+    SpreadsheetApp.flush();
+    
+    // ========================================
+    // ФОРМИРУЕМ СООБЩЕНИЕ
+    // ========================================
+    
+    var message = 'Приемка ОТК успешно проведена!\n\n';
+    message += 'Документ: ' + docNumber + '\n';
+    message += 'Изделие: ' + product.code + ' - ' + product.name + '\n';
+    message += 'Годных: ' + quantityGood + ' шт\n';
+    
+    if (quantityDefect > 0) {
+      message += 'Брак: ' + quantityDefect + ' шт\n';
+      if (formData.defectReason) {
+        message += 'Причина брака: ' + formData.defectReason + '\n';
+      }
+    }
+    
+    message += '\nОприходовано на склад: ' + whDocNumber;
+    
+    Logger.log('Операция завершена успешно');
+    Logger.log('=== processQCAcceptance: END ===');
+    
+    return {
+      success: true,
+      message: message,
+      docNumber: docNumber
+    };
+    
+  } catch (error) {
+    Logger.log('Критическая ошибка в processQCAcceptance');
+    Logger.log('Ошибка: ' + error.toString());
+    Logger.log('Stack trace: ' + error.stack);
+    Logger.log('=== processQCAcceptance: END WITH ERROR ===');
+    
+    return {
+      success: false,
+      message: 'Системная ошибка: ' + error.message + '\n\nОткройте Apps Script → Executions для деталей'
+    };
+  }
+}
+
+
+/**
+ * Проведение отгрузки готовой продукции покупателю
+ * 
+ * @param {Object} formData - Данные формы отгрузки
+ * @return {Object} Результат операции {success: boolean, message: string, docNumber: string}
+ */
+function processProductShipment(formData) {
+  try {
+    Logger.log('=== processProductShipment: START ===');
+    Logger.log('Данные формы: ' + JSON.stringify(formData));
+    
+    var config = getQCFinishedConfig();
+    
+    // ========================================
+    // ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ
+    // ========================================
+    
+    if (!formData.date) {
+      return {
+        success: false,
+        message: 'Не указана дата!'
+      };
+    }
+    
+    if (!formData.customer) {
+      return {
+        success: false,
+        message: 'Не указан покупатель!'
+      };
+    }
+    
+    if (!formData.productCode) {
+      return {
+        success: false,
+        message: 'Не выбрано изделие!'
+      };
+    }
+    
+    if (!formData.quantity || formData.quantity <= 0) {
+      return {
+        success: false,
+        message: 'Количество должно быть больше 0!'
+      };
+    }
+    
+    if (!formData.responsible) {
+      return {
+        success: false,
+        message: 'Не указан ответственный!'
+      };
+    }
+    
+    // ========================================
+    // ПРОВЕРКА ОСТАТКОВ НА СКЛАДЕ
+    // ========================================
+    
+    var balance = getProductBalance(formData.productCode);
+    var quantity = parseFloat(formData.quantity);
+    
+    if (quantity > balance) {
+      return {
+        success: false,
+        message: 'Недостаточно товара на складе!\n\n' +
+                 'Запрошено: ' + quantity + ' шт\n' +
+                 'Доступно: ' + balance + ' шт\n' +
+                 'Не хватает: ' + (quantity - balance) + ' шт'
+      };
+    }
+    
+    // ========================================
+    // ПОЛУЧЕНИЕ ДАННЫХ ИЗДЕЛИЯ
+    // ========================================
+    
+    var product = getFinishedProductByCode(formData.productCode);
+    
+    if (!product) {
+      return {
+        success: false,
+        message: 'Изделие ' + formData.productCode + ' не найдено в справочнике!'
+      };
+    }
+    
+    // ========================================
+    // СПИСАНИЕ СО СКЛАДА ГОТОВОЙ ПРОДУКЦИИ
+    // ========================================
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var warehouseSheet = ss.getSheetByName(config.SHEETS.WAREHOUSE);
+    
+    if (!warehouseSheet) {
+      return {
+        success: false,
+        message: 'Склад готовой продукции не найден!'
+      };
+    }
+    
+    // Формируем дату в формате DD.MM.YYYY
+    var dateParts = formData.date.split('-');
+    var dateString = dateParts[2] + '.' + dateParts[1] + '.' + dateParts[0];
+    
+    var now = new Date();
+    var timeStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
+    
+    var lastRow = warehouseSheet.getLastRow();
+    var targetRow = lastRow + 1;
+    var docNumber = 'SHIP-' + String(targetRow - 1).padStart(5, '0');
+    
+    // Структура склада готовой продукции (расход):
+    // A: Номер документа | B: Дата | C: Время | D: Тип операции | E: Код изделия |
+    // F: Наименование | G: Тип | H: Количество | I: Документ основание (ТТН) |
+    // J: Получатель | K: Примечание | L: Статус
+    
+    warehouseSheet.getRange(targetRow, 1).setValue(docNumber);                  // A
+    warehouseSheet.getRange(targetRow, 2).setValue(dateString);                 // B
+    warehouseSheet.getRange(targetRow, 3).setValue(timeStr);                    // C
+    warehouseSheet.getRange(targetRow, 4).setValue(OPERATION_TYPES.EXPENSE);    // D
+    warehouseSheet.getRange(targetRow, 5).setValue(product.code);               // E
+    warehouseSheet.getRange(targetRow, 6).setValue(product.name);               // F
+    warehouseSheet.getRange(targetRow, 7).setValue(product.type);               // G
+    warehouseSheet.getRange(targetRow, 8).setValue(quantity);                   // H
+    warehouseSheet.getRange(targetRow, 9).setValue(formData.ttnNumber || '');   // I
+    warehouseSheet.getRange(targetRow, 10).setValue(formData.customer);         // J
+    warehouseSheet.getRange(targetRow, 11).setValue(formData.notes || '');      // K
+    warehouseSheet.getRange(targetRow, 12).setValue(STATUSES.COMPLETED);        // L
+    
+    // Форматирование
+    warehouseSheet.getRange(targetRow, 2).setNumberFormat('dd.mm.yyyy');
+    warehouseSheet.getRange(targetRow, 8).setNumberFormat('0" шт"');
+    
+    Logger.log('Списано со склада: ' + docNumber);
+    
+    // ========================================
+    // ПРИНУДИТЕЛЬНЫЙ ПЕРЕСЧЕТ
+    // ========================================
+    
+    SpreadsheetApp.flush();
+    
+    // ========================================
+    // ФОРМИРУЕМ СООБЩЕНИЕ
+    // ========================================
+    
+    var newBalance = balance - quantity;
+    
+    var message = 'Отгрузка успешно проведена!\n\n';
+    message += 'Документ: ' + docNumber + '\n';
+    message += 'Покупатель: ' + formData.customer + '\n';
+    message += 'Изделие: ' + product.code + ' - ' + product.name + '\n';
+    message += 'Количество: ' + quantity + ' шт\n';
+    
+    if (formData.ttnNumber) {
+      message += 'ТТН: ' + formData.ttnNumber + '\n';
+    }
+    
+    message += '\nОстаток на складе: ' + newBalance + ' шт';
+    
+    if (newBalance === 0) {
+      message += '\n\n⚠️ ВНИМАНИЕ: Товар закончился на складе!';
+    } else if (newBalance < 10) {
+      message += '\n\n⚠️ ВНИМАНИЕ: Малый остаток!';
+    }
+    
+    Logger.log('Операция завершена успешно');
+    Logger.log('=== processProductShipment: END ===');
+    
+    return {
+      success: true,
+      message: message,
+      docNumber: docNumber
+    };
+    
+  } catch (error) {
+    Logger.log('Критическая ошибка в processProductShipment');
+    Logger.log('Ошибка: ' + error.toString());
+    Logger.log('Stack trace: ' + error.stack);
+    Logger.log('=== processProductShipment: END WITH ERROR ===');
+    
+    return {
+      success: false,
+      message: 'Системная ошибка: ' + error.message + '\n\nОткройте Apps Script → Executions для деталей'
+    };
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// РАЗДЕЛ 3: ФУНКЦИИ ДЛЯ UI (ПОКАЗ СООБЩЕНИЙ)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Показать сообщение ОТК в UI Google Sheets
+ */
+function showQCMessage(message) {
+  SpreadsheetApp.getUi().alert(message);
+}
+
+/**
+ * Показать сообщение отгрузки в UI Google Sheets
+ */
+function showShipmentMessage(message) {
+  SpreadsheetApp.getUi().alert(message);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// КОНЕЦ МОДУЛЯ ОТК И ГОТОВАЯ ПРОДУКЦИЯ
+// ═══════════════════════════════════════════════════════════════════════════
