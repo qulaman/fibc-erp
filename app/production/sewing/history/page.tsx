@@ -74,6 +74,7 @@ export default function SewingHistoryPage() {
   };
 
   if (error) return <div className="text-white p-8">Ошибка загрузки: {error}</div>;
+  if (loading) return <div className="text-white p-8">Загрузка...</div>;
 
   // Группируем по дате для статистики
   const totalAmount = logs.reduce((sum, log) => sum + (log.amount_kzt || 0), 0);
@@ -147,12 +148,15 @@ export default function SewingHistoryPage() {
                 <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs">Брак</th>
                 <th className="px-4 py-4 text-right font-bold text-pink-500 uppercase text-xs">Сумма</th>
                 <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs">Детали</th>
+                {isAdmin && (
+                  <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs">Действия</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
               {logs?.length === 0 ? (
                 <tr>
-                   <td colSpan={8} className="text-center py-12 text-zinc-500">Записей пока нет</td>
+                   <td colSpan={isAdmin ? 9 : 8} className="text-center py-12 text-zinc-500">Записей пока нет</td>
                 </tr>
               ) : (
                 logs?.map((row) => (
@@ -216,6 +220,19 @@ export default function SewingHistoryPage() {
                     <td className="px-4 py-3 text-center">
                       <SewingDetailsDialog record={row} />
                     </td>
+
+                    {/* Кнопка Удаления (только для админа) */}
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleDelete(row.id, row.date)}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                          title="Удалить запись"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
 
                   </tr>
                 ))

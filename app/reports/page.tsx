@@ -70,6 +70,7 @@ export default function ReportsPage() {
   const [weavingData, setWeavingData] = useState<DepartmentData[]>([]);
   const [laminationData, setLaminationData] = useState<DepartmentData[]>([]);
   const [strapsData, setStrapsData] = useState<DepartmentData[]>([]);
+  const [cuttingData, setCuttingData] = useState<DepartmentData[]>([]);
   const [sewingData, setSewingData] = useState<DepartmentData[]>([]);
 
   const [qualityStats, setQualityStats] = useState<QualityStats>({
@@ -104,6 +105,7 @@ export default function ReportsPage() {
       fetchWeavingData(startDate, endDate),
       fetchLaminationData(startDate, endDate),
       fetchStrapsData(startDate, endDate),
+      fetchCuttingData(startDate, endDate),
       fetchSewingData(startDate, endDate),
       fetchQualityStats(startDate, endDate),
       fetchWarehouseData(),
@@ -261,10 +263,10 @@ export default function ReportsPage() {
     }
   };
 
-  const fetchSewingData = async (startDate: Date, endDate: Date) => {
+  const fetchCuttingData = async (startDate: Date, endDate: Date) => {
     try {
       const { data } = await supabase
-        .from('production_sewing')
+        .from('production_cutting')
         .select('date, quantity')
         .gte('date', startDate.toISOString().split('T')[0])
         .lte('date', endDate.toISOString().split('T')[0])
@@ -288,6 +290,41 @@ export default function ReportsPage() {
         unit: 'шт',
       }));
 
+      setCuttingData(chartData);
+    } catch (error) {
+      console.error('Error fetching cutting data:', error);
+      setCuttingData([]);
+    }
+  };
+
+  const fetchSewingData = async (startDate: Date, endDate: Date) => {
+    try {
+      const { data } = await supabase
+        .from('production_sewing')
+        .select('date, quantity_good, quantity_defect')
+        .gte('date', startDate.toISOString().split('T')[0])
+        .lte('date', endDate.toISOString().split('T')[0])
+        .order('date');
+
+      const dates = generateDateRange(startDate, endDate);
+      const grouped: { [key: string]: number } = {};
+
+      dates.forEach(date => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        grouped[dateStr] = 0;
+      });
+
+      (data || []).forEach(record => {
+        const totalQty = (record.quantity_good || 0) + (record.quantity_defect || 0);
+        grouped[record.date] = (grouped[record.date] || 0) + totalQty;
+      });
+
+      const chartData = Object.entries(grouped).map(([date, value]) => ({
+        date: format(parseISO(date), 'dd MMM', { locale: ru }),
+        value: value as number,
+        unit: 'шт',
+      }));
+
       setSewingData(chartData);
     } catch (error) {
       console.error('Error fetching sewing data:', error);
@@ -298,7 +335,7 @@ export default function ReportsPage() {
   const fetchQualityStats = async (startDate: Date, endDate: Date) => {
     try {
       const { data } = await supabase
-        .from('qc_inspections')
+        .from('qc_journal')
         .select('quantity_good, quantity_defect')
         .gte('inspection_date', startDate.toISOString().split('T')[0])
         .lte('inspection_date', endDate.toISOString().split('T')[0]);
@@ -321,11 +358,12 @@ export default function ReportsPage() {
 
   const fetchWarehouseData = async () => {
     try {
-      const [yarn, fabricRolls, laminatedRolls, straps, sewn] = await Promise.all([
+      const [yarn, fabricRolls, laminatedRolls, straps, cuttingParts, sewn] = await Promise.all([
         supabase.from('yarn_inventory').select('quantity_kg').gt('quantity_kg', 0),
         supabase.from('weaving_rolls').select('total_weight').eq('status', 'completed'),
         supabase.from('laminated_rolls').select('weight').eq('status', 'available'),
         supabase.from('straps_warehouse').select('weight').in('status', ['available', 'in_stock']),
+        supabase.from('view_cutting_parts_balance').select('balance'),
         supabase.from('view_sewn_products_balance').select('balance'),
       ]);
 
@@ -370,6 +408,16 @@ export default function ReportsPage() {
         });
       }
 
+      const cuttingPartsTotal = (cuttingParts.data || []).reduce((sum, r) => sum + (r.balance || 0), 0);
+      if (cuttingPartsTotal > 0 || cuttingParts.data?.length === 0) {
+        items.push({
+          name: 'Кроеные детали',
+          balance: cuttingPartsTotal,
+          unit: 'шт',
+          status: cuttingPartsTotal < 100 ? 'critical' : cuttingPartsTotal < 300 ? 'low' : 'ok',
+        });
+      }
+
       const sewnTotal = (sewn.data || []).reduce((sum, r) => sum + (r.balance || 0), 0);
       items.push({
         name: 'Готовая продукция',
@@ -386,28 +434,30 @@ export default function ReportsPage() {
 
   const fetchTopOperators = async (startDate: Date, endDate: Date) => {
     try {
-      const { data: sewingData } = await supabase
+      // Получаем данные пошива с мастерами смены
+      const { data: sewingData, error: sewingError } = await supabase
         .from('production_sewing')
-        .select(`
-          quantity,
-          employees:shift_master_id (full_name)
-        `)
+        .select('quantity_good, quantity_defect, shift_master')
         .gte('date', startDate.toISOString().split('T')[0])
         .lte('date', endDate.toISOString().split('T')[0]);
 
+      if (sewingError) {
+        console.error('Error fetching sewing data:', sewingError);
+        setTopOperators([]);
+        return;
+      }
+
+      if (!sewingData || sewingData.length === 0) {
+        setTopOperators([]);
+        return;
+      }
+
       const operatorTotals: { [key: string]: number } = {};
 
-      // Используем any для record, чтобы избежать ошибки типов
-      (sewingData || []).forEach((record: any) => {
-        // ИСПРАВЛЕНИЕ: Supabase при join часто возвращает массив, даже если там 1 запись.
-        // Проверяем: если массив, берем первый элемент. Иначе берем как есть.
-        const employeeData = Array.isArray(record.employees) 
-          ? record.employees[0] 
-          : record.employees;
-
-        const name = employeeData?.full_name || 'Неизвестно';
-        
-        operatorTotals[name] = (operatorTotals[name] || 0) + (record.quantity || 0);
+      sewingData.forEach((record: any) => {
+        const name = record.shift_master || 'Неизвестно';
+        const totalQty = (record.quantity_good || 0) + (record.quantity_defect || 0);
+        operatorTotals[name] = (operatorTotals[name] || 0) + totalQty;
       });
 
       const top = Object.entries(operatorTotals)
@@ -423,6 +473,7 @@ export default function ReportsPage() {
       setTopOperators(top);
     } catch (error) {
       console.error('Error fetching top operators:', error);
+      setTopOperators([]);
     }
   };
 
@@ -452,8 +503,9 @@ export default function ReportsPage() {
     mergeData(weavingData, 'Ткачество');
     mergeData(laminationData, 'Ламинация');
     mergeData(strapsData, 'Стропы');
+    mergeData(cuttingData, 'Крой');
 
-    return Object.values(combined).sort((a: any, b: any) => 
+    return Object.values(combined).sort((a: any, b: any) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
   };
@@ -567,6 +619,7 @@ export default function ReportsPage() {
                   <Area type="monotone" dataKey="Ткачество" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.6} />
                   <Area type="monotone" dataKey="Ламинация" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} />
                   <Area type="monotone" dataKey="Стропы" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.6} />
+                  <Area type="monotone" dataKey="Крой" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.6} />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -710,6 +763,33 @@ export default function ReportsPage() {
                     <YAxis stroke="#71717a" style={{ fontSize: '10px' }} />
                     <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a' }} />
                     <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Крой */}
+            <Card className="border-zinc-800 bg-zinc-900">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Scissors size={20} className="text-pink-400" />
+                  Крой
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4">
+                  <div className="text-3xl font-bold text-white">
+                    {cuttingData.reduce((s, d) => s + d.value, 0).toLocaleString('ru-RU')} шт
+                  </div>
+                  <div className="text-sm text-zinc-500">Всего за период</div>
+                </div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={cuttingData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                    <XAxis dataKey="date" stroke="#71717a" style={{ fontSize: '10px' }} />
+                    <YAxis stroke="#71717a" style={{ fontSize: '10px' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#18181b', border: '1px solid #27272a' }} />
+                    <Bar dataKey="value" fill="#ec4899" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

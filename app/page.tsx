@@ -201,20 +201,22 @@ export default function Home() {
   return (
     <div className="page-container">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="bg-[#E60012] p-3 rounded-xl">
-            <Activity size={32} className="text-white" />
+      <div className="mb-6 md:mb-8">
+        <div className="flex items-center gap-2 md:gap-3 mb-2">
+          <div className="bg-[#E60012] p-2 md:p-3 rounded-xl">
+            <Activity size={24} className="md:hidden text-white" />
+            <Activity size={32} className="hidden md:block text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold">Добро пожаловать в FIBC KZ ERP</h1>
-            <p className="text-zinc-500 mt-1">Система управления производством</p>
+            <h1 className="text-2xl md:text-4xl font-bold">Добро пожаловать в FIBC KZ ERP</h1>
+            <p className="text-zinc-500 mt-1 text-xs md:text-sm">Система управления производством</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 mt-4 text-zinc-400">
-          <Calendar size={16} />
-          <span className="text-sm">
+        <div className="flex items-center gap-2 mt-3 md:mt-4 text-zinc-400">
+          <Calendar size={14} className="md:hidden" />
+          <Calendar size={16} className="hidden md:block" />
+          <span className="text-xs md:text-sm">
             Сегодня: {new Date().toLocaleDateString('ru-RU', {
               weekday: 'long',
               year: 'numeric',
@@ -225,19 +227,20 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
 
         {/* Левая колонка: Новости и Быстрые действия */}
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2 space-y-6 md:space-y-8">
 
           {/* Новости */}
           <div>
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Newspaper size={24} className="text-[#E60012]" />
+            <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 flex items-center gap-2">
+              <Newspaper size={20} className="md:hidden text-[#E60012]" />
+              <Newspaper size={24} className="hidden md:block text-[#E60012]" />
               Последние обновления
             </h2>
             <Card className="bg-zinc-900 border-zinc-800">
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-4 md:p-6 space-y-3 md:space-y-4">
                 <div className="border-l-2 border-[#E60012] pl-4 py-2">
                   <div className="flex items-start gap-3">
                     <div className="bg-red-500/10 p-2 rounded">
@@ -275,22 +278,24 @@ export default function Home() {
 
           {/* Быстрые действия */}
           <div>
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <ArrowRight size={24} className="text-[#E60012]" />
+            <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 flex items-center gap-2">
+              <ArrowRight size={20} className="md:hidden text-[#E60012]" />
+              <ArrowRight size={24} className="hidden md:block text-[#E60012]" />
               Быстрый доступ
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (
                   <Link key={action.href} href={action.href}>
                     <Card className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-all hover:scale-105 cursor-pointer h-full">
-                      <CardContent className="p-6">
-                        <div className={`${action.color} w-12 h-12 rounded-xl flex items-center justify-center mb-4`}>
-                          <Icon size={24} className="text-white" />
+                      <CardContent className="p-4 md:p-6">
+                        <div className={`${action.color} w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center mb-3 md:mb-4`}>
+                          <Icon size={20} className="md:hidden text-white" />
+                          <Icon size={24} className="hidden md:block text-white" />
                         </div>
-                        <h3 className="font-bold text-white mb-2">{action.title}</h3>
-                        <p className="text-sm text-zinc-400">{action.description}</p>
+                        <h3 className="font-bold text-white mb-1 md:mb-2 text-sm md:text-base">{action.title}</h3>
+                        <p className="text-xs md:text-sm text-zinc-400">{action.description}</p>
                       </CardContent>
                     </Card>
                   </Link>
@@ -301,34 +306,36 @@ export default function Home() {
         </div>
 
         {/* Правая колонка: Склады и Дни рождения */}
-        <div className="space-y-8">
+        <div className="space-y-6 md:space-y-8">
 
           {/* Складские запасы */}
           <div>
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Warehouse size={24} className="text-green-600" />
+            <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 flex items-center gap-2">
+              <Warehouse size={20} className="md:hidden text-green-600" />
+              <Warehouse size={24} className="hidden md:block text-green-600" />
               Складские запасы
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               {warehouseCards.map((warehouse) => {
                 const Icon = warehouse.icon;
                 return (
                   <Link key={warehouse.href} href={warehouse.href}>
                     <Card className={`bg-zinc-900 border-zinc-800 ${warehouse.hoverColor} transition-colors cursor-pointer`}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`${warehouse.color} w-10 h-10 rounded-lg flex items-center justify-center shrink-0`}>
-                            <Icon size={20} className="text-white" />
+                      <CardContent className="p-3 md:p-4">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className={`${warehouse.color} w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center shrink-0`}>
+                            <Icon size={16} className="md:hidden text-white" />
+                            <Icon size={20} className="hidden md:block text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-white text-sm truncate">{warehouse.title}</h3>
-                            <p className="text-xs text-zinc-500">{warehouse.description}</p>
+                            <h3 className="font-bold text-white text-xs md:text-sm truncate">{warehouse.title}</h3>
+                            <p className="text-[10px] md:text-xs text-zinc-500">{warehouse.description}</p>
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-bold text-white">{warehouse.value}</div>
-                            <div className="text-xs text-zinc-500">{warehouse.unit}</div>
+                            <div className="text-base md:text-lg font-bold text-white">{warehouse.value}</div>
+                            <div className="text-[10px] md:text-xs text-zinc-500">{warehouse.unit}</div>
                             {warehouse.extra && (
-                              <div className="text-xs text-zinc-600 mt-0.5">{warehouse.extra}</div>
+                              <div className="text-[10px] md:text-xs text-zinc-600 mt-0.5">{warehouse.extra}</div>
                             )}
                           </div>
                         </div>
@@ -342,8 +349,9 @@ export default function Home() {
 
           {/* Дни рождения */}
           <div>
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Cake size={24} className="text-pink-500" />
+            <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 flex items-center gap-2">
+              <Cake size={20} className="md:hidden text-pink-500" />
+              <Cake size={24} className="hidden md:block text-pink-500" />
               С днем рождения!
             </h2>
             <Card className="bg-zinc-900 border-zinc-800">
@@ -389,8 +397,9 @@ export default function Home() {
 
           {/* Уведомления */}
           <div>
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-              <Activity size={24} className="text-blue-500" />
+            <h2 className="text-xl md:text-2xl font-bold mb-3 md:mb-4 flex items-center gap-2">
+              <Activity size={20} className="md:hidden text-blue-500" />
+              <Activity size={24} className="hidden md:block text-blue-500" />
               Уведомления
             </h2>
             <Card className="bg-zinc-900 border-zinc-800">

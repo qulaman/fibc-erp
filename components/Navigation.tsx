@@ -20,7 +20,8 @@ import {
   Grid3x3,
   Ribbon,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  X
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/lib/auth-context';
@@ -39,6 +40,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/extrusion' },
       { name: 'Журнал', href: '/production/extrusion/history' },
       { name: 'Табель', href: '/production/extrusion/timesheet' },
+      { name: 'Задачи', href: '/tasks/extrusion' },
     ]
   },
   {
@@ -49,6 +51,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/weaving' },
       { name: 'Журнал', href: '/production/weaving/history' },
       { name: 'Табель', href: '/production/weaving/timesheet' },
+      { name: 'Задачи', href: '/tasks/weaving' },
     ]
   },
   {
@@ -59,6 +62,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/lamination' },
       { name: 'Журнал', href: '/production/lamination/history' },
       { name: 'Табель', href: '/production/lamination/timesheet' },
+      { name: 'Задачи', href: '/tasks/lamination' },
     ]
   },
   {
@@ -69,6 +73,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/straps' },
       { name: 'Журнал', href: '/production/straps/history' },
       { name: 'Табель', href: '/production/straps/timesheet' },
+      { name: 'Задачи', href: '/tasks/straps' },
     ]
   },
   {
@@ -79,6 +84,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/cutting' },
       { name: 'Журнал', href: '/production/cutting/history' },
       { name: 'Табель', href: '/production/cutting/timesheet' },
+      { name: 'Задачи', href: '/tasks/cutting' },
     ]
   },
   {
@@ -90,6 +96,7 @@ const navigationItems = [
       { name: 'Журнал', href: '/production/sewing/history' },
       { name: 'Спецификации (BOM)', href: '/production/sewing-specs' },
       { name: 'Табель', href: '/production/sewing/timesheet' },
+      { name: 'Задачи', href: '/tasks/sewing' },
     ]
   },
   {
@@ -99,6 +106,7 @@ const navigationItems = [
     submenu: [
       { name: 'Приёмка ОТК', href: '/production/qc' },
       { name: 'Журнал', href: '/production/qc/history' },
+      { name: 'Задачи', href: '/tasks/qc' },
     ]
   },
   {
@@ -157,6 +165,8 @@ const navigationItems = [
     href: '/admin',
     icon: ShieldCheck,
     submenu: [
+      { name: 'Управление задачами', href: '/tasks/management' },
+      { name: 'Задачи офиса', href: '/tasks/office' },
       { name: 'Пользователи', href: '/admin/users' },
       { name: 'Сотрудники', href: '/admin/employees' },
       { name: 'Оборудование', href: '/admin/equipment' },
@@ -164,7 +174,7 @@ const navigationItems = [
   },
 ];
 
-export default function Navigation() {
+export default function Navigation({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { profile, signOut } = useAuth();
@@ -191,16 +201,39 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="fixed left-0 top-0 h-screen w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col">
-      {/* Logo */}
-      <div className="px-6 py-8 border-b border-zinc-800">
-        <Link href="/" className="group block">
-          <Logo className="group-hover:opacity-90 transition-opacity h-14 w-full" />
-        </Link>
-      </div>
+    <>
+      {/* Backdrop для мобильных */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/70 z-40 backdrop-blur-sm"
+          onClick={onClose}
+        />
+      )}
 
-      {/* Navigation Items */}
-      <div className="flex-1 overflow-y-auto py-4 px-3">
+      {/* Навигация */}
+      <nav className={`
+        fixed left-0 top-0 h-screen w-72 bg-zinc-950 border-r border-zinc-800 flex flex-col z-50
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
+        {/* Кнопка закрытия на мобильных */}
+        <button
+          onClick={onClose}
+          className="lg:hidden absolute top-4 right-4 p-2 text-zinc-400 hover:text-white transition-colors z-10"
+          aria-label="Закрыть меню"
+        >
+          <X size={24} />
+        </button>
+
+        {/* Logo */}
+        <div className="px-6 py-8 border-b border-zinc-800">
+          <Link href="/" className="group block">
+            <Logo className="group-hover:opacity-90 transition-opacity h-14 w-full" />
+          </Link>
+        </div>
+
+        {/* Navigation Items */}
+        <div className="flex-1 overflow-y-auto py-4 px-3">
         <div className="space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon;
@@ -251,10 +284,10 @@ export default function Navigation() {
             );
           })}
         </div>
-      </div>
+        </div>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-zinc-800 space-y-2">
+        {/* Footer */}
+        <div className="p-4 border-t border-zinc-800 space-y-2">
         {/* User Info */}
         {profile && (
           <div className="px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-800">
@@ -296,7 +329,8 @@ export default function Navigation() {
             <span className="font-medium">Выход</span>
           </button>
         </div>
-      </div>
-    </nav>
+        </div>
+      </nav>
+    </>
   );
 }

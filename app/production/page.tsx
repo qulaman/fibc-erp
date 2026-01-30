@@ -102,7 +102,8 @@ export default function ProductionDashboard() {
       unit: 'кг',
       extra: `Смен: ${stats.activeShifts}`,
       href: '/production/extrusion',
-      historyHref: '/production/extrusion/history'
+      historyHref: '/production/extrusion/history',
+      tasksHref: '/tasks/extrusion'
     },
     {
       name: 'Ткачество',
@@ -114,7 +115,8 @@ export default function ProductionDashboard() {
       unit: 'м',
       extra: `Рулонов на складе: ${stats.weavingRolls}`,
       href: '/production/weaving',
-      historyHref: '/production/weaving/history'
+      historyHref: '/production/weaving/history',
+      tasksHref: '/tasks/weaving'
     },
     {
       name: 'Ламинация',
@@ -126,7 +128,8 @@ export default function ProductionDashboard() {
       unit: 'м',
       extra: `Рулонов на складе: ${stats.laminatedRolls}`,
       href: '/production/lamination',
-      historyHref: '/production/lamination/history'
+      historyHref: '/production/lamination/history',
+      tasksHref: '/tasks/lamination'
     },
     {
       name: 'Стропы',
@@ -138,7 +141,8 @@ export default function ProductionDashboard() {
       unit: 'м',
       extra: `Рулонов на складе: ${stats.strapsRolls}`,
       href: '/production/straps',
-      historyHref: '/production/straps/history'
+      historyHref: '/production/straps/history',
+      tasksHref: '/tasks/straps'
     }
   ];
 
@@ -204,6 +208,11 @@ export default function ProductionDashboard() {
                       <Link href={workshop.historyHref} className="flex-1">
                         <button className="w-full text-xs bg-zinc-800 hover:bg-zinc-700 text-white py-1.5 px-2 rounded transition-colors">
                           Журнал
+                        </button>
+                      </Link>
+                      <Link href={workshop.tasksHref} className="flex-1">
+                        <button className="w-full text-xs bg-zinc-800 hover:bg-zinc-700 text-white py-1.5 px-2 rounded transition-colors">
+                          Задачи
                         </button>
                       </Link>
                     </div>

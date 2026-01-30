@@ -96,17 +96,17 @@
 @layer components {
   /* Контейнер страницы */
   .page-container {
-    @apply p-6 bg-black min-h-screen text-white font-sans;
+    @apply p-4 md:p-6 bg-black min-h-screen text-white font-sans;
   }
 
   /* Заголовок страницы */
   .page-header {
-    @apply flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-zinc-800 pb-6;
+    @apply flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-3 md:gap-4 border-b border-zinc-800 pb-4 md:pb-6;
   }
 
   /* H1 с иконкой */
   .h1-bold {
-    @apply text-3xl font-bold flex items-center gap-3;
+    @apply text-2xl md:text-3xl font-bold flex items-center gap-2 md:gap-3;
   }
 
   /* Описание под заголовком */
@@ -116,19 +116,19 @@
 
   /* Статистические карточки в шапке */
   .stats-container {
-    @apply flex items-center gap-4;
+    @apply flex flex-wrap items-center gap-2 md:gap-4;
   }
 
   .stat-card {
-    @apply bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-lg text-right;
+    @apply bg-zinc-900 border border-zinc-800 px-3 md:px-4 py-2 rounded-lg text-right;
   }
 
   .stat-label {
-    @apply text-xs text-zinc-500;
+    @apply text-[10px] md:text-xs text-zinc-500;
   }
 
   .stat-value {
-    @apply text-xl font-mono font-bold;
+    @apply text-lg md:text-xl font-mono font-bold;
   }
 
   /* Поле поиска */
@@ -138,7 +138,20 @@
 
   /* Таблицы */
   .table-container {
-    @apply overflow-x-auto;
+    @apply overflow-x-auto -mx-4 md:mx-0;
+  }
+
+  .table-container table {
+    @apply min-w-full;
+  }
+
+  /* Адаптивная таблица (скроллится на мобильных) */
+  .table-responsive {
+    @apply overflow-x-auto rounded-lg border border-zinc-800;
+  }
+
+  .table-responsive table {
+    @apply w-full text-sm md:text-base;
   }
 
   /* Карточки в гриде */
@@ -163,7 +176,20 @@
 
   /* Секция формы */
   .form-section {
-    @apply border border-border p-4 rounded-lg bg-card/50 mb-4;
+    @apply border border-border p-3 md:p-4 rounded-lg bg-card/50 mb-4;
+  }
+
+  /* Адаптивная форма */
+  .form-group {
+    @apply mb-4;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium mb-2;
+  }
+
+  .form-input {
+    @apply w-full px-3 md:px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm md:text-base;
   }
 
   /* Заголовок секции */

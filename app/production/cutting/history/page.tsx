@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 
 interface ProductionRecord {
   id: string;
@@ -27,6 +29,7 @@ interface ProductionRecord {
 }
 
 export default function CuttingHistoryPage() {
+  const { isAdmin } = useAuth();
   const [records, setRecords] = useState<ProductionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -52,6 +55,36 @@ export default function CuttingHistoryPage() {
       console.error('Error fetching records:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string, docNumber: string) => {
+    if (!isAdmin) {
+      alert('Только администраторы могут удалять записи');
+      return;
+    }
+
+    if (!confirm(`Удалить запись кроя ${docNumber}?\n\nЭто действие нельзя отменить!`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('production_cutting')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('Запись успешно удалена');
+      fetchRecords();
+    } catch (err: any) {
+      console.error('Error deleting record:', err);
+      if (err.code === '23503') {
+        alert(`Невозможно удалить запись.\n\nЭта запись связана с другими данными в системе (возможно, используется в пошиве).`);
+      } else {
+        alert('Ошибка удаления: ' + err.message);
+      }
     }
   };
 
@@ -90,17 +123,17 @@ export default function CuttingHistoryPage() {
 
   return (
     <div className="page-container">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl font-bold">Журнал производства кроя</h1>
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-0 mb-2">
+          <h1 className="text-2xl md:text-3xl font-bold">Журнал производства кроя</h1>
           <Link
             href="/production/cutting"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
+            className="px-3 md:px-4 py-2 text-sm md:text-base bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors whitespace-nowrap"
           >
             Новая операция
           </Link>
         </div>
-        <p className="text-zinc-400">История всех операций раскроя материалов</p>
+        <p className="text-sm md:text-base text-zinc-400">История всех операций раскроя материалов</p>
       </div>
 
       {/* Filters */}
@@ -147,22 +180,22 @@ export default function CuttingHistoryPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <p className="text-sm text-zinc-400 mb-1">Всего операций</p>
-          <p className="text-2xl font-bold">{filteredRecords.length}</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 md:p-4">
+          <p className="text-[10px] md:text-sm text-zinc-400 mb-1">Всего операций</p>
+          <p className="text-lg md:text-2xl font-bold">{filteredRecords.length}</p>
         </div>
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <p className="text-sm text-zinc-400 mb-1">Всего деталей</p>
-          <p className="text-2xl font-bold">{totalQuantity.toLocaleString()}</p>
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 md:p-4">
+          <p className="text-[10px] md:text-sm text-zinc-400 mb-1">Всего деталей</p>
+          <p className="text-lg md:text-2xl font-bold">{totalQuantity.toLocaleString()}</p>
         </div>
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <p className="text-sm text-zinc-400 mb-1">Расход материала</p>
-          <p className="text-2xl font-bold">{totalConsumption.toFixed(1)} м</p>
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 md:p-4">
+          <p className="text-[10px] md:text-sm text-zinc-400 mb-1">Расход материала</p>
+          <p className="text-lg md:text-2xl font-bold">{totalConsumption.toFixed(1)} м</p>
         </div>
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <p className="text-sm text-zinc-400 mb-1">Общий вес</p>
-          <p className="text-2xl font-bold">{totalWeight.toFixed(1)} кг</p>
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 md:p-4">
+          <p className="text-[10px] md:text-sm text-zinc-400 mb-1">Общий вес</p>
+          <p className="text-lg md:text-2xl font-bold">{totalWeight.toFixed(1)} кг</p>
         </div>
       </div>
 
@@ -178,59 +211,74 @@ export default function CuttingHistoryPage() {
       ) : (
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full text-xs md:text-sm">
               <thead className="bg-zinc-800/50 border-b border-zinc-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Документ</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Дата</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Смена</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Оператор</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Материал</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Рулон</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold">Деталь</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold">Кол-во</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold">Расход</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold">Отходы</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold">Статус</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold">Документ</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold">Дата</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold">Смена</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold">Оператор</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold">Материал</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold">Рулон</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left text-xs md:text-sm font-semibold">Деталь</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-right text-xs md:text-sm font-semibold">Кол-во</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-right text-xs md:text-sm font-semibold">Расход</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-right text-xs md:text-sm font-semibold">Отходы</th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-center text-xs md:text-sm font-semibold">Статус</th>
+                  {isAdmin && (
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-center text-xs md:text-sm font-semibold">Действия</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {filteredRecords.map((record) => (
                   <tr key={record.id} className="hover:bg-zinc-800/30 transition-colors">
-                    <td className="px-4 py-3 text-sm font-mono">{record.doc_number}</td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-2 md:px-4 py-2 md:py-3 font-mono">{record.doc_number}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3">
                       {new Date(record.date).toLocaleDateString('ru-RU')}
                       <br />
-                      <span className="text-xs text-zinc-500">{record.time}</span>
+                      <span className="text-[10px] md:text-xs text-zinc-500">{record.time}</span>
                     </td>
-                    <td className="px-4 py-3 text-sm">{record.shift}</td>
-                    <td className="px-4 py-3 text-sm">{record.operator}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="inline-block px-2 py-1 text-xs rounded bg-zinc-800 text-zinc-300">
+                    <td className="px-2 md:px-4 py-2 md:py-3">{record.shift}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3">{record.operator}</td>
+                    <td className="px-2 md:px-4 py-2 md:py-3">
+                      <span className="inline-block px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs rounded bg-zinc-800 text-zinc-300">
                         {record.material_type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm font-mono text-zinc-400">
+                    <td className="px-2 md:px-4 py-2 md:py-3 font-mono text-zinc-400">
                       {record.roll_number}
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-2 md:px-4 py-2 md:py-3">
                       <div className="font-medium">{record.cutting_type_code}</div>
-                      <div className="text-xs text-zinc-500">{record.cutting_type_name}</div>
+                      <div className="text-[10px] md:text-xs text-zinc-500">{record.cutting_type_name}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-right font-semibold">
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold">
                       {record.quantity.toLocaleString()} шт
                     </td>
-                    <td className="px-4 py-3 text-sm text-right">
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-right">
                       {record.consumption_m.toFixed(2)} м
                     </td>
-                    <td className="px-4 py-3 text-sm text-right">
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-right">
                       {record.waste_m.toFixed(2)} м
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-block px-2 py-1 text-xs rounded border ${getStatusColor(record.status)}`}>
+                    <td className="px-2 md:px-4 py-2 md:py-3 text-center">
+                      <span className={`inline-block px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs rounded border ${getStatusColor(record.status)}`}>
                         {record.status}
                       </span>
                     </td>
+                    {isAdmin && (
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-center">
+                        <button
+                          onClick={() => handleDelete(record.id, record.doc_number)}
+                          className="p-1.5 md:p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                          title="Удалить запись"
+                        >
+                          <Trash2 size={14} className="md:hidden" />
+                          <Trash2 size={16} className="hidden md:block" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

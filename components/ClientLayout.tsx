@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import Navigation from '@/components/Navigation';
+import { Menu } from 'lucide-react';
 
 // Публичные страницы, не требующие авторизации
 const PUBLIC_ROUTES = ['/login'];
@@ -13,6 +14,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -63,8 +65,17 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   // На защищенных страницах показываем навигацию
   return (
     <>
-      <Navigation />
-      <main className="ml-72">
+      {/* Кнопка гамбургер-меню для мобильных */}
+      <button
+        onClick={() => setMobileMenuOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-30 p-3 bg-[#E60012] rounded-lg text-white shadow-lg hover:bg-[#c50010] transition-colors"
+        aria-label="Открыть меню"
+      >
+        <Menu size={24} />
+      </button>
+
+      <Navigation isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <main className="ml-0 lg:ml-72">
         {children}
       </main>
     </>
