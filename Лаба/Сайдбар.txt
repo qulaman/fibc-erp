@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      
+      body {
+        font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+        background: #000000;
+        min-height: 100vh;
+        padding: 0;
+      }
+      
+      .container {
+        background: #1e1e1e;
+        min-height: 100vh;
+      }
+      
+      .header {
+        background: #E60012;
+        padding: 16px;
+        text-align: center;
+        border-bottom: 2px solid #333333;
+      }
+      
+      .header h1 {
+        color: #ffffff;
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0;
+      }
+      
+      .header p {
+        color: #ffcccc;
+        font-size: 12px;
+        margin-top: 4px;
+      }
+      
+      .logo-container {
+        text-align: center;
+        padding: 16px 0 20px 0;
+        border-bottom: 2px solid #333333;
+        margin-bottom: 20px;
+      }
+      
+      .logo-container svg {
+        width: 200px;
+        height: auto;
+      }      
+
+      /* ВКЛАДКИ */
+      .tabs {
+        display: flex;
+        background: #2d2d2d;
+        overflow-x: auto;
+        border-bottom: 2px solid #E60012;
+      }
+      
+      .tab {
+        flex: 1;
+        min-width: 80px;
+        padding: 12px 8px;
+        text-align: center;
+        cursor: pointer;
+        background: #2d2d2d;
+        color: #999999;
+        border: none;
+        font-size: 11px;
+        font-weight: 600;
+        transition: all 0.3s;
+        border-bottom: 3px solid transparent;
+      }
+      
+      .tab:hover {
+        background: #3d3d3d;
+        color: #ffffff;
+      }
+      
+      .tab.active {
+        background: #1e1e1e;
+        color: #E60012;
+        border-bottom: 3px solid #E60012;
+      }
+      
+      /* КОНТЕНТ ВКЛАДОК */
+      .tab-content {
+        display: none;
+        padding: 16px;
+        overflow-y: auto;
+        max-height: calc(100vh - 140px);
+      }
+      
+      .tab-content.active {
+        display: block;
+      }
+      
+      .section {
+        background: #2d2d2d;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+        border: 1px solid #333333;
+      }
+      
+      .section-title {
+        color: #E60012;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      .form-group {
+        margin-bottom: 12px;
+      }
+      
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #ffffff;
+        font-size: 12px;
+      }
+      
+      .required::after {
+        content: " *";
+        color: #E60012;
+        font-weight: bold;
+      }
+      
+      input, select, textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border: 2px solid #333333;
+        border-radius: 6px;
+        font-size: 13px;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        background-color: #2d2d2d;
+        color: #ffffff;
+      }
+      
+      input:focus, select:focus, textarea:focus {
+        border-color: #E60012;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(230, 0, 18, 0.2);
+      }
+      
+      input[type="number"] {
+        text-align: right;
+      }
+      
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      
+      .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
+      
+      button {
+        width: 100%;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      
+      .btn-primary {
+        background: #E60012;
+        color: white;
+        margin-top: 16px;
+        box-shadow: 0 4px 12px rgba(230, 0, 18, 0.4);
+      }
+      
+      .btn-primary:hover:not(:disabled) {
+        background: #c00010;
+        transform: translateY(-2px);
+      }
+      
+      .btn-primary:disabled {
+        background: #4d4d4d;
+        cursor: not-allowed;
+      }
+      
+      .message {
+        padding: 12px;
+        margin: 16px;
+        border-radius: 8px;
+        font-size: 12px;
+        display: none;
+      }
+      
+      .success {
+        background-color: #1a3d1a;
+        color: #4ade80;
+        border: 1px solid #22c55e;
+      }
+      
+      .error {
+        background-color: #3d1a1a;
+        color: #fca5a5;
+        border: 1px solid #E60012;
+      }
+      
+      .loading {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .hidden {
+        display: none !important;
+      }
+      
+      small {
+        color: #999;
+        font-size: 11px;
+        display: block;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo-container">
+        <svg id="_Слой_2" data-name="Слой 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 632.01 323.35">
+          <defs><style>.cls-1{fill:#ffffff;}.cls-1,.cls-2,.cls-3{stroke-width:0px;}.cls-2{fill:#e30618;}.cls-3{fill:#d1131f;}</style></defs>
+          <g id="_Слой_1-2" data-name="Слой 1"><g><polygon class="cls-1" points="308.59 131.08 369.89 131.08 369.89 119.3 308.59 119.3 308.59 74.18 369.86 74.18 369.86 62.04 292.91 62.04 292.91 184.57 308.59 175.66 308.59 131.08"/>
+          <path class="cls-1" d="M522.14,168.03c1.25-4.29,1.87-9.81,1.87-16.58,0-5.19-.36-9.63-1.07-13.32-.71-3.68-1.87-6.7-3.47-9.06-1.6-2.36-3.65-4.17-6.13-5.44-2.49-1.27-5.51-2.20-9.07-2.81v-.54c2.85-.48,5.31-1.33,7.38-2.54,2.07-1.21,3.79-2.9,5.16-5.07,1.36-2.17,2.34-4.89,2.94-8.15.59-3.26.89-7.25.89-11.96,0-6.28-.59-11.44-1.78-15.49-1.19-4.05-3.17-7.22-5.96-9.51-2.79-2.29-6.52-3.86-11.21-4.71-4.68-.84-11.80-.81-18.67-.81h-51.49v122.53h56.2c6.76,0,12.45-.94,17.07-1.91,4.63-.97,8.36-2.69,11.21-5.17,2.84-2.47,4.89-5.17,6.13-9.46ZM445.93,73h37.53c4.51,0,8.24.27,11.21.82,2.96.54,5.34,1.57,7.11,3.08,1.78,1.51,3.02,3.65,3.73,6.43.71,2.78,1.07,6.40,1.07,10.87s-.33,8.28-.98,11.05c-.65,2.78-1.69,4.92-3.11,6.43-1.42,1.51-3.26,2.54-5.51,3.08-2.25.54-4.98.81-8.18.81h-42.86v-42.58ZM508.63,161.51c-.65,2.96-1.87,5.32-3.65,7.07-1.78,1.75-4.27,2.93-7.47,3.53-3.2.61-7.29.91-12.27.91h-39.3v-46.39h43.75c3.44,0,6.43.33,8.98,1,2.55.67,4.62,1.84,6.22,3.53,1.6,1.69,2.78,4.08,3.56,7.16.77,3.08,1.15,6.98,1.15,11.69s-.33,8.55-.98,11.51Z"/>
+          <path class="cls-1" d="M618.36,161.7c-.73,3.14-2.12,5.62-4.16,7.43-2.04,1.81-4.84,3.05-8.40,3.71-3.56.67-8.21,1-13.96,1h-2.35c-6.38,0-11.53-.48-15.46-1.45-3.92-.96-6.98-3.02-9.18-6.16-2.2-3.14-3.66-7.7-4.39-13.68-.73-5.98-1.10-13.98-1.10-24.01v-10.15c0-9.9.39-17.85,1.18-23.83.78-5.98,2.25-10.54,4.39-13.68,2.14-3.14,5.15-5.22,9.02-6.25,3.87-1.03,8.94-1.54,15.22-1.54h2.51c5.65,0,10.22.36,13.73,1.09,3.5.72,6.25,1.99,8.24,3.8,1.99,1.81,3.35,4.26,4.08,7.34.73,3.08,1.53,16.01,1.53,20.72v2.07l12.44-8.46c-.47-4.39-1.42-17.25-2.28-20.49-1.2-4.53-3.3-8.15-6.28-10.87-2.98-2.72-7.01-3.53-12.08-4.62-5.08-1.09-11.53-1.63-19.38-1.63h-2.82c-8.68,0-15.77.79-21.26,2.36-5.49,1.57-9.81,3.41-12.95,7.70-3.14,4.29-5.31,10.15-6.51,17.58-1.2,7.43-.97,17-.97,28.72v10.33c0,11.84-.28,21.5.82,28.99,1.10,7.49,3.22,12.66,6.35,16.89,3.14,4.23,7.48,5.80,13.02,7.37,5.54,1.57,12.76,2.36,21.66,2.36h2.98c7.64,0,14.04-.54,19.22-1.63,5.18-1.09,9.28-1.63,12.32-4.29,3.03-2.66,5.2-5.6,6.51-10.19,1.31-4.59,1.96-17.11,1.96-24.11v-3.93l-12.75,8.67-.91,12.85Z"/>
+          <g><path class="cls-1" d="M320.8,221.91h-6.59l-12.57,15.06c-1.04,1.31-2.14,2.74-3.23,4.29h-.18v-19.35h-5.31v40.12h5.31v-15.3l3.91-4.4,13.55,19.7h6.29l-16.05-23.1,14.89-17.02Z"/>
+          <path class="cls-1" d="M337.46,221.91l-13.98,40.12h5.49l4.27-12.62h14.59l4.39,12.62h5.68l-14.04-40.12h-6.41ZM334.35,245.36l4.03-11.61c.79-2.44,1.46-4.88,2.08-7.26h.12c.61,2.32,1.22,4.7,2.14,7.32l4.03,11.55h-12.39Z"/>
+          <polygon class="cls-1" points="368.16 257.51 390.87 225.06 390.87 221.91 363.1 221.91 363.1 226.25 383.97 226.25 383.97 226.43 361.14 258.99 361.14 262.03 391.17 262.03 391.17 257.68 368.16 257.68 368.16 257.51"/>
+          <path class="cls-1" d="M408.57,221.91l-13.98,40.12h5.49l4.27-12.62h14.59l4.39,12.62h5.68l-14.04-40.12h-6.41ZM405.45,245.36l4.03-11.61c.79-2.44,1.46-4.88,2.08-7.26h.12c.61,2.32,1.22,4.7,2.14,7.32l4.03,11.55h-12.39Z"/>
+          <path class="cls-1" d="M462.95,221.91h-6.59l-12.57,15.06c-1.04,1.31-2.14,2.74-3.24,4.29h-.18v-19.35h-5.31v40.12h5.31v-15.3l3.91-4.4,13.55,19.7h6.29l-16.05-23.1,14.89-17.02Z"/>
+          <polygon class="cls-1" points="493.34 238.7 473.44 238.7 473.44 221.91 468.13 221.91 468.13 262.03 473.44 262.03 473.44 243.22 493.34 243.22 493.34 262.03 498.71 262.03 498.71 221.91 493.34 221.91 493.34 238.7"/>
+          <path class="cls-1" d="M520.26,239.29c-5.68-2.14-8.18-3.99-8.18-7.74,0-2.74,2.14-6.01,7.75-6.01,3.72,0,6.47,1.19,7.81,1.9l1.47-4.23c-1.83-1.01-4.88-1.31-9.09-1.31-8,0-13.31,3.99-13.31,10.24,0,5.66,4.15,9.05,10.86,11.37,5.55,2.08,7.75,4.23,7.75,7.98,0,4.05-3.17,6.85-8.61,6.85-3.66,0-7.14-1.19-9.52-2.62l-1.34,4.35c2.2,1.43,6.53,1.96,10.5,1.96,9.71,0,14.4-4.76,14.4-10.95s-3.54-9.17-10.5-11.79Z"/>
+          <polygon class="cls-1" points="563.77 221.91 533.32 221.91 533.32 226.31 545.83 226.31 545.83 262.03 551.2 262.03 551.2 226.31 563.77 226.31 563.77 221.91"/>
+          <path class="cls-1" d="M574.64,221.91l-13.98,40.12h5.49l4.27-12.62h14.59l4.39,12.62h5.68l-14.04-40.12h-6.41ZM571.52,245.36l4.03-11.61c.79-2.44,1.46-4.88,2.08-7.26h.12c.61,2.32,1.22,4.7,2.14,7.32l4.03,11.55h-12.39Z"/>
+          <path class="cls-1" d="M627,238.7c0,6.25.12,11.13.61,16.49l-.12.06c-1.95-4.11-4.33-8.33-7.39-13.04l-13.18-20.3h-5.8v40.12h5v-17.14c0-6.67-.12-11.49-.43-16.55l.18-.06c2.07,4.35,4.82,8.93,7.69,13.39l13.06,20.36h5.37v-40.12h-5v16.79Z"/></g>
+          <polygon class="cls-2" points="408.75 62.04 392.99 70.95 392.99 184.57 408.75 175.66 408.75 62.04"/>
+          <polygon class="cls-1" points="208 76.41 123.36 29.03 38.73 76.41 123.36 123.78 208 76.41"/>
+          <polygon class="cls-3" points="177.34 279.1 192.75 270.48 192.75 284.43 177.34 293.05 177.34 279.10"/>
+          <path class="cls-2" d="M123.36,0L0,69.05v14.71l53.98,30.21v141.99l15.41,8.62V122.6l53.97,30.21,53.98-30.21v141.98l15.41-8.62V113.98l53.97-30.21v-14.71L123.36,0ZM123.36,138.3L12.79,76.41,123.36,14.52l110.57,61.89-110.57,61.89Z"/>
+          <polygon class="cls-1" points="204.31 121.47 204.31 215.85 204.31 230.36 204.31 263.53 192.75 269.99 177.34 278.62 165.78 285.09 165.78 143.04 123.36 166.78 80.95 143.04 80.95 285.09 69.39 278.63 53.98 270 42.42 263.53 42.42 230.36 42.42 215.85 42.42 121.47 0 97.73 0 239.59 0 254.3 42.42 278.05 80.95 299.62 123.36 323.35 165.78 299.62 165.78 299.61 204.31 278.05 246.72 254.3 246.72 239.59 246.72 97.73 204.31 121.47"/>
+          </g></g>
+        </svg>
+      </div>
+
+    <div class="container">
+      <div class="header">
+        <h1>🔬 Лаборатория</h1>
+        <p>Внесение результатов испытаний</p>
+      </div>
+      
+      <div class="tabs">
+        <button class="tab active" onclick="openTab(event, 'tab1')">🧵 Нить</button>
+        <button class="tab" onclick="openTab(event, 'tab2')">⚙️ Экструдер</button>
+        <button class="tab" onclick="openTab(event, 'tab3')">🏭 Станок</button>
+        <button class="tab" onclick="openTab(event, 'tab4')">🧶 Ткань</button>
+        <button class="tab" onclick="openTab(event, 'tab5')">📏 Стропы</button>
+        <button class="tab" onclick="openTab(event, 'tab6')">📦 Ламинация</button>
+        <button class="tab" onclick="openTab(event, 'tab7')">🧪 ПТР</button>
+      </div>
+      
+      <div id="message" class="message"></div>
+      
+      <!-- ========================================= -->
+      <!-- ВКЛАДКА 1: ИСПЫТАНИЯ НИТИ -->
+      <!-- ========================================= -->
+      <div id="tab1" class="tab-content active">
+        <form id="yarnForm">
+          <div class="section">
+            <div class="section-title">Испытание нити</div>
+            
+            <div class="form-group">
+              <label for="yarn_code" class="required">Код нити</label>
+              <input type="text" id="yarn_code" required placeholder="NIT-1570">
+            </div>
+            
+            <div class="form-group">
+              <label for="yarn_batch" class="required">Партия</label>
+              <input type="text" id="yarn_batch" required placeholder="THR-01-251220-001">
+            </div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="yarn_denier" class="required">Денье (dtex)</label>
+                <input type="number" id="yarn_denier" step="0.1" required placeholder="1570">
+              </div>
+              <div class="form-group">
+                <label for="yarn_strength" class="required">Прочность (Н)</label>
+                <input type="number" id="yarn_strength" step="0.1" required placeholder="85.5">
+              </div>
+            </div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="yarn_elasticity" class="required">Эластичность (%)</label>
+                <input type="number" id="yarn_elasticity" step="0.1" required placeholder="15.5">
+              </div>
+              <div class="form-group">
+                <label for="yarn_width">Ширина (мм)</label>
+                <input type="number" id="yarn_width" step="0.1" placeholder="3.5">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="yarn_result" class="required">Результат</label>
+              <select id="yarn_result" required>
+                <option value="">-- Выберите --</option>
+                <option value="Соответствует">✅ Соответствует</option>
+                <option value="Не соответствует">❌ Не соответствует</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="yarn_operator" class="required">Лаборант</label>
+              <select id="yarn_operator" required disabled>
+                <option value="">Загрузка...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="yarn_notes">Примечание</label>
+              <textarea id="yarn_notes" rows="2" placeholder="Дополнительная информация"></textarea>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">
+            <span id="yarn_text">✓ Сохранить результат</span>
+            <span id="yarn_loader" class="loading hidden"></span>
+          </button>
+        </form>
+      </div>
+      
+      <!-- ========================================= -->
+      <!-- ВКЛАДКА 2: ИСПЫТАНИЯ ЭКСТРУДЕРА -->
+      <!-- ========================================= -->
+      <div id="tab2" class="tab-content">
+        <form id="extruderForm">
+          <div class="section">
+            <div class="section-title">Параметры экструдера</div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="ext_shift" class="required">Смена</label>
+                <select id="ext_shift" required>
+                  <option value="">-- Выберите --</option>
+                  <option value="День">День</option>
+                  <option value="Ночь">Ночь</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="ext_machine" class="required">Станок</label>
+                <input type="text" id="ext_machine" required placeholder="EXT-01">
+              </div>
+            </div>
+            
+            <div class="section-title" style="margin-top: 16px;">Температуры валов (°C)</div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="ext_temp1">Вал 1</label>
+                <input type="number" id="ext_temp1" step="0.1" placeholder="180">
+              </div>
+              <div class="form-group">
+                <label for="ext_temp2">Вал 2</label>
+                <input type="number" id="ext_temp2" step="0.1" placeholder="185">
+              </div>
+              <div class="form-group">
+                <label for="ext_temp3">Вал 3</label>
+                <input type="number" id="ext_temp3" step="0.1" placeholder="190">
+              </div>
+            </div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="ext_temp4">Вал 4</label>
+                <input type="number" id="ext_temp4" step="0.1" placeholder="195">
+              </div>
+              <div class="form-group">
+                <label for="ext_temp5">Вал 5</label>
+                <input type="number" id="ext_temp5" step="0.1" placeholder="200">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="ext_annealing">Модуль отжига (°C)</label>
+              <input type="number" id="ext_annealing" step="0.1" placeholder="95">
+            </div>
+            
+            <div class="section-title" style="margin-top: 16px;">Дозаторы (%)</div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="ext_d1">Д1</label>
+                <input type="number" id="ext_d1" step="0.1" placeholder="50">
+              </div>
+              <div class="form-group">
+                <label for="ext_d2">Д2</label>
+                <input type="number" id="ext_d2" step="0.1" placeholder="30">
+              </div>
+              <div class="form-group">
+                <label for="ext_d3">Д3</label>
+                <input type="number" id="ext_d3" step="0.1" placeholder="10">
+              </div>
+            </div>
+            
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="ext_d4">Д4</label>
+                <input type="number" id="ext_d4" step="0.1" placeholder="5">
+              </div>
+              <div class="form-group">
+                <label for="ext_d5">Д5</label>
+                <input type="number" id="ext_d5" step="0.1" placeholder="3">
+              </div>
+              <div class="form-group">
+                <label for="ext_d6">Д6</label>
+                <input type="number" id="ext_d6" step="0.1" placeholder="2">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="ext_result" class="required">Результат</label>
+              <select id="ext_result" required>
+                <option value="">-- Выберите --</option>
+                <option value="Соответствует">✅ Соответствует</option>
+                <option value="Не соответствует">❌ Не соответствует</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="ext_operator" class="required">Лаборант</label>
+              <select id="ext_operator" required disabled>
+                <option value="">Загрузка...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="ext_notes">Примечание</label>
+              <textarea id="ext_notes" rows="2"></textarea>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">
+            <span id="ext_text">✓ Сохранить результат</span>
+            <span id="ext_loader" class="loading hidden"></span>
+          </button>
+        </form>
+      </div>
+      
+      <!-- ========================================= -->
+      <!-- ВКЛАДКА 3: ИСПЫТАНИЯ СТАНКОВ КТС -->
+      <!-- ========================================= -->
+      <div id="tab3" class="tab-content">
+        <form id="machineForm">
+          <div class="section">
+            <div class="section-title">Визуальная проверка станка</div>
+            
+            <div class="form-group">
+              <label for="mch_number" class="required">Номер станка</label>
+              <input type="text" id="mch_number" required placeholder="KTS-01">
+            </div>
+            
+            <div class="form-group">
+              <label for="mch_width" class="required">Ширина ткани (см)</label>
+              <input type="number" id="mch_width" step="0.1" required placeholder="150">
+            </div>
+            
+            <div class="form-group">
+              <label for="mch_visual" class="required">Визуальный осмотр</label>
+              <select id="mch_visual" required>
+                <option value="">-- Выберите --</option>
+                <option value="Норма">✅ Норма</option>
+                <option value="Обнаружены дефекты">⚠️ Обнаружены дефекты</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="mch_defects">Выявленные дефекты</label>
+              <textarea id="mch_defects" rows="3" placeholder="Описание обнаруженных дефектов"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="mch_result" class="required">Результат</label>
+              <select id="mch_result" required>
+                <option value="">-- Выберите --</option>
+                <option value="Допущен к работе">✅ Допущен к работе</option>
+                <option value="Требуется ремонт">❌ Требуется ремонт</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="mch_operator" class="required">Лаборант</label>
+              <select id="mch_operator" required disabled>
+                <option value="">Загрузка...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="mch_notes">Примечание</label>
+              <textarea id="mch_notes" rows="2"></textarea>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">
+            <span id="mch_text">✓ Сохранить результат</span>
+            <span id="mch_loader" class="loading hidden"></span>
+          </button>
+        </form>
+      </div>
+      
+      <!-- ========================================= -->
+      <!-- ВКЛАДКА 4: ИСПЫТАНИЯ ТКАНИ КТС -->
+      <!-- ========================================= -->
+      <div id="tab4" class="tab-content">
+        <form id="fabricForm">
+          <div class="section">
+            <div class="section-title">Образец ткани</div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="fab_machine" class="required">Номер станка</label>
+                <input type="text" id="fab_machine" required placeholder="KTS-01">
+              </div>
+              <div class="form-group">
+                <label for="fab_roll">Номер рулона</label>
+                <input type="text" id="fab_roll" placeholder="FAB-001">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="fab_code">Код ткани</label>
+              <input type="text" id="fab_code" placeholder="TK-150-140-WHT">
+            </div>
+            
+            <div class="section-title" style="margin-top: 16px;">Основа</div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="fab_warp_kg">Прочность (кг)</label>
+                <input type="number" id="fab_warp_kg" step="0.01" placeholder="120">
+              </div>
+              <div class="form-group">
+                <label for="fab_warp_n">Прочность (Н)</label>
+                <input type="number" id="fab_warp_n" step="0.1" placeholder="1177">
+              </div>
+              <div class="form-group">
+                <label for="fab_warp_el">Эластичность (%)</label>
+                <input type="number" id="fab_warp_el" step="0.1" placeholder="18">
+              </div>
+            </div>
+            
+            <div class="section-title" style="margin-top: 16px;">Уток</div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="fab_weft_kg">Прочность (кг)</label>
+                <input type="number" id="fab_weft_kg" step="0.01" placeholder="115">
+              </div>
+              <div class="form-group">
+                <label for="fab_weft_n">Прочность (Н)</label>
+                <input type="number" id="fab_weft_n" step="0.1" placeholder="1128">
+              </div>
+              <div class="form-group">
+                <label for="fab_weft_el">Эластичность (%)</label>
+                <input type="number" id="fab_weft_el" step="0.1" placeholder="16">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="fab_density">Плотность (г/м²)</label>
+              <input type="number" id="fab_density" step="0.1" placeholder="140">
+            </div>
+            
+            <div class="form-group">
+              <label for="fab_result" class="required">Результат</label>
+              <select id="fab_result" required>
+                <option value="">-- Выберите --</option>
+                <option value="Соответствует">✅ Соответствует</option>
+                <option value="Не соответствует">❌ Не соответствует</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="fab_operator" class="required">Лаборант</label>
+              <select id="fab_operator" required disabled>
+                <option value="">Загрузка...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="fab_notes">Примечание</label>
+              <textarea id="fab_notes" rows="2"></textarea>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">
+            <span id="fab_text">✓ Сохранить результат</span>
+            <span id="fab_loader" class="loading hidden"></span>
+          </button>
+        </form>
+      </div>
+      
+      <!-- ========================================= -->
+      <!-- ВКЛАДКА 5: ИСПЫТАНИЯ СТРОП ПТС -->
+      <!-- ========================================= -->
+      <div id="tab5" class="tab-content">
+        <form id="strapForm">
+          <div class="section">
+            <div class="section-title">Испытание строп</div>
+            
+            <div class="form-group">
+              <label for="str_batch" class="required">Номер партии</label>
+              <input type="text" id="str_batch" required placeholder="STR-251220-001">
+            </div>
+            
+            <div class="form-group">
+              <label for="str_type" class="required">Тип стропы</label>
+              <input type="text" id="str_type" required placeholder="Стропа 50мм">
+            </div>
+            
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="str_tension_kg">Натяжение (кг)</label>
+                <input type="number" id="str_tension_kg" step="0.01" placeholder="250">
+              </div>
+              <div class="form-group">
+                <label for="str_tension_n">Натяжение (Н)</label>
+                <input type="number" id="str_tension_n" step="0.1" placeholder="2452">
+              </div>
+              <div class="form-group">
+                <label for="str_elasticity">Эластичность (%)</label>
+                <input type="number" id="str_elasticity" step="0.1" placeholder="12">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="str_density">Плотность (г/м²)</label>
+              <input type="number" id="str_density" step="0.1" placeholder="180">
+            </div>
+            
+            <div class="form-group">
+              <label for="str_result" class="required">Результат</label>
+              <select id="str_result" required>
+                <option value="">-- Выберите --</option>
+                <option value="Соответствует">✅ Соответствует</option>
+                <option value="Не соответствует">❌ Не соответствует</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="str_operator" class="required">Лаборант</label>
+              <select id="str_operator" required disabled>
+                <option value="">Загрузка...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="str_notes">Примечание</label>
+              <textarea id="str_notes" rows="2"></textarea>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">
+            <span id="str_text">✓ Сохранить результат</span>
+            <span id="str_loader" class="loading hidden"></span>
+          </button>
+        </form>
+      </div>
+      
+      <!-- ========================================= -->
+      <!-- ВКЛАДКА 6: ИСПЫТАНИЯ ЛАМИНАЦИИ -->
+      <!-- ========================================= -->
+      <div id="tab6" class="tab-content">
+        <form id="laminationForm">
+          <div class="section">
+            <div class="section-title">Образец после ламинации</div>
+            
+            <div class="form-group">
+              <label for="lam_roll" class="required">Номер рулона</label>
+              <input type="text" id="lam_roll" required placeholder="FAB-001">
+            </div>
+            
+            <div class="form-group">
+              <label for="lam_info">Информация о рулоне</label>
+              <textarea id="lam_info" rows="2" placeholder="Описание рулона"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="lam_width">Ширина (см)</label>
+              <input type="number" id="lam_width" step="0.1" placeholder="150">
+            </div>
+            
+            <div class="section-title" style="margin-top: 16px;">Основа</div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="lam_warp_kg">Прочность (кг)</label>
+                <input type="number" id="lam_warp_kg" step="0.01" placeholder="125">
+              </div>
+              <div class="form-group">
+                <label for="lam_warp_n">Прочность (Н)</label>
+                <input type="number" id="lam_warp_n" step="0.1" placeholder="1226">
+              </div>
+              <div class="form-group">
+                <label for="lam_warp_el">Эластичность (%)</label>
+                <input type="number" id="lam_warp_el" step="0.1" placeholder="15">
+              </div>
+            </div>
+            
+            <div class="section-title" style="margin-top: 16px;">Уток</div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="lam_weft_kg">Прочность (кг)</label>
+                <input type="number" id="lam_weft_kg" step="0.01" placeholder="120">
+              </div>
+              <div class="form-group">
+                <label for="lam_weft_n">Прочность (Н)</label>
+                <input type="number" id="lam_weft_n" step="0.1" placeholder="1177">
+              </div>
+              <div class="form-group">
+                <label for="lam_weft_el">Эластичность (%)</label>
+                <input type="number" id="lam_weft_el" step="0.1" placeholder="14">
+              </div>
+            </div>
+            
+            <div class="grid-2">
+              <div class="form-group">
+                <label for="lam_density">Плотность (г/м²)</label>
+                <input type="number" id="lam_density" step="0.1" placeholder="160">
+              </div>
+              <div class="form-group">
+                <label for="lam_adhesion">Адгезия</label>
+                <input type="text" id="lam_adhesion" placeholder="Хорошая">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="lam_result" class="required">Результат</label>
+              <select id="lam_result" required>
+                <option value="">-- Выберите --</option>
+                <option value="Соответствует">✅ Соответствует</option>
+                <option value="Не соответствует">❌ Не соответствует</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="lam_operator" class="required">Лаборант</label>
+              <select id="lam_operator" required disabled>
+                <option value="">Загрузка...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="lam_notes">Примечание</label>
+              <textarea id="lam_notes" rows="2"></textarea>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">
+            <span id="lam_text">✓ Сохранить результат</span>
+            <span id="lam_loader" class="loading hidden"></span>
+          </button>
+        </form>
+      </div>
+      
+      <!-- ========================================= -->
+      <!-- ВКЛАДКА 7: ПТР СЫРЬЯ -->
+      <!-- ========================================= -->
+      <div id="tab7" class="tab-content">
+        <form id="mfiForm">
+          <div class="section">
+            <div class="section-title">Показатель текучести расплава</div>
+            
+            <div class="form-group">
+              <label for="mfi_type" class="required">Вид сырья</label>
+              <input type="text" id="mfi_type" required placeholder="Полипропилен">
+            </div>
+            
+            <div class="form-group">
+              <label for="mfi_code">Код сырья</label>
+              <input type="text" id="mfi_code" placeholder="PP-H350">
+            </div>
+            
+            <div class="form-group">
+              <label for="mfi_batch" class="required">Партия</label>
+              <input type="text" id="mfi_batch" required placeholder="LOT-20251220-001">
+            </div>
+            
+            <div class="grid-3">
+              <div class="form-group">
+                <label for="mfi_value" class="required">ПТР (г/10мин)</label>
+                <input type="number" id="mfi_value" step="0.01" required placeholder="8.5">
+              </div>
+              <div class="form-group">
+                <label for="mfi_temp">Температура (°C)</label>
+                <input type="number" id="mfi_temp" step="0.1" placeholder="230">
+              </div>
+              <div class="form-group">
+                <label for="mfi_load">Нагрузка (кг)</label>
+                <input type="number" id="mfi_load" step="0.1" placeholder="2.16">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="mfi_result" class="required">Результат</label>
+              <select id="mfi_result" required>
+                <option value="">-- Выберите --</option>
+                <option value="Соответствует">✅ Соответствует</option>
+                <option value="Не соответствует">❌ Не соответствует</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="mfi_operator" class="required">Лаборант</label>
+              <select id="mfi_operator" required disabled>
+                <option value="">Загрузка...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="mfi_notes">Примечание</label>
+              <textarea id="mfi_notes" rows="2"></textarea>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn-primary">
+            <span id="mfi_text">✓ Сохранить результат</span>
+            <span id="mfi_loader" class="loading hidden"></span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ИНИЦИАЛИЗАЦИЯ
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      loadOperators();
+      setupFormHandlers();
+    });
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    function openTab(evt, tabId) {
+      var i, tabcontent, tablinks;
+      
+      tabcontent = document.getElementsByClassName("tab-content");
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].classList.remove("active");
+      }
+      
+      tablinks = document.getElementsByClassName("tab");
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].classList.remove("active");
+      }
+      
+      document.getElementById(tabId).classList.add("active");
+      evt.currentTarget.classList.add("active");
+      
+      // Скрыть сообщения при переключении
+      document.getElementById('message').style.display = 'none';
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ЗАГРУЗКА СПРАВОЧНИКОВ
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    function loadOperators() {
+      google.script.run
+        .withSuccessHandler(function(operators) {
+          populateOperatorDropdowns(operators);
+        })
+        .getLabOperators();
+    }
+    
+    function populateOperatorDropdowns(operators) {
+      var selects = [
+        'yarn_operator', 'ext_operator', 'mch_operator',
+        'fab_operator', 'str_operator', 'lam_operator', 'mfi_operator'
+      ];
+      
+      selects.forEach(function(selectId) {
+        var select = document.getElementById(selectId);
+        select.innerHTML = '<option value="">-- Выберите лаборанта --</option>';
+        
+        operators.forEach(function(op) {
+          var option = document.createElement('option');
+          option.value = op.name;
+          option.textContent = op.name + ' (' + op.position + ')';
+          select.appendChild(option);
+        });
+        
+        select.disabled = false;
+      });
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ОБРАБОТЧИКИ ФОРМ
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    function setupFormHandlers() {
+      // 1. Нить
+      document.getElementById('yarnForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTest('yarn', 'addYarnTest', {
+          yarnCode: document.getElementById('yarn_code').value,
+          batch: document.getElementById('yarn_batch').value,
+          denier: parseFloat(document.getElementById('yarn_denier').value) || 0,
+          strength: parseFloat(document.getElementById('yarn_strength').value) || 0,
+          elasticity: parseFloat(document.getElementById('yarn_elasticity').value) || 0,
+          width: parseFloat(document.getElementById('yarn_width').value) || 0,
+          result: document.getElementById('yarn_result').value,
+          operator: document.getElementById('yarn_operator').value,
+          notes: document.getElementById('yarn_notes').value
+        });
+      });
+      
+      // 2. Экструдер
+      document.getElementById('extruderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTest('ext', 'addExtruderTest', {
+          shift: document.getElementById('ext_shift').value,
+          machine: document.getElementById('ext_machine').value,
+          temp1: parseFloat(document.getElementById('ext_temp1').value) || 0,
+          temp2: parseFloat(document.getElementById('ext_temp2').value) || 0,
+          temp3: parseFloat(document.getElementById('ext_temp3').value) || 0,
+          temp4: parseFloat(document.getElementById('ext_temp4').value) || 0,
+          temp5: parseFloat(document.getElementById('ext_temp5').value) || 0,
+          annealing: parseFloat(document.getElementById('ext_annealing').value) || 0,
+          d1: parseFloat(document.getElementById('ext_d1').value) || 0,
+          d2: parseFloat(document.getElementById('ext_d2').value) || 0,
+          d3: parseFloat(document.getElementById('ext_d3').value) || 0,
+          d4: parseFloat(document.getElementById('ext_d4').value) || 0,
+          d5: parseFloat(document.getElementById('ext_d5').value) || 0,
+          d6: parseFloat(document.getElementById('ext_d6').value) || 0,
+          result: document.getElementById('ext_result').value,
+          operator: document.getElementById('ext_operator').value,
+          notes: document.getElementById('ext_notes').value
+        });
+      });
+      
+      // 3. Станок
+      document.getElementById('machineForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTest('mch', 'addMachineTest', {
+          machineNumber: document.getElementById('mch_number').value,
+          width: parseFloat(document.getElementById('mch_width').value) || 0,
+          visualCheck: document.getElementById('mch_visual').value,
+          defects: document.getElementById('mch_defects').value,
+          result: document.getElementById('mch_result').value,
+          operator: document.getElementById('mch_operator').value,
+          notes: document.getElementById('mch_notes').value
+        });
+      });
+      
+      // 4. Ткань
+      document.getElementById('fabricForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTest('fab', 'addFabricTest', {
+          machineNumber: document.getElementById('fab_machine').value,
+          rollNumber: document.getElementById('fab_roll').value,
+          fabricCode: document.getElementById('fab_code').value,
+          warpStrengthKg: parseFloat(document.getElementById('fab_warp_kg').value) || 0,
+          warpStrengthN: parseFloat(document.getElementById('fab_warp_n').value) || 0,
+          warpElasticity: parseFloat(document.getElementById('fab_warp_el').value) || 0,
+          weftStrengthKg: parseFloat(document.getElementById('fab_weft_kg').value) || 0,
+          weftStrengthN: parseFloat(document.getElementById('fab_weft_n').value) || 0,
+          weftElasticity: parseFloat(document.getElementById('fab_weft_el').value) || 0,
+          density: parseFloat(document.getElementById('fab_density').value) || 0,
+          result: document.getElementById('fab_result').value,
+          operator: document.getElementById('fab_operator').value,
+          notes: document.getElementById('fab_notes').value
+        });
+      });
+      
+      // 5. Стропы
+      document.getElementById('strapForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTest('str', 'addStrapTest', {
+          batchNumber: document.getElementById('str_batch').value,
+          strapType: document.getElementById('str_type').value,
+          tensionKg: parseFloat(document.getElementById('str_tension_kg').value) || 0,
+          tensionN: parseFloat(document.getElementById('str_tension_n').value) || 0,
+          elasticity: parseFloat(document.getElementById('str_elasticity').value) || 0,
+          density: parseFloat(document.getElementById('str_density').value) || 0,
+          result: document.getElementById('str_result').value,
+          operator: document.getElementById('str_operator').value,
+          notes: document.getElementById('str_notes').value
+        });
+      });
+      
+      // 6. Ламинация
+      document.getElementById('laminationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTest('lam', 'addLaminationTest', {
+          rollNumber: document.getElementById('lam_roll').value,
+          rollInfo: document.getElementById('lam_info').value,
+          width: parseFloat(document.getElementById('lam_width').value) || 0,
+          warpStrengthKg: parseFloat(document.getElementById('lam_warp_kg').value) || 0,
+          warpStrengthN: parseFloat(document.getElementById('lam_warp_n').value) || 0,
+          warpElasticity: parseFloat(document.getElementById('lam_warp_el').value) || 0,
+          weftStrengthKg: parseFloat(document.getElementById('lam_weft_kg').value) || 0,
+          weftStrengthN: parseFloat(document.getElementById('lam_weft_n').value) || 0,
+          weftElasticity: parseFloat(document.getElementById('lam_weft_el').value) || 0,
+          density: parseFloat(document.getElementById('lam_density').value) || 0,
+          adhesion: document.getElementById('lam_adhesion').value,
+          result: document.getElementById('lam_result').value,
+          operator: document.getElementById('lam_operator').value,
+          notes: document.getElementById('lam_notes').value
+        });
+      });
+      
+      // 7. ПТР
+      document.getElementById('mfiForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitTest('mfi', 'addMFITest', {
+          materialType: document.getElementById('mfi_type').value,
+          materialCode: document.getElementById('mfi_code').value,
+          batch: document.getElementById('mfi_batch').value,
+          mfi: parseFloat(document.getElementById('mfi_value').value) || 0,
+          temperature: parseFloat(document.getElementById('mfi_temp').value) || 0,
+          load: parseFloat(document.getElementById('mfi_load').value) || 0,
+          result: document.getElementById('mfi_result').value,
+          operator: document.getElementById('mfi_operator').value,
+          notes: document.getElementById('mfi_notes').value
+        });
+      });
+    }
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ОТПРАВКА ДАННЫХ
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    function submitTest(prefix, functionName, data) {
+      var btn = document.querySelector('#' + prefix + 'Form button');
+      var txt = document.getElementById(prefix + '_text');
+      var loader = document.getElementById(prefix + '_loader');
+      
+      btn.disabled = true;
+      txt.classList.add('hidden');
+      loader.classList.remove('hidden');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false;
+          txt.classList.remove('hidden');
+          loader.classList.add('hidden');
+          
+          if (result.success) {
+            showMessage('success', result.message);
+            document.getElementById(prefix + 'Form').reset();
+          } else {
+            showMessage('error', result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          btn.disabled = false;
+          txt.classList.remove('hidden');
+          loader.classList.add('hidden');
+          showMessage('error', '❌ Ошибка: ' + error.message);
+        })[functionName](data);
+    }
+    
+    function showMessage(type, text) {
+      var msg = document.getElementById('message');
+      msg.className = 'message ' + type;
+      msg.textContent = text;
+      msg.style.display = 'block';
+      msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      
+      setTimeout(function() {
+        msg.style.display = 'none';
+      }, 8000);
+    }
+    </script>
+  </body>
+</html>

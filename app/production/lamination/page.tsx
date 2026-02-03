@@ -56,6 +56,7 @@ export default function LaminationPage() {
       .from('weaving_rolls')
       .select('*, tkan_specifications(nazvanie_tkani)')
       .eq('status', 'completed') // Берем только готовые
+      .eq('location', 'weaving') // Только рулоны на складе ткачества (не в крое)
       .order('created_at', { ascending: false });
 
     if (mach) setMachines(mach);

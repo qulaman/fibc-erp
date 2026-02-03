@@ -5,7 +5,6 @@ import { Package } from "lucide-react";
 import AddMaterialForm from './AddMaterialForm';
 import DeleteButton from './DeleteButton';
 import TransactionDialog from './TransactionDialog';
-import InventoryCharts from './InventoryCharts'; // Импорт графиков
 
 // Функция для красивого форматирования чисел (например: 1 200.50)
 const formatNumber = (num: number) => new Intl.NumberFormat('ru-RU').format(num);
@@ -49,10 +48,6 @@ export default async function InventoryPage() {
           </Link>
         </div>
       </div>
-
-      {/* --- ИНФОГРАФИКА --- */}
-      {/* Передаем данные о материалах в графики */}
-      <InventoryCharts materials={materials || []} />
 
       {/* --- ФОРМА ДОБАВЛЕНИЯ --- */}
       <AddMaterialForm />

@@ -49,18 +49,23 @@ export default function ExtrusionPage() {
     Array(6).fill({ material_id: '', weight: '', batch: '' })
   );
 
+  // Справочники - добавляем полные спецификации тканей
+  const [fabricSpecs, setFabricSpecs] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: emp } = await supabase.from('employees').select('*').eq('is_active', true);
       const { data: mat } = await supabase.from('raw_materials').select('*').order('name');
       const { data: mach } = await supabase.from('equipment').select('*').eq('type', 'extruder');
-      const { data: specs } = await supabase.from('tkan_specifications').select('osnova_denye, utok_denye');
+      const { data: specs } = await supabase.from('tkan_specifications').select('*');
 
       if (emp) setEmployees(emp);
       if (mat) setMaterials(mat);
       if (mach) setMachines(mach);
 
       if (specs) {
+        setFabricSpecs(specs);
+
         const deniersSet = new Set<number>();
         specs.forEach(spec => {
           if (spec.osnova_denye) deniersSet.add(spec.osnova_denye);
@@ -147,6 +152,84 @@ export default function ExtrusionPage() {
 
   // Список популярных цветов
   const colors = ["Белый", "Черный", "Синий", "Зеленый", "Бежевый", "Серый", "Желтый"];
+
+  // Получаем рецептуру для выбранного типа нити
+  const getRecipeForDenier = () => {
+    if (!formData.yarn_denier) return null;
+
+    const selectedDenier = parseInt(formData.yarn_denier);
+    // Ищем спецификацию, где используется эта нить (основа или уток)
+    const spec = fabricSpecs.find(s =>
+      s.osnova_denye === selectedDenier || s.utok_denye === selectedDenier
+    );
+
+    if (!spec) return null;
+
+    const totalWeight = (spec.receptura_pp_kg || 0) +
+                       (spec.receptura_karbonat_kg || 0) +
+                       (spec.receptura_uf_stabilizator_kg || 0) +
+                       (spec.receptura_krasitel_kg || 0);
+
+    if (totalWeight === 0) return null;
+
+    // Если выбран цвет (не белый), корректируем рецептуру для цветной нити
+    const isColored = formData.yarn_color && formData.yarn_color !== 'Белый';
+
+    if (isColored) {
+      // Для цветной нити: фиксированные проценты
+      const ppPercent = 93.0;
+      const krasitelPercent = 1.0;
+
+      // Остальное (6%) распределяем пропорционально между карбонатом и УФ
+      const baseKarbonat = spec.receptura_karbonat_kg || 0;
+      const baseUF = spec.receptura_uf_stabilizator_kg || 0;
+      const baseOther = baseKarbonat + baseUF;
+
+      let karbonatPercent = 0;
+      let ufPercent = 0;
+
+      if (baseOther > 0) {
+        // Распределяем оставшиеся 6% пропорционально исходному соотношению
+        karbonatPercent = (baseKarbonat / baseOther) * 6.0;
+        ufPercent = (baseUF / baseOther) * 6.0;
+      } else {
+        // Если в базовой рецептуре нет карбоната и УФ, распределяем поровну
+        karbonatPercent = 3.0;
+        ufPercent = 3.0;
+      }
+
+      return {
+        pp_kg: spec.receptura_pp_kg || 0,
+        pp_percent: ppPercent.toFixed(1),
+        karbonat_kg: spec.receptura_karbonat_kg || 0,
+        karbonat_percent: karbonatPercent.toFixed(1),
+        uf_kg: spec.receptura_uf_stabilizator_kg || 0,
+        uf_percent: ufPercent.toFixed(1),
+        krasitel_kg: spec.receptura_krasitel_kg || 0,
+        krasitel_percent: krasitelPercent.toFixed(1),
+        total: totalWeight,
+        fabric_name: spec.nazvanie_tkani,
+        isColored: true
+      };
+    }
+
+    // Для белой нити: используем оригинальную рецептуру
+    return {
+      pp_kg: spec.receptura_pp_kg || 0,
+      pp_percent: (spec.receptura_pp_kg / totalWeight * 100).toFixed(1),
+      karbonat_kg: spec.receptura_karbonat_kg || 0,
+      karbonat_percent: (spec.receptura_karbonat_kg / totalWeight * 100).toFixed(1),
+      uf_kg: spec.receptura_uf_stabilizator_kg || 0,
+      uf_percent: (spec.receptura_uf_stabilizator_kg / totalWeight * 100).toFixed(1),
+      krasitel_kg: spec.receptura_krasitel_kg || 0,
+      krasitel_percent: (spec.receptura_krasitel_kg / totalWeight * 100).toFixed(1),
+      total: totalWeight,
+      fabric_name: spec.nazvanie_tkani,
+      isColored: false
+    };
+  };
+
+  const recipe = getRecipeForDenier();
 
   return (
     <div className="page-container selection:bg-red-900 selection:text-white">
@@ -256,6 +339,45 @@ export default function ExtrusionPage() {
                     <SelectContent>{yarnDeniers.map(y => <SelectItem key={y.denier} value={y.denier.toString()}>{y.name}</SelectItem>)}</SelectContent>
                  </Select>
                </div>
+
+               {/* РЕЦЕПТУРА (отображается когда выбран тип нити) */}
+               {recipe && (
+                 <div className={`border p-3 rounded-lg space-y-2 animate-in fade-in ${
+                   recipe.isColored
+                     ? 'bg-purple-900/10 border-purple-800/30'
+                     : 'bg-blue-900/10 border-blue-800/30'
+                 }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-xs font-bold uppercase ${
+                        recipe.isColored ? 'text-purple-400' : 'text-blue-400'
+                      }`}>
+                        🧪 Соотношение для дозаторов
+                        {recipe.isColored && ' (Цветная)'}
+                      </span>
+                      <span className="text-[10px] text-zinc-500">{recipe.fabric_name}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
+                        <span className="text-zinc-400 text-xs">Полипропилен:</span>
+                        <span className="font-mono text-green-400 font-bold text-lg">{recipe.pp_percent}%</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
+                        <span className="text-zinc-400 text-xs">Карбонат (Мел):</span>
+                        <span className="font-mono text-white font-bold text-lg">{recipe.karbonat_percent}%</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
+                        <span className="text-zinc-400 text-xs">УФ-стабилизатор:</span>
+                        <span className="font-mono text-white font-bold text-lg">{recipe.uf_percent}%</span>
+                      </div>
+                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
+                        <span className="text-zinc-400 text-xs">Краситель:</span>
+                        <span className={`font-mono font-bold text-lg ${
+                          recipe.isColored ? 'text-purple-400' : 'text-zinc-600'
+                        }`}>{recipe.krasitel_percent}%</span>
+                      </div>
+                    </div>
+                 </div>
+               )}
 
                {/* 2. ЦВЕТ И ШИРИНА (НОВЫЕ ПОЛЯ) */}
                <div className="grid grid-cols-2 gap-4">

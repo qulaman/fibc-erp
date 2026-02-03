@@ -1,0 +1,391 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * МОДУЛЬ ЛАБОРАТОРИИ v1.0
+ * ═══════════════════════════════════════════════════════════════════════════
+ * FIBC Kazakhstan - Лаборатория контроля качества
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// КОНФИГУРАЦИЯ
+// ═══════════════════════════════════════════════════════════════════════════
+
+var LAB_SHEETS = {
+  YARN: 'Лаб_Испытания_Нить',
+  EXTRUDER: 'Лаб_Испытания_Экструдер',
+  MACHINE: 'Лаб_Испытания_Станок_КТС',
+  FABRIC: 'Лаб_Испытания_Ткань_КТС',
+  STRAP: 'Лаб_Испытания_Стропы_ПТС',
+  LAMINATION: 'Лаб_Испытания_Ламинация',
+  MFI: 'Лаб_ПТР_Сырья'
+};
+
+function getLaboratoryConfig() {
+  return LAB_SHEETS;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ГЕНЕРАЦИЯ НОМЕРОВ ДОКУМЕНТОВ
+// ═══════════════════════════════════════════════════════════════════════════
+
+function generateLabDocNumber(prefix, sequence) {
+  var now = new Date();
+  var year = now.getFullYear().toString();
+  var month = ('0' + (now.getMonth() + 1)).slice(-2);
+  var day = ('0' + now.getDate()).slice(-2);
+  var seq = ('000' + sequence).slice(-4);
+  
+  return prefix + '-' + year + month + day + '-' + seq;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// СПРАВОЧНИКИ
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getLabOperators() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(MASTER_SHEETS.EMPLOYEES);
+  if (!sheet) return [];
+  
+  var data = sheet.getDataRange().getValues();
+  var operators = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][3] === 'Лаборатория' && data[i][6] === 'Активно') {
+      operators.push({ 
+        id: data[i][0].toString(), 
+        name: data[i][1] || '',
+        position: data[i][2] || ''
+      });
+    }
+  }
+  
+  return operators;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 1. ИСПЫТАНИЯ НИТИ
+// ═══════════════════════════════════════════════════════════════════════════
+
+function addYarnTest(formData) {
+  try {
+    Logger.log('=== addYarnTest: START ===');
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(LAB_SHEETS.YARN);
+    if (!sheet) return { success: false, message: '❌ Журнал не найден!' };
+    
+    var lastRow = sheet.getLastRow();
+    var targetRow = Math.max(lastRow + 1, 2);
+    var docNumber = generateLabDocNumber('LAB-YARN', targetRow - 1);
+    var now = new Date();
+    var dateString = Utilities.formatDate(now, Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    
+    sheet.getRange(targetRow, 1).setValue(docNumber);
+    sheet.getRange(targetRow, 2).setValue(dateString);
+    sheet.getRange(targetRow, 3).setValue(formData.yarnCode || '');
+    sheet.getRange(targetRow, 4).setValue(formData.batch || '');
+    sheet.getRange(targetRow, 5).setValue(formData.denier || 0);
+    sheet.getRange(targetRow, 6).setValue(formData.strength || 0);
+    sheet.getRange(targetRow, 7).setValue(formData.elasticity || 0);
+    sheet.getRange(targetRow, 8).setValue(formData.width || 0);
+    sheet.getRange(targetRow, 9).setValue(formData.result || '');
+    sheet.getRange(targetRow, 10).setValue(formData.operator || '');
+    sheet.getRange(targetRow, 11).setValue(formData.notes || '');
+    sheet.getRange(targetRow, 12).setValue(STATUSES.COMPLETED);
+    
+    SpreadsheetApp.flush();
+    
+    return { 
+      success: true, 
+      message: '✅ Испытание нити записано!\n\n📄 Документ: ' + docNumber 
+    };
+    
+  } catch (error) {
+    Logger.log('❌ Ошибка: ' + error);
+    return { success: false, message: '❌ Ошибка: ' + error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 2. ИСПЫТАНИЯ ЭКСТРУДЕРА
+// ═══════════════════════════════════════════════════════════════════════════
+
+function addExtruderTest(formData) {
+  try {
+    Logger.log('=== addExtruderTest: START ===');
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(LAB_SHEETS.EXTRUDER);
+    if (!sheet) return { success: false, message: '❌ Журнал не найден!' };
+    
+    var lastRow = sheet.getLastRow();
+    var targetRow = Math.max(lastRow + 1, 2);
+    var docNumber = generateLabDocNumber('LAB-EXT', targetRow - 1);
+    var dateString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    
+    sheet.getRange(targetRow, 1).setValue(docNumber);
+    sheet.getRange(targetRow, 2).setValue(dateString);
+    sheet.getRange(targetRow, 3).setValue(formData.shift || '');
+    sheet.getRange(targetRow, 4).setValue(formData.machine || '');
+    sheet.getRange(targetRow, 5).setValue(formData.temp1 || 0);
+    sheet.getRange(targetRow, 6).setValue(formData.temp2 || 0);
+    sheet.getRange(targetRow, 7).setValue(formData.temp3 || 0);
+    sheet.getRange(targetRow, 8).setValue(formData.temp4 || 0);
+    sheet.getRange(targetRow, 9).setValue(formData.temp5 || 0);
+    sheet.getRange(targetRow, 10).setValue(formData.annealing || 0);
+    sheet.getRange(targetRow, 11).setValue(formData.d1 || 0);
+    sheet.getRange(targetRow, 12).setValue(formData.d2 || 0);
+    sheet.getRange(targetRow, 13).setValue(formData.d3 || 0);
+    sheet.getRange(targetRow, 14).setValue(formData.d4 || 0);
+    sheet.getRange(targetRow, 15).setValue(formData.d5 || 0);
+    sheet.getRange(targetRow, 16).setValue(formData.d6 || 0);
+    sheet.getRange(targetRow, 17).setValue(formData.result || '');
+    sheet.getRange(targetRow, 18).setValue(formData.operator || '');
+    sheet.getRange(targetRow, 19).setValue(formData.notes || '');
+    sheet.getRange(targetRow, 20).setValue(STATUSES.COMPLETED);
+    
+    SpreadsheetApp.flush();
+    
+    return { 
+      success: true, 
+      message: '✅ Испытание экструдера записано!\n\n📄 Документ: ' + docNumber 
+    };
+    
+  } catch (error) {
+    Logger.log('❌ Ошибка: ' + error);
+    return { success: false, message: '❌ Ошибка: ' + error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 3. ИСПЫТАНИЯ СТАНКОВ КТС
+// ═══════════════════════════════════════════════════════════════════════════
+
+function addMachineTest(formData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(LAB_SHEETS.MACHINE);
+    if (!sheet) return { success: false, message: '❌ Журнал не найден!' };
+    
+    var lastRow = sheet.getLastRow();
+    var targetRow = Math.max(lastRow + 1, 2);
+    var docNumber = generateLabDocNumber('LAB-MCH', targetRow - 1);
+    var dateString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    
+    sheet.getRange(targetRow, 1).setValue(docNumber);
+    sheet.getRange(targetRow, 2).setValue(dateString);
+    sheet.getRange(targetRow, 3).setValue(formData.machineNumber || '');
+    sheet.getRange(targetRow, 4).setValue(formData.width || 0);
+    sheet.getRange(targetRow, 5).setValue(formData.visualCheck || '');
+    sheet.getRange(targetRow, 6).setValue(formData.defects || '');
+    sheet.getRange(targetRow, 7).setValue(formData.result || '');
+    sheet.getRange(targetRow, 8).setValue(formData.operator || '');
+    sheet.getRange(targetRow, 9).setValue(formData.notes || '');
+    sheet.getRange(targetRow, 10).setValue(STATUSES.COMPLETED);
+    
+    SpreadsheetApp.flush();
+    
+    return { 
+      success: true, 
+      message: '✅ Испытание станка записано!\n\n📄 Документ: ' + docNumber 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Ошибка: ' + error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 4. ИСПЫТАНИЯ ТКАНИ КТС
+// ═══════════════════════════════════════════════════════════════════════════
+
+function addFabricTest(formData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(LAB_SHEETS.FABRIC);
+    if (!sheet) return { success: false, message: '❌ Журнал не найден!' };
+    
+    var lastRow = sheet.getLastRow();
+    var targetRow = Math.max(lastRow + 1, 2);
+    var docNumber = generateLabDocNumber('LAB-FAB', targetRow - 1);
+    var dateString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    
+    sheet.getRange(targetRow, 1).setValue(docNumber);
+    sheet.getRange(targetRow, 2).setValue(dateString);
+    sheet.getRange(targetRow, 3).setValue(formData.machineNumber || '');
+    sheet.getRange(targetRow, 4).setValue(formData.rollNumber || '');
+    sheet.getRange(targetRow, 5).setValue(formData.fabricCode || '');
+    // Основа
+    sheet.getRange(targetRow, 6).setValue(formData.warpStrengthKg || 0);
+    sheet.getRange(targetRow, 7).setValue(formData.warpStrengthN || 0);
+    sheet.getRange(targetRow, 8).setValue(formData.warpElasticity || 0);
+    // Уток
+    sheet.getRange(targetRow, 9).setValue(formData.weftStrengthKg || 0);
+    sheet.getRange(targetRow, 10).setValue(formData.weftStrengthN || 0);
+    sheet.getRange(targetRow, 11).setValue(formData.weftElasticity || 0);
+    // Плотность
+    sheet.getRange(targetRow, 12).setValue(formData.density || 0);
+    sheet.getRange(targetRow, 13).setValue(formData.result || '');
+    sheet.getRange(targetRow, 14).setValue(formData.operator || '');
+    sheet.getRange(targetRow, 15).setValue(formData.notes || '');
+    sheet.getRange(targetRow, 16).setValue(STATUSES.COMPLETED);
+    
+    SpreadsheetApp.flush();
+    
+    return { 
+      success: true, 
+      message: '✅ Испытание ткани записано!\n\n📄 Документ: ' + docNumber 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Ошибка: ' + error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 5. ИСПЫТАНИЯ СТРОП ПТС
+// ═══════════════════════════════════════════════════════════════════════════
+
+function addStrapTest(formData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(LAB_SHEETS.STRAP);
+    if (!sheet) return { success: false, message: '❌ Журнал не найден!' };
+    
+    var lastRow = sheet.getLastRow();
+    var targetRow = Math.max(lastRow + 1, 2);
+    var docNumber = generateLabDocNumber('LAB-STR', targetRow - 1);
+    var dateString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    
+    sheet.getRange(targetRow, 1).setValue(docNumber);
+    sheet.getRange(targetRow, 2).setValue(dateString);
+    sheet.getRange(targetRow, 3).setValue(formData.batchNumber || '');
+    sheet.getRange(targetRow, 4).setValue(formData.strapType || '');
+    sheet.getRange(targetRow, 5).setValue(formData.tensionKg || 0);
+    sheet.getRange(targetRow, 6).setValue(formData.tensionN || 0);
+    sheet.getRange(targetRow, 7).setValue(formData.elasticity || 0);
+    sheet.getRange(targetRow, 8).setValue(formData.density || 0);
+    sheet.getRange(targetRow, 9).setValue(formData.result || '');
+    sheet.getRange(targetRow, 10).setValue(formData.operator || '');
+    sheet.getRange(targetRow, 11).setValue(formData.notes || '');
+    sheet.getRange(targetRow, 12).setValue(STATUSES.COMPLETED);
+    
+    SpreadsheetApp.flush();
+    
+    return { 
+      success: true, 
+      message: '✅ Испытание строп записано!\n\n📄 Документ: ' + docNumber 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Ошибка: ' + error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. ИСПЫТАНИЯ ЛАМИНАЦИИ
+// ═══════════════════════════════════════════════════════════════════════════
+
+function addLaminationTest(formData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(LAB_SHEETS.LAMINATION);
+    if (!sheet) return { success: false, message: '❌ Журнал не найден!' };
+    
+    var lastRow = sheet.getLastRow();
+    var targetRow = Math.max(lastRow + 1, 2);
+    var docNumber = generateLabDocNumber('LAB-LAM', targetRow - 1);
+    var dateString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    
+    sheet.getRange(targetRow, 1).setValue(docNumber);
+    sheet.getRange(targetRow, 2).setValue(dateString);
+    sheet.getRange(targetRow, 3).setValue(formData.rollNumber || '');
+    sheet.getRange(targetRow, 4).setValue(formData.rollInfo || '');
+    sheet.getRange(targetRow, 5).setValue(formData.width || 0);
+    // Основа
+    sheet.getRange(targetRow, 6).setValue(formData.warpStrengthKg || 0);
+    sheet.getRange(targetRow, 7).setValue(formData.warpStrengthN || 0);
+    sheet.getRange(targetRow, 8).setValue(formData.warpElasticity || 0);
+    // Уток
+    sheet.getRange(targetRow, 9).setValue(formData.weftStrengthKg || 0);
+    sheet.getRange(targetRow, 10).setValue(formData.weftStrengthN || 0);
+    sheet.getRange(targetRow, 11).setValue(formData.weftElasticity || 0);
+    // Плотность и адгезия
+    sheet.getRange(targetRow, 12).setValue(formData.density || 0);
+    sheet.getRange(targetRow, 13).setValue(formData.adhesion || '');
+    sheet.getRange(targetRow, 14).setValue(formData.result || '');
+    sheet.getRange(targetRow, 15).setValue(formData.operator || '');
+    sheet.getRange(targetRow, 16).setValue(formData.notes || '');
+    sheet.getRange(targetRow, 17).setValue(STATUSES.COMPLETED);
+    
+    SpreadsheetApp.flush();
+    
+    return { 
+      success: true, 
+      message: '✅ Испытание ламинации записано!\n\n📄 Документ: ' + docNumber 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Ошибка: ' + error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 7. ПТР СЫРЬЯ
+// ═══════════════════════════════════════════════════════════════════════════
+
+function addMFITest(formData) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(LAB_SHEETS.MFI);
+    if (!sheet) return { success: false, message: '❌ Журнал не найден!' };
+    
+    var lastRow = sheet.getLastRow();
+    var targetRow = Math.max(lastRow + 1, 2);
+    var docNumber = generateLabDocNumber('LAB-MFI', targetRow - 1);
+    var dateString = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd.MM.yyyy');
+    
+    sheet.getRange(targetRow, 1).setValue(docNumber);
+    sheet.getRange(targetRow, 2).setValue(dateString);
+    sheet.getRange(targetRow, 3).setValue(formData.materialType || '');
+    sheet.getRange(targetRow, 4).setValue(formData.materialCode || '');
+    sheet.getRange(targetRow, 5).setValue(formData.batch || '');
+    sheet.getRange(targetRow, 6).setValue(formData.mfi || 0);
+    sheet.getRange(targetRow, 7).setValue(formData.temperature || 0);
+    sheet.getRange(targetRow, 8).setValue(formData.load || 0);
+    sheet.getRange(targetRow, 9).setValue(formData.result || '');
+    sheet.getRange(targetRow, 10).setValue(formData.operator || '');
+    sheet.getRange(targetRow, 11).setValue(formData.notes || '');
+    sheet.getRange(targetRow, 12).setValue(STATUSES.COMPLETED);
+    
+    SpreadsheetApp.flush();
+    
+    return { 
+      success: true, 
+      message: '✅ ПТР сырья записан!\n\n📄 Документ: ' + docNumber 
+    };
+    
+  } catch (error) {
+    return { success: false, message: '❌ Ошибка: ' + error.message };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// МЕНЮ
+// ═══════════════════════════════════════════════════════════════════════════
+
+function openLaboratorySidebar() {
+  var html = HtmlService.createHtmlOutputFromFile('SidebarЛаборатория')
+    .setTitle('🔬 Лаборатория')
+    .setWidth(500);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function onOpenLab() {
+  var ui = SpreadsheetApp.getUi();
+  ui.createMenu('🔬 ЛАБОРАТОРИЯ')
+    .addItem('📝 Внести данные испытаний', 'openLaboratorySidebar')
+    .addSeparator()
+    .addItem('⚙️ Установить модуль', 'setupLaboratoryModule')
+    .addToUi();
+}

@@ -9,7 +9,6 @@ import {
   Users,
   FileText,
   TrendingUp,
-  Settings,
   Home,
   Warehouse,
   ShieldCheck,
@@ -21,7 +20,10 @@ import {
   Ribbon,
   LogOut,
   User as UserIcon,
-  X
+  X,
+  AlertTriangle,
+  Microscope,
+  Printer
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/lib/auth-context';
@@ -50,6 +52,7 @@ const navigationItems = [
     submenu: [
       { name: 'Производство', href: '/production/weaving' },
       { name: 'Журнал', href: '/production/weaving/history' },
+      { name: 'Заправочные карты', href: '/production/weaving/weaving-setup' },
       { name: 'Табель', href: '/production/weaving/timesheet' },
       { name: 'Задачи', href: '/tasks/weaving' },
     ]
@@ -83,8 +86,18 @@ const navigationItems = [
     submenu: [
       { name: 'Производство', href: '/production/cutting' },
       { name: 'Журнал', href: '/production/cutting/history' },
+      { name: 'Рулоны в крое', href: '/production/cutting/rolls' },
       { name: 'Табель', href: '/production/cutting/timesheet' },
       { name: 'Задачи', href: '/tasks/cutting' },
+    ]
+  },
+  {
+    name: 'Печать',
+    href: '/production/printing',
+    icon: Printer,
+    submenu: [
+      { name: 'Производство', href: '/production/printing' },
+      { name: 'Журнал', href: '/production/printing/history' },
     ]
   },
   {
@@ -107,6 +120,20 @@ const navigationItems = [
       { name: 'Приёмка ОТК', href: '/production/qc' },
       { name: 'Журнал', href: '/production/qc/history' },
       { name: 'Задачи', href: '/tasks/qc' },
+    ]
+  },
+  {
+    name: 'Отходы и брак',
+    href: '/production/waste',
+    icon: AlertTriangle
+  },
+  {
+    name: 'Лаборатория',
+    href: '/production/laboratory',
+    icon: Microscope,
+    submenu: [
+      { name: 'Внести данные', href: '/production/laboratory' },
+      { name: 'Журнал', href: '/production/laboratory/journal' },
     ]
   },
   {
@@ -139,8 +166,7 @@ const navigationItems = [
       { name: 'Склад строп', href: '/warehouse/straps' },
       { name: 'Кроеные детали', href: '/warehouse/cutting-parts' },
       { name: 'Готовая продукция', href: '/warehouse/finished-goods' },
-      { name: 'Сырье (прочее)', href: '/inventory' },
-      { name: 'История операций', href: '/inventory/history' },
+      { name: 'Сырье', href: '/inventory' },
     ]
   },
   {
@@ -189,12 +215,12 @@ export default function Navigation({ isOpen, onClose }: { isOpen?: boolean; onCl
   const isActive = (item: any) => {
     if (item.href === '/') return pathname === '/';
 
-    // Проверяем основной href
-    if (pathname.startsWith(item.href)) return true;
+    const matchesPath = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
-    // Проверяем submenu если есть
+    if (matchesPath(item.href)) return true;
+
     if (item.submenu) {
-      return item.submenu.some((subitem: any) => pathname.startsWith(subitem.href));
+      return item.submenu.some((subitem: any) => matchesPath(subitem.href));
     }
 
     return false;
@@ -226,9 +252,9 @@ export default function Navigation({ isOpen, onClose }: { isOpen?: boolean; onCl
         </button>
 
         {/* Logo */}
-        <div className="px-6 py-8 border-b border-zinc-800">
-          <Link href="/" className="group block">
-            <Logo className="group-hover:opacity-90 transition-opacity h-14 w-full" />
+        <div className="px-2 py-6 border-b border-zinc-800 flex items-center justify-center">
+          <Link href="/" className="group block w-full">
+            <Logo className="group-hover:opacity-90 transition-opacity h-20 w-full" />
           </Link>
         </div>
 
@@ -314,13 +340,6 @@ export default function Navigation({ isOpen, onClose }: { isOpen?: boolean; onCl
 
         {/* Settings & Logout */}
         <div className="space-y-1">
-          <Link
-            href="/settings"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-900 transition-all text-sm"
-          >
-            <Settings size={18} />
-            <span className="font-medium">Настройки</span>
-          </Link>
           <button
             onClick={handleSignOut}
             className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-900/10 transition-all text-sm"
@@ -329,6 +348,11 @@ export default function Navigation({ isOpen, onClose }: { isOpen?: boolean; onCl
             <span className="font-medium">Выход</span>
           </button>
         </div>
+
+        {/* Версия */}
+        <p className="text-[10px] text-zinc-600 text-center pt-2">
+          Версия 1.1 FIBC KZ x Akdaulet Almas (C)
+        </p>
         </div>
       </nav>
     </>
