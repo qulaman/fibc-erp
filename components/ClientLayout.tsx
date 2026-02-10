@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import Navigation from '@/components/Navigation';
 import { Menu } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 
 // Публичные страницы, не требующие авторизации
 const PUBLIC_ROUTES = ['/login'];
@@ -35,7 +36,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // Проверка активности профиля
     if (user && profile && !profile.is_active) {
-      alert('Ваш аккаунт деактивирован. Обратитесь к администратору.');
+      toast.error('Ваш аккаунт деактивирован. Обратитесь к администратору.');
       router.push('/login');
       return;
     }
@@ -88,6 +89,25 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <AuthGuard>
         {children}
       </AuthGuard>
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: '#18181b',
+            border: '2px solid #3f3f46',
+            color: '#fafafa',
+            fontSize: '16px',
+            padding: '20px 24px',
+            minWidth: '420px',
+            maxWidth: '600px',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+          },
+          className: 'toast-custom',
+        }}
+      />
     </AuthProvider>
   );
 }

@@ -63,6 +63,7 @@ export default function ExtrusionDetailsDialog({ record }: { record: any }) {
                 <span className="text-zinc-500">Намотчики:</span>
                 <span>{record.operator_winder1?.full_name || '-'}</span>
                 <span>{record.operator_winder2?.full_name || '-'}</span>
+                {record.operator_winder3?.full_name && <span>{record.operator_winder3.full_name}</span>}
              </div>
           </div>
 

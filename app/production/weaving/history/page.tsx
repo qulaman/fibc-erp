@@ -22,6 +22,7 @@ export default function WeavingHistoryPage() {
       .from('production_weaving')
       .select(`
         *,
+        is_final_shift,
         employees (full_name),
         weaving_rolls (
           roll_number,
@@ -102,12 +103,18 @@ export default function WeavingHistoryPage() {
                const fabricName = roll?.tkan_specifications?.nazvanie_tkani || 'Неизвестная ткань';
 
                return (
-                <Card key={record.id} className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors">
+                <Card key={record.id} className={`border transition-colors ${
+                  record.is_final_shift
+                    ? 'bg-zinc-900 border-zinc-800 hover:border-green-800'
+                    : 'bg-zinc-900/50 border-zinc-800/50 hover:border-zinc-700'
+                }`}>
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-white text-lg flex items-center gap-2">
-                          <Scissors size={18} className="text-blue-500"/>
+                        <CardTitle className={`text-lg flex items-center gap-2 ${
+                          record.is_final_shift ? 'text-white' : 'text-zinc-400'
+                        }`}>
+                          <Scissors size={18} className={record.is_final_shift ? 'text-green-500' : 'text-gray-500'}/>
                           {fabricName}
                         </CardTitle>
                         <div className="flex items-center gap-2 mt-1 text-sm text-zinc-400">
@@ -120,11 +127,9 @@ export default function WeavingHistoryPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {roll && (
-                          <Badge variant="outline" className={roll.status === 'completed' ? 'text-green-400 border-green-900 bg-green-900/10' : 'text-blue-400 border-blue-900 bg-blue-900/10'}>
-                            {roll.status === 'completed' ? 'Рулон Завершен' : 'В работе'}
-                          </Badge>
-                        )}
+                        <Badge variant="outline" className={record.is_final_shift ? 'text-green-400 border-green-900 bg-green-900/10' : 'text-gray-400 border-gray-700 bg-gray-900/10'}>
+                          {record.is_final_shift ? '✓ Рулон Завершен' : '◦ В работе'}
+                        </Badge>
                         {isAdmin && (
                           <button
                             onClick={() => handleDelete(record.id, record.doc_number)}
@@ -139,7 +144,7 @@ export default function WeavingHistoryPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-8 text-sm bg-zinc-950/50 p-4 rounded-lg border border-zinc-800/50">
-                      
+
                       {/* 1. Станок */}
                       <div>
                         <p className="text-zinc-500 flex items-center gap-1 mb-1"><Scroll size={12}/> Станок</p>
@@ -167,10 +172,39 @@ export default function WeavingHistoryPage() {
                         <div className="flex flex-col">
                            <span className="text-white font-mono font-medium">{roll?.roll_number}</span>
                            <span className="text-xs text-zinc-500">Всего: {roll?.total_length} м</span>
+                           {roll?.total_weight > 0 && (
+                             <span className="text-xs text-emerald-400">Вес: {roll.total_weight} кг</span>
+                           )}
                         </div>
                       </div>
 
+                      {/* 5. Расход нити (если есть) */}
+                      {(record.warp_usage_kg > 0 || record.weft_usage_kg > 0) && (
+                        <>
+                          {record.warp_usage_kg > 0 && (
+                            <div>
+                              <p className="text-zinc-500 mb-1">Расход основы</p>
+                              <p className="text-white font-mono">{record.warp_usage_kg} кг</p>
+                            </div>
+                          )}
+                          {record.weft_usage_kg > 0 && (
+                            <div>
+                              <p className="text-zinc-500 mb-1">Расход утка</p>
+                              <p className="text-white font-mono">{record.weft_usage_kg} кг</p>
+                            </div>
+                          )}
+                        </>
+                      )}
+
                     </div>
+
+                    {/* Примечания (если есть) */}
+                    {record.notes && (
+                      <div className="mt-3 p-3 bg-zinc-900/50 rounded border border-zinc-800/50">
+                        <p className="text-xs text-zinc-500 mb-1">Примечания:</p>
+                        <p className="text-sm text-zinc-300 italic">{record.notes}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                )

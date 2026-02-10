@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/my-select";
+import { toast } from 'sonner';
 
 export interface Employee {
   id: string;
@@ -156,7 +157,7 @@ export default function EmployeesDataTable({
   const handleSaveEdit = async () => {
     if (!editingId) return;
     if (!editData.full_name?.trim() || !editData.role) {
-      alert('ФИО и роль обязательны');
+      toast.warning('ФИО и роль обязательны');
       return;
     }
 
@@ -196,16 +197,16 @@ export default function EmployeesDataTable({
         </div>
 
         {/* Вторая строка: Фильтры */}
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 md:gap-4">
           {/* Фильтр по роли */}
           <div className="flex items-center gap-2">
-            <span className="text-zinc-400 text-sm font-medium">Должность:</span>
+            <span className="text-zinc-400 text-xs md:text-sm font-medium hidden sm:inline">Должность:</span>
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-48 bg-zinc-950 border-zinc-700 text-white">
+              <SelectTrigger className="w-32 md:w-48 bg-zinc-950 border-zinc-700 text-white text-xs md:text-sm">
                 <SelectValue placeholder="Все" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Все</SelectItem>
+                <SelectItem value="all">Все должности</SelectItem>
                 {uniqueRoles.map(role => (
                   <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
                 ))}
@@ -215,13 +216,13 @@ export default function EmployeesDataTable({
 
           {/* Фильтр по цеху */}
           <div className="flex items-center gap-2">
-            <span className="text-zinc-400 text-sm font-medium">Цех:</span>
+            <span className="text-zinc-400 text-xs md:text-sm font-medium hidden sm:inline">Цех:</span>
             <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-48 bg-zinc-950 border-zinc-700 text-white">
+              <SelectTrigger className="w-28 md:w-48 bg-zinc-950 border-zinc-700 text-white text-xs md:text-sm">
                 <SelectValue placeholder="Все" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Все</SelectItem>
+                <SelectItem value="all">Все цеха</SelectItem>
                 {uniqueDepartments.map(dept => (
                   <SelectItem key={dept.value} value={dept.value}>{dept.label}</SelectItem>
                 ))}
@@ -230,17 +231,17 @@ export default function EmployeesDataTable({
           </div>
 
           {/* Фильтр по статусу */}
-          <div className="flex items-center gap-2">
-            <span className="text-zinc-400 text-sm font-medium">Статус:</span>
-            <div className="flex gap-2">
+          <div className="flex items-center gap-1 md:gap-2">
+            <span className="text-zinc-400 text-xs md:text-sm font-medium hidden md:inline">Статус:</span>
+            <div className="flex gap-1 md:gap-2">
               <Button
                 variant={statusFilter === 'all' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('all')}
-                className={statusFilter === 'all'
+                className={`text-xs px-2 md:px-3 ${statusFilter === 'all'
                   ? 'bg-zinc-700 text-white hover:bg-zinc-600'
                   : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                }
+                }`}
               >
                 Все
               </Button>
@@ -248,23 +249,23 @@ export default function EmployeesDataTable({
                 variant={statusFilter === 'active' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('active')}
-                className={statusFilter === 'active'
+                className={`text-xs px-2 md:px-3 ${statusFilter === 'active'
                   ? 'bg-green-600 text-white hover:bg-green-700'
                   : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                }
+                }`}
               >
-                Активные
+                <span className="hidden sm:inline">Активные</span><span className="sm:hidden">Акт</span>
               </Button>
               <Button
                 variant={statusFilter === 'inactive' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setStatusFilter('inactive')}
-                className={statusFilter === 'inactive'
+                className={`text-xs px-2 md:px-3 ${statusFilter === 'inactive'
                   ? 'bg-red-600 text-white hover:bg-red-700'
                   : 'bg-zinc-950 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                }
+                }`}
               >
-                Неактивные
+                <span className="hidden sm:inline">Неактивные</span><span className="sm:hidden">Неакт</span>
               </Button>
             </div>
           </div>
@@ -278,18 +279,18 @@ export default function EmployeesDataTable({
             <thead className="bg-zinc-950">
               <tr>
                 <th
-                  className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors"
+                  className="px-2 md:px-4 py-3 md:py-4 text-left font-bold text-zinc-500 uppercase text-[10px] md:text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors"
                   onClick={() => handleSort('name')}
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 md:gap-2">
                     <span>ФИО</span>
                     {sortField === 'name' && (
-                      sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                      sortDirection === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
                     )}
                   </div>
                 </th>
                 <th
-                  className="px-4 py-4 text-left font-bold text-zinc-500 uppercase text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors"
+                  className="px-2 md:px-4 py-3 md:py-4 text-left font-bold text-zinc-500 uppercase text-[10px] md:text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors hidden sm:table-cell"
                   onClick={() => handleSort('role')}
                 >
                   <div className="flex items-center gap-2">
@@ -300,7 +301,7 @@ export default function EmployeesDataTable({
                   </div>
                 </th>
                 <th
-                  className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors"
+                  className="px-2 md:px-4 py-3 md:py-4 text-center font-bold text-zinc-500 uppercase text-[10px] md:text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors hidden lg:table-cell"
                   onClick={() => handleSort('department')}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -310,11 +311,11 @@ export default function EmployeesDataTable({
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs tracking-wider">
+                <th className="px-2 md:px-4 py-3 md:py-4 text-center font-bold text-zinc-500 uppercase text-[10px] md:text-xs tracking-wider">
                   Статус
                 </th>
                 <th
-                  className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors"
+                  className="px-2 md:px-4 py-3 md:py-4 text-center font-bold text-zinc-500 uppercase text-[10px] md:text-xs tracking-wider cursor-pointer hover:bg-zinc-900 transition-colors hidden md:table-cell"
                   onClick={() => handleSort('birthday')}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -325,8 +326,8 @@ export default function EmployeesDataTable({
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-4 text-center font-bold text-zinc-500 uppercase text-xs tracking-wider">
-                  Действия
+                <th className="px-2 md:px-4 py-3 md:py-4 text-center font-bold text-zinc-500 uppercase text-[10px] md:text-xs tracking-wider">
+                  <span className="hidden sm:inline">Действия</span>
                 </th>
               </tr>
             </thead>
@@ -354,28 +355,31 @@ export default function EmployeesDataTable({
                       } ${isBirthdayToday ? 'bg-pink-950/20' : ''}`}
                     >
                       {/* ФИО */}
-                      <td className="px-4 py-4">
+                      <td className="px-2 md:px-4 py-2 md:py-4">
                         {isEditing ? (
                           <Input
                             value={editData.full_name || ''}
                             onChange={(e) => setEditData({ ...editData, full_name: e.target.value })}
-                            className="bg-zinc-950 border-zinc-700 text-white"
+                            className="bg-zinc-950 border-zinc-700 text-white text-sm"
                             placeholder="ФИО"
                           />
                         ) : (
-                          <div className="flex items-center gap-3">
-                            <div className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className={`h-6 w-6 md:h-8 md:w-8 rounded-full flex items-center justify-center font-bold text-xs md:text-sm ${
                               isBirthdayToday ? 'bg-pink-600 text-white animate-pulse' : 'bg-zinc-800 text-zinc-400'
                             }`}>
                               {emp.full_name.charAt(0)}
                             </div>
-                            <span className="text-white font-medium">{emp.full_name}</span>
+                            <div>
+                              <span className="text-white font-medium text-xs md:text-sm">{emp.full_name}</span>
+                              <div className="sm:hidden text-[10px] text-zinc-500">{roleLabel}</div>
+                            </div>
                           </div>
                         )}
                       </td>
 
                       {/* Должность */}
-                      <td className="px-4 py-4">
+                      <td className="px-2 md:px-4 py-2 md:py-4 hidden sm:table-cell">
                         {isEditing ? (
                           <Select
                             value={editData.role || emp.role}
@@ -391,14 +395,14 @@ export default function EmployeesDataTable({
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Badge variant="outline" className="border-blue-700 text-blue-400 bg-blue-900/10">
+                          <Badge variant="outline" className="border-blue-700 text-blue-400 bg-blue-900/10 text-[10px] md:text-xs">
                             {roleLabel}
                           </Badge>
                         )}
                       </td>
 
                       {/* Цех */}
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 md:px-4 py-2 md:py-4 text-center hidden lg:table-cell">
                         {isEditing ? (
                           <Select
                             value={editData.department || emp.department || ''}
@@ -423,13 +427,13 @@ export default function EmployeesDataTable({
                       </td>
 
                       {/* Статус */}
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 md:px-4 py-2 md:py-4 text-center">
                         {isEditing ? (
                           <Select
                             value={editData.is_active !== undefined ? String(editData.is_active) : String(emp.is_active)}
                             onValueChange={(v) => setEditData({ ...editData, is_active: v === 'true' })}
                           >
-                            <SelectTrigger className="bg-zinc-950 border-zinc-700 text-white w-32 mx-auto">
+                            <SelectTrigger className="bg-zinc-950 border-zinc-700 text-white w-24 md:w-32 mx-auto text-xs md:text-sm">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -440,18 +444,19 @@ export default function EmployeesDataTable({
                         ) : (
                           <Badge
                             variant="outline"
-                            className={emp.is_active
+                            className={`text-[10px] md:text-xs ${emp.is_active
                               ? "text-green-400 border-green-700 bg-green-900/10"
                               : "text-red-400 border-red-700 bg-red-900/10"
-                            }
+                            }`}
                           >
-                            {emp.is_active ? 'Активен' : 'Уволен'}
+                            <span className="hidden sm:inline">{emp.is_active ? 'Активен' : 'Уволен'}</span>
+                            <span className="sm:hidden">{emp.is_active ? 'Акт' : 'Ув'}</span>
                           </Badge>
                         )}
                       </td>
 
                       {/* День рождения */}
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-2 md:px-4 py-2 md:py-4 text-center hidden md:table-cell">
                         {isEditing ? (
                           <Input
                             type="date"
@@ -483,7 +488,7 @@ export default function EmployeesDataTable({
                       </td>
 
                       {/* Действия */}
-                      <td className="px-4 py-4">
+                      <td className="px-2 md:px-4 py-2 md:py-4">
                         <div className="flex items-center justify-center gap-2">
                           {isEditing ? (
                             <>

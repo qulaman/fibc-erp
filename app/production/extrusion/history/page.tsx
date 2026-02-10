@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, FileText, Calendar, Plus, Trash2 } from "lucide-react";
@@ -33,7 +34,8 @@ export default function ExtrusionHistoryPage() {
         equipment (name),
         operator_extruder:employees!operator_extruder_id (full_name),
         operator_winder1:employees!operator_winder1_id (full_name),
-        operator_winder2:employees!operator_winder2_id (full_name)
+        operator_winder2:employees!operator_winder2_id (full_name),
+        operator_winder3:employees!operator_winder3_id (full_name)
       `)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -48,7 +50,7 @@ export default function ExtrusionHistoryPage() {
 
   const handleDelete = async (id: string, batchNumber: string) => {
     if (!isAdmin) {
-      alert('Только администраторы могут удалять записи');
+      toast.error('Только администраторы могут удалять записи');
       return;
     }
 
@@ -64,14 +66,16 @@ export default function ExtrusionHistoryPage() {
 
       if (error) throw error;
 
-      alert('Запись успешно удалена');
+      toast.success('Запись успешно удалена');
       fetchLogs();
     } catch (err: any) {
       console.error('Error deleting record:', err);
       if (err.code === '23503') {
-        alert(`Невозможно удалить запись партии ${batchNumber}.\n\nЭта запись связана с другими данными в системе (склад нити).`);
+        toast.error('Невозможно удалить запись', {
+          description: `Партия ${batchNumber} связана с другими данными в системе (склад нити).`
+        });
       } else {
-        alert('Ошибка удаления: ' + err.message);
+        toast.error('Ошибка удаления: ' + err.message);
       }
     }
   };

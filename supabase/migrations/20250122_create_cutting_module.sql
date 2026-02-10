@@ -30,8 +30,8 @@ COMMENT ON COLUMN cutting_types.category IS 'Категория детали (д
 COMMENT ON COLUMN cutting_types.material_type IS 'Из какого материала кроится';
 COMMENT ON COLUMN cutting_types.consumption_cm IS 'Расход материала на 1 деталь в сантиметрах';
 
-CREATE INDEX idx_cutting_types_material_type ON cutting_types(material_type);
-CREATE INDEX idx_cutting_types_status ON cutting_types(status);
+CREATE INDEX IF NOT EXISTS idx_cutting_types_material_type ON cutting_types(material_type);
+CREATE INDEX IF NOT EXISTS idx_cutting_types_status ON cutting_types(status);
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -75,11 +75,11 @@ COMMENT ON COLUMN production_cutting.total_used_m IS 'Всего израсхо�
 COMMENT ON COLUMN production_cutting.consumption_m IS 'Чистый расход на детали';
 COMMENT ON COLUMN production_cutting.waste_m IS 'Отходы (обрезки, брак)';
 
-CREATE INDEX idx_production_cutting_date ON production_cutting(date DESC);
-CREATE INDEX idx_production_cutting_operator ON production_cutting(operator);
-CREATE INDEX idx_production_cutting_material_type ON production_cutting(material_type);
-CREATE INDEX idx_production_cutting_roll ON production_cutting(roll_number);
-CREATE INDEX idx_production_cutting_cutting_type ON production_cutting(cutting_type_code);
+CREATE INDEX IF NOT EXISTS idx_production_cutting_date ON production_cutting(date DESC);
+CREATE INDEX IF NOT EXISTS idx_production_cutting_operator ON production_cutting(operator);
+CREATE INDEX IF NOT EXISTS idx_production_cutting_material_type ON production_cutting(material_type);
+CREATE INDEX IF NOT EXISTS idx_production_cutting_roll ON production_cutting(roll_number);
+CREATE INDEX IF NOT EXISTS idx_production_cutting_cutting_type ON production_cutting(cutting_type_code);
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -111,9 +111,9 @@ COMMENT ON TABLE cutting_parts_warehouse IS 'Складской учет кро�
 COMMENT ON COLUMN cutting_parts_warehouse.operation IS 'Приход - оприходование, Расход - отпуск в пошив';
 COMMENT ON COLUMN cutting_parts_warehouse.source_number IS 'Номер рулона-источника (для прихода) или номер документа (для расхода)';
 
-CREATE INDEX idx_cutting_parts_date ON cutting_parts_warehouse(date DESC);
-CREATE INDEX idx_cutting_parts_operation ON cutting_parts_warehouse(operation);
-CREATE INDEX idx_cutting_parts_code ON cutting_parts_warehouse(cutting_type_code);
+CREATE INDEX IF NOT EXISTS idx_cutting_parts_date ON cutting_parts_warehouse(date DESC);
+CREATE INDEX IF NOT EXISTS idx_cutting_parts_operation ON cutting_parts_warehouse(operation);
+CREATE INDEX IF NOT EXISTS idx_cutting_parts_code ON cutting_parts_warehouse(cutting_type_code);
 
 
 -- ═══════════════════════════════════════════════════════════════════════════

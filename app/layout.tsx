@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FIBC Kazakhstan ERP",
-  description: "ERP система для управления производством FIBC мешков",
+  description: "ERP система для управления производством FIBC Kazakhstan",
 };
 
 export default function RootLayout({

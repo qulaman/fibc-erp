@@ -44,7 +44,7 @@ export default function CuttingRollsPage() {
       .select('*')
       .eq('status', 'available')
       .eq('location', 'cutting') // Только те, что уже в крое
-      .gt('length', 0)
+      .gt('weight', 0)  // Для ламината используем вес, а не длину
       .order('created_at', { ascending: false });
 
     const fabricData = (fabricRolls || []).map(r => ({
@@ -85,7 +85,7 @@ export default function CuttingRollsPage() {
       .select('*')
       .eq('location', 'lamination') // Только со склада ламинации
       .eq('status', 'available')
-      .gt('length', 0)
+      .gt('weight', 0)  // Для ламината используем вес, а не длину
       .order('created_at', { ascending: false });
 
     const fabricRolls = (weavingData || []).map((r: any) => ({

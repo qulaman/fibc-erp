@@ -1,448 +1,266 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/my-select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import DowntimeDialog from "@/components/DowntimeDialog";
 import {
-  Save, Users, Package, AlertTriangle,
-  Calendar, Clock, Factory, Scale, Trash2, CheckCircle2,
-  Palette, Ruler
+  Factory, FileText, Users, Calendar, AlertTriangle,
+  ChevronRight, TrendingUp
 } from "lucide-react";
 
-export default function ExtrusionPage() {
-  const [loading, setLoading] = useState(false);
-  
-  // Справочники
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [yarnDeniers, setYarnDeniers] = useState<any[]>([]);
-  const [materials, setMaterials] = useState<any[]>([]);
+export default function ExtrusionDashboardPage() {
+  const router = useRouter();
   const [machines, setMachines] = useState<any[]>([]);
-
-  // Состояние формы
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    shift: 'День',
-    machine_id: '',
-    operator_extruder: '',
-    operator_winder1: '',
-    operator_winder2: '',
-    
-    // Параметры нити
-    yarn_denier: '',
-    yarn_width: '2.5', // По умолчанию 2.5 мм
-    yarn_color: 'Белый', // По умолчанию Белый
-    
-    output_bobbins: '',
-    output_weight: '',
-    waste: '',
-    downtime: '',
-    notes: ''
+  const [selectedMachine, setSelectedMachine] = useState<string>('');
+  const [showMachineSelect, setShowMachineSelect] = useState(false);
+  const [todayStats, setTodayStats] = useState({
+    batchCount: 0,
+    totalWeight: 0,
+    downtime: 0
   });
 
-  const [dosators, setDosators] = useState(
-    Array(6).fill({ material_id: '', weight: '', batch: '' })
-  );
-
-  // Справочники - добавляем полные спецификации тканей
-  const [fabricSpecs, setFabricSpecs] = useState<any[]>([]);
-
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: emp } = await supabase.from('employees').select('*').eq('is_active', true);
-      const { data: mat } = await supabase.from('raw_materials').select('*').order('name');
-      const { data: mach } = await supabase.from('equipment').select('*').eq('type', 'extruder');
-      const { data: specs } = await supabase.from('tkan_specifications').select('*');
-
-      if (emp) setEmployees(emp);
-      if (mat) setMaterials(mat);
-      if (mach) setMachines(mach);
-
-      if (specs) {
-        setFabricSpecs(specs);
-
-        const deniersSet = new Set<number>();
-        specs.forEach(spec => {
-          if (spec.osnova_denye) deniersSet.add(spec.osnova_denye);
-          if (spec.utok_denye) deniersSet.add(spec.utok_denye);
-        });
-
-        const deniersList = Array.from(deniersSet)
-          .sort((a, b) => a - b)
-          .map(denier => ({
-            denier: denier,
-            name: `Нить ${denier}D`,
-            code: `PP-${denier}D`
-          }));
-
-        setYarnDeniers(deniersList);
-      }
+    const fetchMachines = async () => {
+      const { data } = await supabase
+        .from('equipment')
+        .select('*')
+        .eq('type', 'extruder')
+        .order('name');
+      if (data) setMachines(data);
     };
-    fetchData();
+    fetchMachines();
+    fetchTodayStats();
   }, []);
 
-  const updateDosator = (index: number, field: string, value: string) => {
-    const newDosators = [...dosators];
-    // @ts-ignore
-    newDosators[index] = { ...newDosators[index], [field]: value };
-    setDosators(newDosators);
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.yarn_denier || !formData.machine_id) {
-      alert('⚠️ Выберите машину и тип нити!');
-      return;
-    }
-    setLoading(true);
-
+  const fetchTodayStats = async () => {
     try {
-        // Формируем уникальный номер партии: Дата-Смена-Линия-Цвет
-        const dateStr = formData.date.replace(/-/g, '').slice(2);
-        const shiftCode = formData.shift === 'День' ? '1' : '2';
-        const machineCode = machines.find(m => m.id === formData.machine_id)?.code || 'EX';
-        // Добавляем первую букву цвета в партию, чтобы отличать (W-White, etc) или просто оставляем уникальность
-        const colorCode = formData.yarn_color ? formData.yarn_color.charAt(0).toUpperCase() : 'X';
-        const batchNum = `${dateStr}-${shiftCode}-${machineCode}-${formData.yarn_denier}${colorCode}`;
+      const today = new Date().toISOString().split('T')[0];
 
-        // Имя нити полное
-        const yarnName = `Нить ПП ${formData.yarn_denier}D ${formData.yarn_color} (${formData.yarn_width}мм)`;
+      // Получаем производство за сегодня
+      const { data: production, error: prodError } = await supabase
+        .from('production_extrusion')
+        .select('*')
+        .eq('date', today);
 
-        // RPC Вызов
-        const { error } = await supabase.rpc('register_extrusion_output', {
-            p_date: formData.date,
-            p_shift: formData.shift,
-            p_machine_id: formData.machine_id,
-            p_operator_id: formData.operator_extruder || null,
-            
-            // Новые параметры нити
-            p_yarn_name: yarnName,
-            p_yarn_denier: parseInt(formData.yarn_denier),
-            p_width_mm: Number(formData.yarn_width), // <-- Передаем ширину
-            p_color: formData.yarn_color,            // <-- Передаем цвет
-            p_batch_number: batchNum,
-            
-            p_weight_kg: Number(formData.output_weight),
-            p_notes: `${formData.notes} | Отходы: ${formData.waste}кг | Бобин: ${formData.output_bobbins}`
-        });
+      if (prodError) throw prodError;
 
-        if (error) throw error;
+      // Подсчитываем статистику
+      const batchCount = production?.length || 0;
 
-        alert(`✅ Смена закрыта!\nНа склад: ${formData.output_weight} кг\nНить: ${formData.yarn_denier}D ${formData.yarn_color}`);
-        
-        // Очистка формы (оставляем настройки нити, вдруг следующая партия такая же)
-        setFormData({ ...formData, output_bobbins: '', output_weight: '', waste: '', notes: '' });
-        setDosators(Array(6).fill({ material_id: '', weight: '', batch: '' }));
+      // Считаем общий вес (конвертируем в число если строка)
+      const totalWeight = production?.reduce((sum, item) => {
+        const weight = Number(item.output_weight_net) || 0;
+        return sum + weight;
+      }, 0) || 0;
 
-    } catch (e: any) {
-        alert('❌ Ошибка: ' + e.message);
-    } finally {
-        setLoading(false);
+      // Получаем простои за сегодня
+      const { data: downtimes, error: downError } = await supabase
+        .from('production_downtimes')
+        .select('start_time, end_time')
+        .eq('date', today)
+        .not('machine_id', 'is', null);
+
+      if (downError) throw downError;
+
+      // Рассчитываем общее время простоя в минутах
+      const totalDowntime = downtimes?.reduce((sum, item) => {
+        const start = new Date(item.start_time);
+        const end = new Date(item.end_time);
+        const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+        return sum + durationMinutes;
+      }, 0) || 0;
+
+      setTodayStats({
+        batchCount,
+        totalWeight: Math.round(totalWeight * 10) / 10,
+        downtime: totalDowntime
+      });
+    } catch (err) {
+      console.error('Error fetching today stats:', err);
     }
   };
 
-  const totalInputWeight = dosators.reduce((sum, d) => sum + (Number(d.weight) || 0), 0);
-  const totalOutput = (Number(formData.output_weight) || 0) + (Number(formData.waste) || 0);
-  const balance = totalInputWeight - totalOutput;
-  const isBalanced = Math.abs(balance) < 1;
-
-  // Список популярных цветов
-  const colors = ["Белый", "Черный", "Синий", "Зеленый", "Бежевый", "Серый", "Желтый"];
-
-  // Получаем рецептуру для выбранного типа нити
-  const getRecipeForDenier = () => {
-    if (!formData.yarn_denier) return null;
-
-    const selectedDenier = parseInt(formData.yarn_denier);
-    // Ищем спецификацию, где используется эта нить (основа или уток)
-    const spec = fabricSpecs.find(s =>
-      s.osnova_denye === selectedDenier || s.utok_denye === selectedDenier
-    );
-
-    if (!spec) return null;
-
-    const totalWeight = (spec.receptura_pp_kg || 0) +
-                       (spec.receptura_karbonat_kg || 0) +
-                       (spec.receptura_uf_stabilizator_kg || 0) +
-                       (spec.receptura_krasitel_kg || 0);
-
-    if (totalWeight === 0) return null;
-
-    // Если выбран цвет (не белый), корректируем рецептуру для цветной нити
-    const isColored = formData.yarn_color && formData.yarn_color !== 'Белый';
-
-    if (isColored) {
-      // Для цветной нити: фиксированные проценты
-      const ppPercent = 93.0;
-      const krasitelPercent = 1.0;
-
-      // Остальное (6%) распределяем пропорционально между карбонатом и УФ
-      const baseKarbonat = spec.receptura_karbonat_kg || 0;
-      const baseUF = spec.receptura_uf_stabilizator_kg || 0;
-      const baseOther = baseKarbonat + baseUF;
-
-      let karbonatPercent = 0;
-      let ufPercent = 0;
-
-      if (baseOther > 0) {
-        // Распределяем оставшиеся 6% пропорционально исходному соотношению
-        karbonatPercent = (baseKarbonat / baseOther) * 6.0;
-        ufPercent = (baseUF / baseOther) * 6.0;
-      } else {
-        // Если в базовой рецептуре нет карбоната и УФ, распределяем поровну
-        karbonatPercent = 3.0;
-        ufPercent = 3.0;
-      }
-
-      return {
-        pp_kg: spec.receptura_pp_kg || 0,
-        pp_percent: ppPercent.toFixed(1),
-        karbonat_kg: spec.receptura_karbonat_kg || 0,
-        karbonat_percent: karbonatPercent.toFixed(1),
-        uf_kg: spec.receptura_uf_stabilizator_kg || 0,
-        uf_percent: ufPercent.toFixed(1),
-        krasitel_kg: spec.receptura_krasitel_kg || 0,
-        krasitel_percent: krasitelPercent.toFixed(1),
-        total: totalWeight,
-        fabric_name: spec.nazvanie_tkani,
-        isColored: true
-      };
-    }
-
-    // Для белой нити: используем оригинальную рецептуру
-    return {
-      pp_kg: spec.receptura_pp_kg || 0,
-      pp_percent: (spec.receptura_pp_kg / totalWeight * 100).toFixed(1),
-      karbonat_kg: spec.receptura_karbonat_kg || 0,
-      karbonat_percent: (spec.receptura_karbonat_kg / totalWeight * 100).toFixed(1),
-      uf_kg: spec.receptura_uf_stabilizator_kg || 0,
-      uf_percent: (spec.receptura_uf_stabilizator_kg / totalWeight * 100).toFixed(1),
-      krasitel_kg: spec.receptura_krasitel_kg || 0,
-      krasitel_percent: (spec.receptura_krasitel_kg / totalWeight * 100).toFixed(1),
-      total: totalWeight,
-      fabric_name: spec.nazvanie_tkani,
-      isColored: false
-    };
-  };
-
-  const recipe = getRecipeForDenier();
+  const menuItems = [
+    {
+      title: 'Внести Производство',
+      description: 'Регистрация выпуска нити',
+      icon: Factory,
+      color: 'from-red-600 to-red-700',
+      borderColor: 'border-red-800',
+      href: '/production/extrusion/input'
+    },
+    {
+      title: 'Журнал Производства',
+      description: 'История выпуска партий',
+      icon: FileText,
+      color: 'from-blue-600 to-blue-700',
+      borderColor: 'border-blue-800',
+      href: '/production/extrusion/history'
+    },
+    {
+      title: 'Зафиксировать Простой',
+      description: 'Регистрация остановки линии',
+      icon: AlertTriangle,
+      color: 'from-red-900 to-red-950',
+      borderColor: 'border-red-800',
+      onClick: () => setShowMachineSelect(true)
+    },
+    {
+      title: 'Журнал Простоев',
+      description: 'Учет остановок линий',
+      icon: AlertTriangle,
+      color: 'from-orange-600 to-orange-700',
+      borderColor: 'border-orange-800',
+      href: '/production/extrusion/downtimes'
+    },
+    {
+      title: 'Персонал',
+      description: 'Управление операторами',
+      icon: Users,
+      color: 'from-purple-600 to-purple-700',
+      borderColor: 'border-purple-800',
+      href: '/production/extrusion/personnel'
+    },
+    {
+      title: 'Табель',
+      description: 'Учет рабочего времени',
+      icon: Calendar,
+      color: 'from-green-600 to-green-700',
+      borderColor: 'border-green-800',
+      href: '/production/extrusion/timesheet'
+    },
+  ];
 
   return (
-    <div className="page-container selection:bg-red-900 selection:text-white">
+    <div className="page-container">
       {/* HEADER */}
       <div className="page-header">
         <div>
           <h1 className="h1-bold">
-            <div className="bg-[#E60012] p-2 rounded-lg"><Factory size={24} className="text-white" /></div>
+            <div className="bg-[#E60012] p-2 rounded-lg">
+              <Factory size={24} className="text-white" />
+            </div>
             Цех Экструзии
           </h1>
+          <p className="text-zinc-500 mt-2">Выберите нужный раздел</p>
         </div>
       </div>
 
-      {/* --- CONTROLS --- */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4 border-b border-zinc-800 pb-6">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 rounded-lg border border-zinc-800">
-             <Calendar size={14} className="text-zinc-400"/>
-             <Input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="h-6 w-32 border-0 bg-transparent p-0 text-sm focus-visible:ring-0" />
-          </div>
-          <Select value={formData.shift} onValueChange={(v) => setFormData({...formData, shift: v})}>
-            <SelectTrigger className="h-9 w-[110px] border-zinc-800 bg-zinc-900 text-white shadow-none focus:ring-0">
-               <div className="flex items-center gap-2">
-                 <Clock size={14} className={formData.shift === 'День' ? "text-yellow-500" : "text-blue-500"}/>
-                 <SelectValue />
-               </div>
-            </SelectTrigger>
-            <SelectContent><SelectItem value="День">☀️ День</SelectItem><SelectItem value="Ночь">🌙 Ночь</SelectItem></SelectContent>
-          </Select>
-          <Select value={formData.machine_id} onValueChange={(v) => setFormData({...formData, machine_id: v})}>
-             <SelectTrigger className="h-9 w-[180px] border-zinc-800 bg-[#E60012]/10 text-[#E60012] font-bold shadow-none focus:ring-0">
-               <div className="flex items-center gap-2"><Factory size={14}/><SelectValue placeholder="Выбрать линию..." /></div>
-             </SelectTrigger>
-             <SelectContent>{machines.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </div>
+      {/* Сетка меню */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {menuItems.map((item) => (
+          <Card
+            key={item.title}
+            onClick={() => item.onClick ? item.onClick() : router.push(item.href!)}
+            className={`
+              bg-gradient-to-br ${item.color}
+              border-2 ${item.borderColor}
+              cursor-pointer
+              hover:scale-105 hover:shadow-2xl
+              transition-all duration-300
+              group
+              overflow-hidden
+              relative
+            `}
+          >
+            {/* Фоновая декорация */}
+            <div className="absolute top-0 right-0 opacity-10 group-hover:opacity-20 transition-opacity">
+              <item.icon size={120} />
+            </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        
-        {/* ЛЕВАЯ КОЛОНКА */}
-        <div className="xl:col-span-8 space-y-6">
-          <Card className="bg-zinc-900 border-zinc-800">
-             <CardHeader className="pb-3"><CardTitle className="text-base text-zinc-400 font-medium flex items-center gap-2 uppercase tracking-wide"><Users size={16}/> Команда</CardTitle></CardHeader>
-             <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-zinc-500">Оператор</Label>
-                    <Select onValueChange={(v) => setFormData({...formData, operator_extruder: v})}>
-                      <SelectTrigger className="bg-zinc-950 border-zinc-700 text-white"><SelectValue placeholder="Не выбран" /></SelectTrigger>
-                      <SelectContent>{employees.filter(e => e.role === 'operator_extruder').map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  {/* Намотчики... (код сокращен для краткости, он есть в оригинале) */}
-                  <div className="space-y-1.5"><Label className="text-xs text-zinc-500">Намотчик 1</Label><Select onValueChange={(v) => setFormData({...formData, operator_winder1: v})}><SelectTrigger className="bg-zinc-950 border-zinc-700 text-white"><SelectValue placeholder="..." /></SelectTrigger><SelectContent>{employees.filter(e => e.role === 'operator_winder').map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent></Select></div>
-                  <div className="space-y-1.5"><Label className="text-xs text-zinc-500">Намотчик 2</Label><Select onValueChange={(v) => setFormData({...formData, operator_winder2: v})}><SelectTrigger className="bg-zinc-950 border-zinc-700 text-white"><SelectValue placeholder="..." /></SelectTrigger><SelectContent>{employees.filter(e => e.role === 'operator_winder').map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent></Select></div>
+            {/* Контент */}
+            <div className="relative p-6 flex flex-col h-full">
+              {/* Иконка */}
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-all">
+                  <item.icon size={32} className="text-white" />
                 </div>
-             </CardContent>
-          </Card>
-
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardHeader className="pb-4 flex flex-row items-center justify-between">
-               <CardTitle className="text-base text-zinc-400 font-medium flex items-center gap-2 uppercase tracking-wide"><Package size={16}/> Загрузка Сырья</CardTitle>
-               <Badge variant="outline" className="text-zinc-400 border-zinc-700">Всего: <span className="text-white font-bold ml-1">{totalInputWeight} кг</span></Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dosators.map((dosator, idx) => (
-                  <div key={idx} className="flex items-center gap-3 bg-zinc-950/50 p-3 rounded-xl border border-zinc-800/50 hover:border-zinc-700">
-                     <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-500">D{idx + 1}</div>
-                     <div className="flex-grow">
-                        <Select onValueChange={(v) => updateDosator(idx, 'material_id', v)}>
-                          <SelectTrigger className="h-8 border-0 bg-transparent p-0 text-sm font-medium focus:ring-0 text-white"><SelectValue placeholder="Сырье..." /></SelectTrigger>
-                          <SelectContent>{materials.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                     </div>
-                     <div className="w-24 relative">
-                        <Input type="number" placeholder="0" className="h-9 bg-zinc-900 border-zinc-700 text-right pr-7 text-white" value={dosator.weight} onChange={(e) => updateDosator(idx, 'weight', e.target.value)} />
-                        <span className="absolute right-2 top-2.5 text-xs text-zinc-500">кг</span>
-                     </div>
-                  </div>
-                ))}
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* ПРАВАЯ КОЛОНКА */}
-        <div className="xl:col-span-4 space-y-6">
-          <Card className="bg-zinc-900 border-zinc-800 h-full flex flex-col relative overflow-hidden">
-            <div className={`absolute top-0 left-0 w-full h-1 ${isBalanced ? 'bg-green-500' : 'bg-[#E60012]'}`}></div>
-            <CardHeader>
-              <CardTitle className="text-base text-zinc-400 font-medium flex items-center gap-2 uppercase tracking-wide"><Save size={16}/> Параметры Продукции</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 flex-grow">
-               
-               {/* 1. ДЕНЬЕ */}
-               <div className="space-y-2">
-                 <Label className="text-zinc-300">Тип Нити (Денье)</Label>
-                 <Select onValueChange={(v) => setFormData({...formData, yarn_denier: v})}>
-                    <SelectTrigger className="h-12 bg-zinc-950 border-zinc-700 text-white font-bold text-lg">
-                      <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#E60012]"></div>
-                          <SelectValue placeholder="Выберите денье..." />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>{yarnDeniers.map(y => <SelectItem key={y.denier} value={y.denier.toString()}>{y.name}</SelectItem>)}</SelectContent>
-                 </Select>
-               </div>
+              {/* Текст */}
+              <div className="flex-grow">
+                <h2 className="text-2xl font-bold text-white mb-2 group-hover:translate-x-1 transition-transform">
+                  {item.title}
+                </h2>
+                <p className="text-white/80 text-sm">
+                  {item.description}
+                </p>
+              </div>
 
-               {/* РЕЦЕПТУРА (отображается когда выбран тип нити) */}
-               {recipe && (
-                 <div className={`border p-3 rounded-lg space-y-2 animate-in fade-in ${
-                   recipe.isColored
-                     ? 'bg-purple-900/10 border-purple-800/30'
-                     : 'bg-blue-900/10 border-blue-800/30'
-                 }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-xs font-bold uppercase ${
-                        recipe.isColored ? 'text-purple-400' : 'text-blue-400'
-                      }`}>
-                        🧪 Соотношение для дозаторов
-                        {recipe.isColored && ' (Цветная)'}
-                      </span>
-                      <span className="text-[10px] text-zinc-500">{recipe.fabric_name}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
-                        <span className="text-zinc-400 text-xs">Полипропилен:</span>
-                        <span className="font-mono text-green-400 font-bold text-lg">{recipe.pp_percent}%</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
-                        <span className="text-zinc-400 text-xs">Карбонат (Мел):</span>
-                        <span className="font-mono text-white font-bold text-lg">{recipe.karbonat_percent}%</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
-                        <span className="text-zinc-400 text-xs">УФ-стабилизатор:</span>
-                        <span className="font-mono text-white font-bold text-lg">{recipe.uf_percent}%</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-zinc-900/50 px-3 py-2 rounded">
-                        <span className="text-zinc-400 text-xs">Краситель:</span>
-                        <span className={`font-mono font-bold text-lg ${
-                          recipe.isColored ? 'text-purple-400' : 'text-zinc-600'
-                        }`}>{recipe.krasitel_percent}%</span>
-                      </div>
-                    </div>
-                 </div>
-               )}
-
-               {/* 2. ЦВЕТ И ШИРИНА (НОВЫЕ ПОЛЯ) */}
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <Label className="text-xs text-zinc-500 flex items-center gap-1"><Palette size={12}/> Цвет</Label>
-                      <Select value={formData.yarn_color} onValueChange={(v) => setFormData({...formData, yarn_color: v})}>
-                          <SelectTrigger className="h-10 bg-zinc-950 border-zinc-700 text-white"><SelectValue /></SelectTrigger>
-                          <SelectContent>{colors.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                      </Select>
-                  </div>
-                  <div className="space-y-2">
-                      <Label className="text-xs text-zinc-500 flex items-center gap-1"><Ruler size={12}/> Ширина</Label>
-                      <div className="relative">
-                          <Input 
-                             type="number" step="0.1"
-                             className="h-10 bg-zinc-950 border-zinc-700 text-white font-mono"
-                             value={formData.yarn_width}
-                             onChange={e => setFormData({...formData, yarn_width: e.target.value})}
-                          />
-                          <span className="absolute right-3 top-2.5 text-xs text-zinc-500">мм</span>
-                      </div>
-                  </div>
-               </div>
-               
-               <Separator className="bg-zinc-800"/>
-
-               {/* ОСТАЛЬНЫЕ ПОЛЯ */}
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-zinc-500">Кол-во Бобин</Label>
-                    <Input type="number" className="h-10 bg-zinc-950 border-zinc-700 text-white" value={formData.output_bobbins} onChange={e => setFormData({...formData, output_bobbins: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-zinc-500">Вес Отходов (кг)</Label>
-                    <Input type="number" className="h-10 bg-zinc-950 border-zinc-700 text-red-400 text-right" value={formData.waste} onChange={e => setFormData({...formData, waste: e.target.value})} />
-                  </div>
-               </div>
-
-               <div className="space-y-2">
-                  <Label className="text-xs text-zinc-500 flex items-center gap-1"><Scale size={12}/> Вес Нетто</Label>
-                  <div className="relative">
-                    <Input type="number" className="h-14 bg-zinc-950 border-zinc-700 text-green-400 font-bold text-3xl text-right pr-10" value={formData.output_weight} onChange={e => setFormData({...formData, output_weight: e.target.value})} />
-                    <span className="absolute right-4 top-4 text-zinc-500 font-bold">КГ</span>
-                  </div>
-               </div>
-
-               {/* Баланс */}
-               <div className={`mt-2 p-3 rounded border ${isBalanced ? 'bg-green-900/10 border-green-900/30' : 'bg-red-900/10 border-red-900/30'}`}>
-                  <div className="flex justify-between items-center">
-                     <span className="text-xs text-zinc-400">Баланс:</span>
-                     <span className={`text-lg font-bold ${isBalanced ? 'text-green-500' : 'text-red-500'}`}>
-                        {balance > 0 ? `+${balance.toFixed(1)}` : balance.toFixed(1)} кг
-                     </span>
-                  </div>
-               </div>
-
-            </CardContent>
-            <div className="p-6 pt-0 mt-auto">
-               <Button onClick={handleSubmit} disabled={loading} className={`w-full h-14 font-bold text-lg shadow-xl transition-all ${isBalanced ? 'bg-[#E60012] hover:bg-red-600' : 'bg-zinc-700 hover:bg-zinc-600'}`}>
-                 {loading ? '...' : (<span className="flex items-center gap-2"><CheckCircle2 /> Выпустить Партию</span>)}
-               </Button>
+              {/* Стрелка */}
+              <div className="flex justify-end mt-4">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 group-hover:translate-x-1 transition-all">
+                  <ChevronRight size={20} className="text-white" />
+                </div>
+              </div>
             </div>
           </Card>
+        ))}
+      </div>
+
+      {/* Быстрая статистика (опционально) */}
+      <div className="mt-12">
+        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <TrendingUp size={20} />
+          Сегодня
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-zinc-900 border-zinc-800 p-4">
+            <div className="text-xs text-zinc-500 uppercase mb-1">Выпущено партий</div>
+            <div className="text-3xl font-bold text-white">{todayStats.batchCount}</div>
+          </Card>
+          <Card className="bg-zinc-900 border-zinc-800 p-4">
+            <div className="text-xs text-zinc-500 uppercase mb-1">Вес нетто (кг)</div>
+            <div className="text-3xl font-bold text-green-400">{todayStats.totalWeight}</div>
+          </Card>
+          <Card className="bg-zinc-900 border-zinc-800 p-4">
+            <div className="text-xs text-zinc-500 uppercase mb-1">Простои (мин)</div>
+            <div className="text-3xl font-bold text-red-400">{todayStats.downtime}</div>
+          </Card>
         </div>
       </div>
+
+      {/* Диалог выбора машины */}
+      <Dialog open={showMachineSelect} onOpenChange={setShowMachineSelect}>
+        <DialogContent className="bg-zinc-950 text-white border-zinc-800 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <AlertTriangle className="text-red-500" size={24} />
+              Выберите линию для фиксации простоя
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+            {machines.map(machine => (
+              <button
+                key={machine.id}
+                onClick={() => {
+                  setSelectedMachine(machine.id);
+                  setShowMachineSelect(false);
+                }}
+                className="p-6 bg-zinc-900 border-2 border-zinc-700 rounded-lg hover:border-red-600 hover:bg-zinc-800 transition-all text-white font-bold text-lg flex flex-col items-center gap-3"
+              >
+                <Factory size={32} className="text-red-400" />
+                {machine.name}
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог регистрации простоя */}
+      {selectedMachine && (
+        <DowntimeDialog
+          key={selectedMachine}
+          machineId={selectedMachine}
+          machineName={machines.find(m => m.id === selectedMachine)?.name}
+          autoOpen={true}
+          onSuccess={() => setSelectedMachine('')}
+        />
+      )}
     </div>
   );
 }

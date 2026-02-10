@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { toast } from 'sonner';
 
 export default function AddMaterialForm() {
   const [name, setName] = useState('')
@@ -23,7 +24,7 @@ export default function AddMaterialForm() {
       .insert([{ name, unit }])
 
     if (error) {
-      alert(error.message)
+      toast.error(error.message)
     } else {
       setName('')
       router.refresh() // Обновляет данные на странице без перезагрузки

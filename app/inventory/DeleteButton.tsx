@@ -3,6 +3,7 @@
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
+import { toast } from 'sonner';
 import { Trash2 } from "lucide-react" // Популярная библиотека иконок
 
 export default function DeleteButton({ id }: { id: string }) {
@@ -16,7 +17,7 @@ export default function DeleteButton({ id }: { id: string }) {
         .eq('id', id)
 
       if (error) {
-        alert('Ошибка при удалении: ' + error.message)
+        toast.error('Ошибка при удалении: ' + error.message)
       } else {
         router.refresh() // Обновляем страницу, чтобы строка исчезла
       }

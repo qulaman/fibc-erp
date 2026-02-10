@@ -642,7 +642,7 @@ export default function SewingDailyReportPage() {
         <>
           <Card className="bg-gradient-to-br from-pink-900/20 to-zinc-900 border-pink-800 mb-4">
             <CardContent className="pt-4">
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
                 <div>
                   <div className="text-xs text-zinc-500 mb-1">Всего операций</div>
                   <div className="text-2xl font-bold text-white">{employeeOperations.length}</div>

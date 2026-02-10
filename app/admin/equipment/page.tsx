@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/my-select";
 import { Badge } from "@/components/ui/badge";
+import { toast } from 'sonner';
 import { Settings, Plus, Edit, Power, Search } from "lucide-react";
 
 const EQUIPMENT_TYPES = [
@@ -50,7 +51,10 @@ export default function EquipmentPage() {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.code || !formData.type) return alert('Введите код, название и тип');
+    if (!formData.name || !formData.code || !formData.type) {
+      toast.warning('Введите код, название и тип');
+      return;
+    }
 
     const payload: any = {
       name: formData.name,
@@ -75,7 +79,7 @@ export default function EquipmentPage() {
     }
 
     if (error) {
-      alert('Ошибка: ' + error.message);
+      toast.error('Ошибка: ' + error.message);
     } else {
       setIsDialogOpen(false);
       resetForm();
@@ -102,7 +106,7 @@ export default function EquipmentPage() {
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     const { error } = await supabase.from('equipment').update({ is_active: !currentStatus }).eq('id', id);
     if (error) {
-      alert('Колонка is_active не существует в таблице equipment. Добавьте её в БД.');
+      toast.error('Колонка is_active не существует в таблице equipment. Добавьте её в БД.');
     } else {
       fetchEquipment();
     }
@@ -116,18 +120,20 @@ export default function EquipmentPage() {
   return (
     <div className="page-container">
 
-      <div className="page-header">
+      <div className="page-header flex-col sm:flex-row gap-3 sm:gap-0">
         <div>
-          <h1 className="h1-bold">
-            <div className="bg-green-600 p-2 rounded-lg">
-              <Settings size={24} className="text-white" />
+          <h1 className="h1-bold text-lg md:text-2xl">
+            <div className="bg-green-600 p-1.5 md:p-2 rounded-lg">
+              <Settings size={18} className="text-white md:hidden" />
+              <Settings size={24} className="text-white hidden md:block" />
             </div>
-            Управление Оборудованием
+            <span className="hidden sm:inline">Управление Оборудованием</span>
+            <span className="sm:hidden">Оборудование</span>
           </h1>
-          <p className="page-description">Станки и оборудование предприятия</p>
+          <p className="page-description text-xs md:text-sm">Станки и оборудование предприятия</p>
         </div>
-        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="bg-white text-black hover:bg-zinc-200 font-bold gap-2">
-          <Plus size={18} /> Добавить оборудование
+        <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="bg-white text-black hover:bg-zinc-200 font-bold gap-2 text-xs md:text-sm w-full sm:w-auto">
+          <Plus size={16} /> <span className="hidden sm:inline">Добавить оборудование</span><span className="sm:hidden">Добавить</span>
         </Button>
       </div>
 

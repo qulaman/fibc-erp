@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
 
 interface BalanceRecord {
@@ -83,7 +84,7 @@ export default function FabricWarehousePage() {
 
   const handleDelete = async (id: string, rollNumber: string) => {
     if (!isAdmin) {
-      alert('Только администраторы могут удалять записи');
+      toast.error('Только администраторы могут удалять записи');
       return;
     }
 
@@ -100,11 +101,13 @@ export default function FabricWarehousePage() {
         .limit(1);
 
       if (usageCheck && usageCheck.length > 0) {
-        alert(`Невозможно удалить рулон ${rollNumber}.\n\nЭтот рулон используется в записях производства ткачества.\nСначала удалите связанные записи производства.`);
+        toast.error('Невозможно удалить рулон', {
+          description: `Рулон ${rollNumber} используется в записях производства ткачества. Сначала удалите связанные записи производства.`
+        });
         return;
       }
 
-      // Проверяем использование в ламинации
+      // Проверяем использование в ламинации (таблица laminated_rolls)
       const { data: laminationCheck } = await supabase
         .from('laminated_rolls')
         .select('id')
@@ -112,7 +115,37 @@ export default function FabricWarehousePage() {
         .limit(1);
 
       if (laminationCheck && laminationCheck.length > 0) {
-        alert(`Невозможно удалить рулон ${rollNumber}.\n\nЭтот рулон был использован для создания ламинированных рулонов.\nСначала удалите связанные ламинированные рулоны.`);
+        toast.error('Невозможно удалить рулон', {
+          description: `Рулон ${rollNumber} был использован для создания ламинированных рулонов. Сначала удалите связанные ламинированные рулоны.`
+        });
+        return;
+      }
+
+      // Проверяем использование в производстве ламинации (таблица production_lamination)
+      const { data: prodLaminationCheck } = await supabase
+        .from('production_lamination')
+        .select('id')
+        .eq('input_roll_id', id)
+        .limit(1);
+
+      if (prodLaminationCheck && prodLaminationCheck.length > 0) {
+        toast.error('Невозможно удалить рулон', {
+          description: `Рулон ${rollNumber} использовался в производстве ламинации. Сначала удалите связанные записи производства ламинации.`
+        });
+        return;
+      }
+
+      // Проверяем использование в крое (таблица production_cutting)
+      const { data: cuttingCheck } = await supabase
+        .from('production_cutting')
+        .select('id')
+        .eq('roll_id', id)
+        .limit(1);
+
+      if (cuttingCheck && cuttingCheck.length > 0) {
+        toast.error('Невозможно удалить рулон', {
+          description: `Рулон ${rollNumber} использовался в крое. Сначала удалите связанные записи кроя.`
+        });
         return;
       }
 
@@ -123,7 +156,7 @@ export default function FabricWarehousePage() {
 
       if (error) throw error;
 
-      alert('Запись успешно удалена');
+      toast.success('Запись успешно удалена');
       if (view === 'rolls') {
         fetchRolls();
       } else {
@@ -132,9 +165,25 @@ export default function FabricWarehousePage() {
     } catch (err: any) {
       console.error('Error deleting record:', err);
       if (err.code === '23503') {
-        alert(`Невозможно удалить рулон ${rollNumber}.\n\nЭта запись связана с другими данными в системе.`);
+        // Пытаемся извлечь название таблицы из сообщения об ошибке
+        const errorMessage = err.message || err.details || '';
+        let tableName = 'другими данными';
+
+        if (errorMessage.includes('production_lamination')) {
+          tableName = 'записями производства ламинации';
+        } else if (errorMessage.includes('production_cutting')) {
+          tableName = 'записями производства кроя';
+        } else if (errorMessage.includes('production_weaving')) {
+          tableName = 'записями производства ткачества';
+        } else if (errorMessage.includes('laminated_rolls')) {
+          tableName = 'ламинированными рулонами';
+        }
+
+        toast.error(`Невозможно удалить рулон ${rollNumber}`, {
+          description: `Этот рулон связан с ${tableName}. Сначала удалите связанные записи, затем повторите попытку.`
+        });
       } else {
-        alert('Ошибка удаления: ' + err.message);
+        toast.error('Ошибка удаления: ' + err.message);
       }
     }
   };
@@ -184,72 +233,78 @@ export default function FabricWarehousePage() {
   };
 
   return (
-    <div className="page-container">
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl font-bold">Склад ткани</h1>
-          <div className="flex gap-3">
+    <div className="page-container max-w-[100vw] overflow-x-hidden p-3 md:p-6">
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
+          <h1 className="text-xl md:text-3xl font-bold">
+            <span className="hidden sm:inline">Склад ткани</span>
+            <span className="sm:hidden">Ткань</span>
+          </h1>
+          <div className="flex gap-2 md:gap-3 w-full sm:w-auto">
             <Link
               href="/warehouse/fabric/history"
-              className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg font-medium transition-colors border border-zinc-700"
+              className="flex-1 sm:flex-none px-3 md:px-4 py-2 text-xs md:text-base bg-zinc-800 hover:bg-zinc-700 rounded-lg font-medium transition-colors border border-zinc-700 text-center"
             >
-              Журнал операций
+              <span className="hidden sm:inline">Журнал операций</span>
+              <span className="sm:hidden">Журнал</span>
             </Link>
             <Link
               href="/production/weaving"
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-colors"
+              className="flex-1 sm:flex-none px-3 md:px-4 py-2 text-xs md:text-base bg-purple-600 hover:bg-purple-700 rounded-lg font-medium transition-colors text-center"
             >
-              + Производство
+              + <span className="hidden sm:inline">Производство</span><span className="sm:hidden">Новый</span>
             </Link>
           </div>
         </div>
-        <p className="text-zinc-400">Учет рулонов ткани из цеха ткачества</p>
+        <p className="text-xs md:text-base text-zinc-400">Учет рулонов ткани из цеха ткачества</p>
       </div>
 
       {/* View Toggle */}
-      <div className="mb-6 flex gap-3">
+      <div className="mb-4 md:mb-6 flex gap-2 md:gap-3">
         <button
           onClick={() => setView('balance')}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+          className={`flex-1 sm:flex-none px-3 md:px-6 py-2 md:py-3 rounded-lg text-xs md:text-base font-medium transition-colors ${
             view === 'balance'
               ? 'bg-purple-600 text-white'
               : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
           }`}
         >
-          Остатки по типам
+          <span className="hidden sm:inline">Остатки по типам</span>
+          <span className="sm:hidden">Остатки</span>
         </button>
         <button
           onClick={() => setView('rolls')}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+          className={`flex-1 sm:flex-none px-3 md:px-6 py-2 md:py-3 rounded-lg text-xs md:text-base font-medium transition-colors ${
             view === 'rolls'
               ? 'bg-purple-600 text-white'
               : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
           }`}
         >
-          Все рулоны
+          <span className="hidden sm:inline">Все рулоны</span>
+          <span className="sm:hidden">Рулоны</span>
         </button>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mb-4 md:mb-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Поиск</label>
+          <label className="block text-xs md:text-sm font-medium mb-1 md:mb-2 text-zinc-400">Поиск</label>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={view === 'balance' ? 'Код или название ткани...' : 'Номер рулона, код ткани...'}
-            className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder={view === 'balance' ? 'Код или название...' : 'Номер рулона...'}
+            className="w-full px-3 md:px-4 py-2 text-xs md:text-base bg-zinc-800 border border-zinc-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
 
         {view === 'rolls' && (
           <div>
-            <label className="block text-sm font-medium mb-2">Статус</label>
+            <label className="block text-xs md:text-sm font-medium mb-1 md:mb-2 text-zinc-400">Статус</label>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 md:px-4 py-2 text-xs md:text-base bg-zinc-800 border border-zinc-700 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               <option value="all">Все статусы</option>
               <option value="completed">Завершен</option>
@@ -262,37 +317,40 @@ export default function FabricWarehousePage() {
 
       {/* Summary Cards */}
       {view === 'balance' ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-            <p className="text-sm text-zinc-400 mb-1">Типов ткани</p>
-            <p className="text-2xl font-bold">{filteredBalances.length}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 md:p-4">
+            <p className="text-xs md:text-sm text-zinc-400 mb-1">Типов ткани</p>
+            <p className="text-xl md:text-2xl font-bold">{filteredBalances.length}</p>
           </div>
-          <div className="bg-purple-500/10 border border-purple-500/50 rounded-lg p-4">
-            <p className="text-sm text-purple-400 mb-1">Общий вес</p>
-            <p className="text-2xl font-bold text-purple-500">{totalBalanceKg.toLocaleString()} кг</p>
+          <div className="bg-purple-500/10 border border-purple-500/50 rounded-lg p-3 md:p-4">
+            <p className="text-xs md:text-sm text-purple-400 mb-1">Общий вес</p>
+            <p className="text-xl md:text-2xl font-bold text-purple-500">{totalBalanceKg.toLocaleString()} кг</p>
           </div>
-          <div className="bg-purple-500/10 border border-purple-500/50 rounded-lg p-4">
-            <p className="text-sm text-purple-400 mb-1">Общая длина</p>
-            <p className="text-2xl font-bold text-purple-500">{totalBalanceM.toLocaleString()} м</p>
+          <div className="bg-purple-500/10 border border-purple-500/50 rounded-lg p-3 md:p-4">
+            <p className="text-xs md:text-sm text-purple-400 mb-1">Общая длина</p>
+            <p className="text-xl md:text-2xl font-bold text-purple-500">{totalBalanceM.toLocaleString()} м</p>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-            <p className="text-sm text-zinc-400 mb-1">Всего рулонов</p>
-            <p className="text-2xl font-bold">{totalRolls}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3 md:p-4">
+            <p className="text-xs md:text-sm text-zinc-400 mb-1">Всего</p>
+            <p className="text-xl md:text-2xl font-bold">{totalRolls}</p>
           </div>
-          <div className="bg-green-500/10 border border-green-500/50 rounded-lg p-4">
-            <p className="text-sm text-green-400 mb-1">Завершено</p>
-            <p className="text-2xl font-bold text-green-500">{completedRolls}</p>
+          <div className="bg-green-500/10 border border-green-500/50 rounded-lg p-3 md:p-4">
+            <p className="text-xs md:text-sm text-green-400 mb-1">Завершено</p>
+            <p className="text-xl md:text-2xl font-bold text-green-500">{completedRolls}</p>
           </div>
-          <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-4">
-            <p className="text-sm text-blue-400 mb-1">В работе</p>
-            <p className="text-2xl font-bold text-blue-500">{activeRolls}</p>
+          <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-3 md:p-4">
+            <p className="text-xs md:text-sm text-blue-400 mb-1">В работе</p>
+            <p className="text-xl md:text-2xl font-bold text-blue-500">{activeRolls}</p>
           </div>
-          <div className="bg-zinc-500/10 border border-zinc-500/50 rounded-lg p-4">
-            <p className="text-sm text-zinc-400 mb-1">Использовано</p>
-            <p className="text-2xl font-bold text-zinc-400">{totalRolls - completedRolls - activeRolls}</p>
+          <div className="bg-zinc-500/10 border border-zinc-500/50 rounded-lg p-3 md:p-4">
+            <p className="text-xs md:text-sm text-zinc-400 mb-1">
+              <span className="hidden sm:inline">Использовано</span>
+              <span className="sm:hidden">Испол.</span>
+            </p>
+            <p className="text-xl md:text-2xl font-bold text-zinc-400">{totalRolls - completedRolls - activeRolls}</p>
           </div>
         </div>
       )}
@@ -310,32 +368,38 @@ export default function FabricWarehousePage() {
         ) : (
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-xs md:text-sm">
                 <thead className="bg-zinc-800/50 border-b border-zinc-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Код</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Наименование</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Ширина</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Вес (кг)</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Длина (м)</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-left font-semibold">Код</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-left font-semibold">
+                      <span className="hidden sm:inline">Наименование</span>
+                      <span className="sm:hidden">Название</span>
+                    </th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold hidden sm:table-cell">Ширина</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold">Вес (кг)</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold">Длина (м)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
                   {filteredBalances.map((record) => (
                     <tr key={record.fabric_type_id} className="hover:bg-zinc-800/30 transition-colors">
-                      <td className="px-4 py-3 text-sm font-mono font-semibold">
+                      <td className="px-2 md:px-4 py-2 md:py-3 font-mono font-semibold">
                         {record.code}
                       </td>
-                      <td className="px-4 py-3 text-sm">{record.name}</td>
-                      <td className="px-4 py-3 text-sm text-right text-zinc-400">
+                      <td className="px-2 md:px-4 py-2 md:py-3">
+                        <div className="max-w-[100px] md:max-w-none truncate">{record.name}</div>
+                        <div className="text-[10px] text-zinc-500 sm:hidden">{record.width_cm} см</div>
+                      </td>
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-right text-zinc-400 hidden sm:table-cell">
                         {record.width_cm} см
                       </td>
-                      <td className="px-4 py-3 text-sm text-right">
-                        <span className="font-bold text-lg text-purple-400">
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-right">
+                        <span className="font-bold text-sm md:text-lg text-purple-400">
                           {Math.round(record.balance_kg).toLocaleString()}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right">
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-right">
                         <span className="font-semibold">
                           {Math.round(record.balance_meters).toLocaleString()}
                         </span>
@@ -355,58 +419,68 @@ export default function FabricWarehousePage() {
         ) : (
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full text-xs md:text-sm">
                 <thead className="bg-zinc-800/50 border-b border-zinc-700">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Номер рулона</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Тип ткани</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Ширина</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Длина (м)</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Вес (кг)</th>
-                    <th className="px-4 py-3 text-center text-sm font-semibold">Статус</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Дата создания</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-left font-semibold">Рулон</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-left font-semibold">Тип</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold hidden lg:table-cell">Ширина</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold">
+                      <span className="hidden sm:inline">Длина (м)</span>
+                      <span className="sm:hidden">м</span>
+                    </th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold hidden sm:table-cell">Вес (кг)</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-center font-semibold">Статус</th>
+                    <th className="px-2 md:px-4 py-2 md:py-3 text-left font-semibold hidden md:table-cell">Дата</th>
                     {isAdmin && (
-                      <th className="px-4 py-3 text-center text-sm font-semibold">Действия</th>
+                      <th className="px-2 md:px-4 py-2 md:py-3 text-center font-semibold w-[50px] md:w-auto"></th>
                     )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
                   {filteredRolls.map((record) => (
                     <tr key={record.id} className="hover:bg-zinc-800/30 transition-colors">
-                      <td className="px-4 py-3 text-sm font-mono font-semibold">
+                      <td className="px-2 md:px-4 py-2 md:py-3 font-mono font-semibold">
                         {record.roll_number}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-2 md:px-4 py-2 md:py-3">
                         <div className="font-medium">{record.tkan_specifications?.kod_tkani || '-'}</div>
-                        <div className="text-xs text-zinc-500">{record.tkan_specifications?.nazvanie_tkani || '-'}</div>
+                        <div className="text-[10px] md:text-xs text-zinc-500 truncate max-w-[80px] md:max-w-none">{record.tkan_specifications?.nazvanie_tkani || '-'}</div>
+                        <div className="text-[10px] text-zinc-500 sm:hidden lg:hidden">
+                          {record.tkan_specifications?.shirina_polotna_sm || '-'} см
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right text-zinc-400">
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-right text-zinc-400 hidden lg:table-cell">
                         {record.tkan_specifications?.shirina_polotna_sm || '-'} см
                       </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold">
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-right font-semibold">
                         {Math.round(record.total_length || 0).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-sm text-right">
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-right hidden sm:table-cell">
                         <span className="font-bold text-purple-400">
                           {Math.round(record.total_weight || 0).toLocaleString()}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-block px-2 py-1 text-xs rounded border ${getStatusColor(record.status)}`}>
-                          {getStatusLabel(record.status)}
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-center">
+                        <span className={`inline-block px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs rounded border whitespace-nowrap ${getStatusColor(record.status)}`}>
+                          <span className="hidden sm:inline">{getStatusLabel(record.status)}</span>
+                          <span className="sm:hidden">
+                            {record.status === 'completed' ? '✓' : record.status === 'active' ? '⋯' : '×'}
+                          </span>
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm text-zinc-400">
+                      <td className="px-2 md:px-4 py-2 md:py-3 text-zinc-400 hidden md:table-cell">
                         {new Date(record.created_at).toLocaleDateString('ru-RU')}
                       </td>
                       {isAdmin && (
-                        <td className="px-4 py-3 text-center">
+                        <td className="px-2 md:px-4 py-2 md:py-3 text-center">
                           <button
                             onClick={() => handleDelete(record.id, record.roll_number)}
-                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                            className="p-1.5 md:p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
                             title="Удалить запись"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} className="md:hidden" />
+                            <Trash2 size={16} className="hidden md:block" />
                           </button>
                         </td>
                       )}

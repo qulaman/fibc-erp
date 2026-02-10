@@ -165,7 +165,7 @@ export default function Home() {
     {
       title: 'Склад Сырья',
       description: 'Материалы на складе',
-      href: '/inventory',
+      href: '/warehouse/raw-materials',
       icon: Warehouse,
       color: 'bg-green-600',
       hoverColor: 'hover:border-green-600',
@@ -192,7 +192,7 @@ export default function Home() {
     {
       title: 'Сырье',
       description: 'Контроль материалов',
-      href: '/inventory',
+      href: '/warehouse/raw-materials',
       icon: Package,
       color: 'bg-green-600'
     }

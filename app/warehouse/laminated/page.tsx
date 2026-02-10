@@ -14,10 +14,12 @@ interface RollRecord {
   status: string;
   created_at: string;
   updated_at: string;
-  production_lamination: {
-    date: string;
-    doc_number: string;
-  } | null;
+  production_lamination_rolls: {
+    production_lamination_shifts: {
+      date: string;
+      doc_number: string;
+    } | null;
+  }[] | null;
   weaving_rolls: {
     roll_number: string;
     tkan_specifications: {
@@ -46,12 +48,15 @@ export default function LaminatedWarehousePage() {
         .from('laminated_rolls')
         .select(`
           *,
-          production_lamination(date, doc_number),
+          production_lamination_rolls!output_roll_id(
+            production_lamination_shifts(date, doc_number)
+          ),
           weaving_rolls:source_roll_id(
             roll_number,
             tkan_specifications(kod_tkani, nazvanie_tkani)
           )
         `)
+        .eq('location', 'lamination')  // Только рулоны на складе ламинации (не в крое)
         .order('created_at', { ascending: false });
 
       if (view === 'available') {
@@ -282,8 +287,8 @@ export default function LaminatedWarehousePage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-zinc-400">
-                      {record.production_lamination?.date
-                        ? new Date(record.production_lamination.date).toLocaleDateString('ru-RU')
+                      {record.production_lamination_rolls?.[0]?.production_lamination_shifts?.date
+                        ? new Date(record.production_lamination_rolls[0].production_lamination_shifts.date).toLocaleDateString('ru-RU')
                         : '-'}
                     </td>
                     {isAdmin && (

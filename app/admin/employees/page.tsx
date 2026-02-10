@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/my-select";
+import { toast } from 'sonner';
 import { Users, UserPlus, Cake } from "lucide-react";
 import EmployeesDataTable, { Employee } from './EmployeesDataTable';
 
@@ -84,7 +85,8 @@ export default function EmployeesPage() {
 
   const handleSave = async () => {
     if (!formData.full_name || !formData.role) {
-      return alert('Введите ФИО и Роль');
+      toast.warning('Введите ФИО и Роль');
+      return;
     }
 
     const payload = {
@@ -98,7 +100,7 @@ export default function EmployeesPage() {
     const { error } = await supabase.from('employees').insert([payload]);
 
     if (error) {
-      alert('Ошибка: ' + error.message);
+      toast.error('Ошибка: ' + error.message);
     } else {
       setIsDialogOpen(false);
       resetForm();
@@ -113,7 +115,7 @@ export default function EmployeesPage() {
       .eq('id', id);
 
     if (error) {
-      alert('Ошибка: ' + error.message);
+      toast.error('Ошибка: ' + error.message);
     } else {
       fetchEmployees();
     }
@@ -138,9 +140,9 @@ export default function EmployeesPage() {
       .eq('id', id);
 
     if (error) {
-      alert('Ошибка: ' + error.message);
+      toast.error('Ошибка: ' + error.message);
     } else {
-      alert('✅ Сотрудник удалён');
+      toast.success('Сотрудник удалён');
       fetchEmployees();
     }
   };
@@ -154,7 +156,8 @@ export default function EmployeesPage() {
 
   const handleAddCustomRole = () => {
     if (!customRoleValue || !customRoleLabel) {
-      return alert('Заполните код и название роли');
+      toast.warning('Заполните код и название роли');
+      return;
     }
 
     const newRole = { value: customRoleValue, label: customRoleLabel };
@@ -168,21 +171,23 @@ export default function EmployeesPage() {
   return (
     <div className="page-container">
 
-      <div className="page-header">
+      <div className="page-header flex-col sm:flex-row gap-3 sm:gap-0">
         <div>
-          <h1 className="h1-bold">
-            <div className="bg-green-600 p-2 rounded-lg">
-              <Users size={24} className="text-white" />
+          <h1 className="h1-bold text-lg md:text-2xl">
+            <div className="bg-green-600 p-1.5 md:p-2 rounded-lg">
+              <Users size={18} className="text-white md:hidden" />
+              <Users size={24} className="text-white hidden md:block" />
             </div>
-            Управление Персоналом
+            <span className="hidden sm:inline">Управление Персоналом</span>
+            <span className="sm:hidden">Персонал</span>
           </h1>
-          <p className="page-description">База сотрудников с ролями и цехами</p>
+          <p className="page-description text-xs md:text-sm">База сотрудников с ролями и цехами</p>
         </div>
         <Button
           onClick={() => { resetForm(); setIsDialogOpen(true); }}
-          className="bg-white text-black hover:bg-zinc-200 font-bold gap-2"
+          className="bg-white text-black hover:bg-zinc-200 font-bold gap-2 text-xs md:text-sm w-full sm:w-auto"
         >
-          <UserPlus size={18} /> Добавить сотрудника
+          <UserPlus size={16} /> <span className="hidden sm:inline">Добавить сотрудника</span><span className="sm:hidden">Добавить</span>
         </Button>
       </div>
 

@@ -211,4 +211,70 @@
   .action-button {
     @apply w-full h-14 text-lg font-bold shadow-xl transition-all;
   }
+
+  /* ============================================ */
+  /* TOAST УВЕДОМЛЕНИЯ - Увеличенные размеры */
+  /* ============================================ */
+
+  /* Основной контейнер toast */
+  [data-sonner-toast] {
+    font-size: 16px !important;
+    padding: 20px 24px !important;
+    min-width: 420px !important;
+    max-width: 600px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Заголовок toast - делаем крупнее */
+  [data-sonner-toast] [data-title] {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    line-height: 1.4 !important;
+    margin-bottom: 6px !important;
+  }
+
+  /* Описание toast - делаем крупнее */
+  [data-sonner-toast] [data-description] {
+    font-size: 15px !important;
+    line-height: 1.5 !important;
+    opacity: 0.95 !important;
+    white-space: pre-line !important;
+  }
+
+  /* Кнопка закрытия - делаем крупнее */
+  [data-sonner-toast] [data-close-button] {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 6px !important;
+  }
+
+  /* Иконка в toast - делаем крупнее */
+  [data-sonner-toast] [data-icon] {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Success toast - зелёный */
+  [data-sonner-toast][data-type="success"] {
+    border-color: rgb(34, 197, 94) !important;
+    border-width: 2px !important;
+  }
+
+  /* Error toast - красный */
+  [data-sonner-toast][data-type="error"] {
+    border-color: rgb(239, 68, 68) !important;
+    border-width: 2px !important;
+  }
+
+  /* Warning toast - жёлтый */
+  [data-sonner-toast][data-type="warning"] {
+    border-color: rgb(251, 191, 36) !important;
+    border-width: 2px !important;
+  }
+
+  /* Info toast - синий */
+  [data-sonner-toast][data-type="info"] {
+    border-color: rgb(59, 130, 246) !important;
+    border-width: 2px !important;
+  }
 }

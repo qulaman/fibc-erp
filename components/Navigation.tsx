@@ -39,9 +39,11 @@ const navigationItems = [
     href: '/production/extrusion',
     icon: Factory,
     submenu: [
-      { name: 'Производство', href: '/production/extrusion' },
+      { name: 'Производство', href: '/production/extrusion/input' },
       { name: 'Журнал', href: '/production/extrusion/history' },
+      { name: 'Простои', href: '/production/extrusion/downtimes' },
       { name: 'Табель', href: '/production/extrusion/timesheet' },
+      { name: 'Персонал', href: '/production/extrusion/personnel' },
       { name: 'Задачи', href: '/tasks/extrusion' },
     ]
   },
@@ -50,10 +52,12 @@ const navigationItems = [
     href: '/production/weaving',
     icon: Grid3x3,
     submenu: [
-      { name: 'Производство', href: '/production/weaving' },
+      { name: 'Статус станков', href: '/production/weaving/machines' },
       { name: 'Журнал', href: '/production/weaving/history' },
+      { name: 'Простои', href: '/production/weaving/downtimes' },
       { name: 'Заправочные карты', href: '/production/weaving/weaving-setup' },
       { name: 'Табель', href: '/production/weaving/timesheet' },
+      { name: 'Персонал', href: '/production/weaving/personnel' },
       { name: 'Задачи', href: '/tasks/weaving' },
     ]
   },
@@ -65,6 +69,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/lamination' },
       { name: 'Журнал', href: '/production/lamination/history' },
       { name: 'Табель', href: '/production/lamination/timesheet' },
+      { name: 'Персонал', href: '/production/lamination/personnel' },
       { name: 'Задачи', href: '/tasks/lamination' },
     ]
   },
@@ -76,6 +81,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/straps' },
       { name: 'Журнал', href: '/production/straps/history' },
       { name: 'Табель', href: '/production/straps/timesheet' },
+      { name: 'Персонал', href: '/production/straps/personnel' },
       { name: 'Задачи', href: '/tasks/straps' },
     ]
   },
@@ -88,6 +94,7 @@ const navigationItems = [
       { name: 'Журнал', href: '/production/cutting/history' },
       { name: 'Рулоны в крое', href: '/production/cutting/rolls' },
       { name: 'Табель', href: '/production/cutting/timesheet' },
+      { name: 'Персонал', href: '/production/cutting/personnel' },
       { name: 'Задачи', href: '/tasks/cutting' },
     ]
   },
@@ -109,6 +116,7 @@ const navigationItems = [
       { name: 'Журнал', href: '/production/sewing/history' },
       { name: 'Спецификации (BOM)', href: '/production/sewing-specs' },
       { name: 'Табель', href: '/production/sewing/timesheet' },
+      { name: 'Персонал', href: '/production/sewing/personnel' },
       { name: 'Задачи', href: '/tasks/sewing' },
     ]
   },
@@ -166,7 +174,7 @@ const navigationItems = [
       { name: 'Склад строп', href: '/warehouse/straps' },
       { name: 'Кроеные детали', href: '/warehouse/cutting-parts' },
       { name: 'Готовая продукция', href: '/warehouse/finished-goods' },
-      { name: 'Сырье', href: '/inventory' },
+      { name: 'Сырье', href: '/warehouse/raw-materials' },
     ]
   },
   {
@@ -196,6 +204,7 @@ const navigationItems = [
       { name: 'Пользователи', href: '/admin/users' },
       { name: 'Сотрудники', href: '/admin/employees' },
       { name: 'Оборудование', href: '/admin/equipment' },
+      { name: 'Управление данными', href: '/admin/data-management' },
     ]
   },
 ];

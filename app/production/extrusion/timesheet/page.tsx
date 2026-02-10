@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from 'sonner';
 import {
   Calendar, ChevronLeft, ChevronRight, Moon, Sun,
   Minus, Plus, Download, Loader2
@@ -67,7 +68,7 @@ export default function ExtrusionTimesheetPage() {
 
     } catch (e: any) {
       console.error('Ошибка загрузки:', e.message);
-      alert('Не удалось загрузить данные табеля.');
+      toast.error('Не удалось загрузить данные табеля.');
     } finally {
       setLoading(false);
     }
@@ -177,13 +178,13 @@ export default function ExtrusionTimesheetPage() {
   };
 
   return (
-    <div className="page-container max-w-[100vw] overflow-x-hidden p-6 pb-40"> 
+    <div className="page-container max-w-[100vw] overflow-x-hidden p-3 md:p-6 pb-32 md:pb-40"> 
       
       {/* --- HEADER --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-           <h1 className="text-3xl font-bold flex items-center gap-2">
-             <Calendar className="text-[#E60012]" /> Табель Экструзии
+           <h1 className="text-xl md:text-3xl font-bold flex items-center gap-2">
+             <Calendar className="text-[#E60012]" size={20} /> <span className="hidden sm:inline">Табель Экструзии</span><span className="sm:hidden">Табель</span>
            </h1>
            <p className="text-zinc-400 capitalize">{monthName}</p>
         </div>
@@ -223,7 +224,7 @@ export default function ExtrusionTimesheetPage() {
             <thead>
               <tr className="bg-zinc-950 border-b border-zinc-800">
                 {/* Колонка имен (Закреплена слева) */}
-                <th className="p-4 text-left min-w-[220px] sticky left-0 bg-zinc-950 z-20 font-bold text-zinc-300 border-r border-zinc-800 shadow-[2px_0_5px_rgba(0,0,0,0.5)]">
+                <th className="p-2 md:p-4 text-left min-w-[120px] md:min-w-[220px] sticky left-0 bg-zinc-950 z-20 font-bold text-zinc-300 border-r border-zinc-800 shadow-[2px_0_5px_rgba(0,0,0,0.5)] text-xs md:text-sm">
                     Сотрудник
                 </th>
                 {/* Колонка итогов */}
@@ -255,9 +256,9 @@ export default function ExtrusionTimesheetPage() {
                    return (
                        <tr key={emp.id} className="hover:bg-zinc-800/30 transition-colors group">
                            {/* Имя */}
-                           <td className="p-3 sticky left-0 bg-zinc-900 group-hover:bg-zinc-800 transition-colors border-r border-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.5)]">
-                               <div className="font-bold text-white whitespace-nowrap">{emp.full_name}</div>
-                               <div className="text-xs text-zinc-500">{emp.role}</div>
+                           <td className="p-2 md:p-3 sticky left-0 bg-zinc-900 group-hover:bg-zinc-800 transition-colors border-r border-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.5)]">
+                               <div className="font-bold text-white whitespace-nowrap text-xs md:text-sm">{emp.full_name}</div>
+                               <div className="text-[10px] md:text-xs text-zinc-500 hidden sm:block">{emp.role}</div>
                            </td>
                            
                            {/* Итог */}
@@ -323,23 +324,23 @@ export default function ExtrusionTimesheetPage() {
       </Card>
 
       {/* --- НИЖНЯЯ ПАНЕЛЬ ИНСТРУМЕНТОВ --- */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-zinc-950/95 backdrop-blur-md border border-zinc-700 p-3 rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-4 z-50 animate-in slide-in-from-bottom-10 ring-1 ring-white/10">
+      <div className="fixed bottom-3 md:bottom-6 left-1/2 -translate-x-1/2 bg-zinc-950/95 backdrop-blur-md border border-zinc-700 p-2 md:p-3 rounded-xl md:rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-2 md:gap-4 z-50 animate-in slide-in-from-bottom-10 ring-1 ring-white/10 max-w-[95vw]">
           
           {/* 1. Выбор смены */}
           <div className="flex items-center gap-3">
               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Смена</span>
               <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
-                  <button 
+                  <button
                      onClick={() => setPaintShift('Day')}
-                     className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all font-medium ${paintShift === 'Day' ? 'bg-amber-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+                     className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-md transition-all font-medium text-xs md:text-sm ${paintShift === 'Day' ? 'bg-amber-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
                   >
-                      <Sun size={18} /> День
+                      <Sun size={16} /> <span className="hidden sm:inline">День</span><span className="sm:hidden">Д</span>
                   </button>
-                  <button 
+                  <button
                      onClick={() => setPaintShift('Night')}
-                     className={`flex items-center gap-2 px-4 py-2 rounded-md transition-all font-medium ${paintShift === 'Night' ? 'bg-indigo-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
+                     className={`flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 rounded-md transition-all font-medium text-xs md:text-sm ${paintShift === 'Night' ? 'bg-indigo-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'}`}
                   >
-                      <Moon size={18} /> Ночь
+                      <Moon size={16} /> <span className="hidden sm:inline">Ночь</span><span className="sm:hidden">Н</span>
                   </button>
               </div>
           </div>

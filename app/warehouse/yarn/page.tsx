@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { Package, Ruler, Palette, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 // Обновленный интерфейс под вашу реальную структуру БД
 interface YarnRecord {
@@ -14,12 +16,14 @@ interface YarnRecord {
   bobbin_count: number;
   location: string;
   last_updated: string;
-  
+
   // Данные лежат напрямую в таблице, без yarn_types
-  name: string;
-  denier: number;
-  color: string;
-  width_mm: number; 
+  yarn_name?: string;
+  name?: string;
+  yarn_denier?: number;
+  denier?: number;
+  color?: string;
+  width_mm?: number;
   yarn_code?: string;
 }
 
@@ -29,6 +33,11 @@ export default function YarnWarehousePage() {
   const [items, setItems] = useState<YarnRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; id: string; batchNumber: string }>({
+    open: false,
+    id: '',
+    batchNumber: '',
+  });
 
   useEffect(() => {
     fetchInventory();
@@ -58,15 +67,20 @@ export default function YarnWarehousePage() {
     }
   };
 
-  const handleDelete = async (id: string, batchNumber: string) => {
+  const handleDelete = (id: string, batchNumber: string) => {
     if (!isAdmin) {
-      alert('Только администраторы могут удалять записи');
+      toast.warning('Недостаточно прав', {
+        description: 'Только администраторы могут удалять записи',
+      });
       return;
     }
 
-    if (!confirm(`Удалить партию ${batchNumber}?\n\nЭто действие нельзя отменить!`)) {
-      return;
-    }
+    setDeleteDialog({ open: true, id, batchNumber });
+  };
+
+  const confirmDelete = async () => {
+    const { id, batchNumber } = deleteDialog;
+    setDeleteDialog({ open: false, id: '', batchNumber: '' });
 
     try {
       const { error } = await supabase
@@ -76,14 +90,22 @@ export default function YarnWarehousePage() {
 
       if (error) throw error;
 
-      alert('Запись успешно удалена');
+      toast.success('Запись успешно удалена', {
+        description: `Партия ${batchNumber} удалена из склада`,
+      });
       fetchInventory();
     } catch (err: any) {
       console.error('Error deleting record:', err);
       if (err.code === '23503') {
-        alert(`Невозможно удалить партию ${batchNumber}.\n\nЭта запись связана с другими данными в системе.\nСначала удалите связанные записи.`);
+        toast.error(`Невозможно удалить партию ${batchNumber}`, {
+          description: 'Эта запись связана с другими данными в системе.\nСначала удалите связанные записи.',
+          duration: 6000,
+        });
       } else {
-        alert('Ошибка удаления: ' + err.message);
+        toast.error('Ошибка удаления', {
+          description: err.message,
+          duration: 5000,
+        });
       }
     }
   };
@@ -94,9 +116,11 @@ export default function YarnWarehousePage() {
     // Поиск теперь идет по прямым полям
     return !searchQuery ||
       item.batch_number?.toLowerCase().includes(searchLower) ||
+      item.yarn_name?.toLowerCase().includes(searchLower) ||
       item.name?.toLowerCase().includes(searchLower) ||
       item.color?.toLowerCase().includes(searchLower) ||
-      item.denier?.toString().includes(searchLower);
+      item.denier?.toString().includes(searchLower) ||
+      item.yarn_denier?.toString().includes(searchLower);
   });
 
   const totalWeight = filteredItems.reduce((sum, i) => sum + (i.quantity_kg || 0), 0);
@@ -219,14 +243,14 @@ export default function YarnWarehousePage() {
                       {item.batch_number}
                     </td>
                     <td className="px-4 py-4 text-sm">
-                      <div className="font-medium text-white">{item.name || 'Без названия'}</div>
+                      <div className="font-medium text-white">{item.yarn_name || item.name || 'Без названия'}</div>
                       <div className="text-xs text-zinc-500">{item.yarn_code}</div>
                     </td>
                     <td className="px-4 py-4 text-sm">
                       <div className="flex justify-center gap-2">
                           {/* Денье */}
                           <span className="inline-flex items-center px-2 py-1 rounded bg-zinc-800 text-zinc-300 text-xs border border-zinc-700" title="Денье">
-                            <span className="font-bold mr-1">{item.denier || '?'}</span> D
+                            <span className="font-bold mr-1">{item.yarn_denier || item.denier || '?'}</span> D
                           </span>
                           
                           {/* Цвет */}
@@ -275,6 +299,17 @@ export default function YarnWarehousePage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        title="Удалить партию нити?"
+        description={`Вы уверены что хотите удалить партию ${deleteDialog.batchNumber}?\n\nЭто действие нельзя отменить!`}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmDelete}
+        variant="destructive"
+      />
     </div>
   );
 }

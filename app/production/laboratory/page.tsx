@@ -95,7 +95,7 @@ export default function LaboratoryPage() {
   const renderWarpWeft = (form: Record<string, string>, setForm: (v: Record<string, string>) => void) => (
     <>
       <p className="text-sm text-zinc-400 font-medium pt-2">Основа</p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <Label>Прочность кг</Label>
           <Input type="number" step="0.01" value={form.warp_strength_kg} onChange={(e) => setForm({ ...form, warp_strength_kg: e.target.value })} />
@@ -110,7 +110,7 @@ export default function LaboratoryPage() {
         </div>
       </div>
       <p className="text-sm text-zinc-400 font-medium pt-2">Уток</p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <Label>Прочность кг</Label>
           <Input type="number" step="0.01" value={form.weft_strength_kg} onChange={(e) => setForm({ ...form, weft_strength_kg: e.target.value })} />
@@ -152,7 +152,7 @@ export default function LaboratoryPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit('yarn', yarnForm as unknown as Record<string, string>, () => setYarnForm(INITIAL_YARN)); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Код нити *</Label>
                     <Input value={yarnForm.yarn_code} onChange={(e) => setYarnForm({ ...yarnForm, yarn_code: e.target.value })} required />
@@ -195,7 +195,7 @@ export default function LaboratoryPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit('extruder', extruderForm as unknown as Record<string, string>, () => setExtruderForm(INITIAL_EXTRUDER)); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Смена</Label>
                     <Select value={extruderForm.shift} onValueChange={(v) => setExtruderForm({ ...extruderForm, shift: v })}>
@@ -213,7 +213,7 @@ export default function LaboratoryPage() {
                 </div>
 
                 <p className="text-sm text-zinc-400 font-medium pt-2">Температуры (°C)</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div><Label>T1</Label><Input type="number" step="0.1" value={extruderForm.temp1} onChange={(e) => setExtruderForm({ ...extruderForm, temp1: e.target.value })} /></div>
                   <div><Label>T2</Label><Input type="number" step="0.1" value={extruderForm.temp2} onChange={(e) => setExtruderForm({ ...extruderForm, temp2: e.target.value })} /></div>
                   <div><Label>T3</Label><Input type="number" step="0.1" value={extruderForm.temp3} onChange={(e) => setExtruderForm({ ...extruderForm, temp3: e.target.value })} /></div>
@@ -223,7 +223,7 @@ export default function LaboratoryPage() {
                 </div>
 
                 <p className="text-sm text-zinc-400 font-medium pt-2">Дозаторы</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div><Label>Дозатор 1</Label><Input type="number" step="0.01" value={extruderForm.d1} onChange={(e) => setExtruderForm({ ...extruderForm, d1: e.target.value })} /></div>
                   <div><Label>Дозатор 2</Label><Input type="number" step="0.01" value={extruderForm.d2} onChange={(e) => setExtruderForm({ ...extruderForm, d2: e.target.value })} /></div>
                   <div><Label>Дозатор 3</Label><Input type="number" step="0.01" value={extruderForm.d3} onChange={(e) => setExtruderForm({ ...extruderForm, d3: e.target.value })} /></div>
@@ -249,7 +249,7 @@ export default function LaboratoryPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit('machine', machineForm as unknown as Record<string, string>, () => setMachineForm(INITIAL_MACHINE)); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>№ станка *</Label>
                     <Input value={machineForm.machine_number} onChange={(e) => setMachineForm({ ...machineForm, machine_number: e.target.value })} required />
@@ -284,7 +284,7 @@ export default function LaboratoryPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit('fabric', fabricForm as unknown as Record<string, string>, () => setFabricForm(INITIAL_FABRIC)); }} className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label>№ станка</Label>
                     <Input value={fabricForm.machine_number} onChange={(e) => setFabricForm({ ...fabricForm, machine_number: e.target.value })} />
@@ -320,7 +320,7 @@ export default function LaboratoryPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit('strap', strapForm as unknown as Record<string, string>, () => setStrapForm(INITIAL_STRAP)); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>№ партии</Label>
                     <Input value={strapForm.batch_number} onChange={(e) => setStrapForm({ ...strapForm, batch_number: e.target.value })} />
@@ -363,7 +363,7 @@ export default function LaboratoryPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit('lamination', laminationForm as unknown as Record<string, string>, () => setLaminationForm(INITIAL_LAMINATION)); }} className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label>№ рулона</Label>
                     <Input value={laminationForm.roll_number} onChange={(e) => setLaminationForm({ ...laminationForm, roll_number: e.target.value })} />
@@ -378,7 +378,7 @@ export default function LaboratoryPage() {
                   </div>
                 </div>
                 {renderWarpWeft(laminationForm as unknown as Record<string, string>, (v) => setLaminationForm(v as typeof INITIAL_LAMINATION))}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label>Плотность</Label>
                     <Input type="number" step="0.01" value={laminationForm.density} onChange={(e) => setLaminationForm({ ...laminationForm, density: e.target.value })} />
@@ -405,7 +405,7 @@ export default function LaboratoryPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={(e) => { e.preventDefault(); handleSubmit('mfi', mfiForm as unknown as Record<string, string>, () => setMfiForm(INITIAL_MFI)); }} className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label>Тип материала</Label>
                     <Input value={mfiForm.material_type} onChange={(e) => setMfiForm({ ...mfiForm, material_type: e.target.value })} />

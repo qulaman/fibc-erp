@@ -61,7 +61,7 @@ export default function WarehousePage() {
         { name: 'Стропы',           shortName: 'Стропы',  href: '/warehouse/straps',        positions: strapsRes.data?.length || 0,   mainMetric: sum(strapsRes.data, 'length'),        unit: 'м',        color: COLORS[4] },
         { name: 'Кроеные детали',   shortName: 'Кроеные', href: '/warehouse/cutting-parts', positions: cuttingRes.data?.length || 0,  mainMetric: sum(cuttingRes.data, 'balance'),      unit: 'шт',       color: COLORS[5] },
         { name: 'Готовая продукция',shortName: 'Готовая', href: '/warehouse/finished-goods',positions: finishedRes.data?.length || 0, mainMetric: sum(finishedRes.data, 'balance'),     unit: 'шт',       color: COLORS[6] },
-        { name: 'Сырье',            shortName: 'Сырье',   href: '/inventory',               positions: rawRes.data?.length || 0,     mainMetric: rawRes.data?.length || 0,             unit: 'позиций',  color: COLORS[7] },
+        { name: 'Сырье',            shortName: 'Сырье',   href: '/warehouse/raw-materials', positions: rawRes.data?.length || 0,     mainMetric: rawRes.data?.length || 0,             unit: 'позиций',  color: COLORS[7] },
       ]);
     } catch (err) {
       console.error('Error fetching warehouse data:', err);
@@ -114,7 +114,7 @@ export default function WarehousePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
           <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">Распределение позиций</h3>
-          <div className="h-64">
+          <div className="h-64" style={{ minHeight: '256px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
@@ -131,7 +131,7 @@ export default function WarehousePage() {
 
         <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
           <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По весу (кг)</h3>
-          <div className="h-64">
+          <div className="h-64" style={{ minHeight: '256px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weightData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
@@ -148,7 +148,7 @@ export default function WarehousePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
           <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По длине (м)</h3>
-          <div className="h-64">
+          <div className="h-64" style={{ minHeight: '256px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={lengthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
@@ -162,7 +162,7 @@ export default function WarehousePage() {
 
         <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
           <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По количеству (шт)</h3>
-          <div className="h-64">
+          <div className="h-64" style={{ minHeight: '256px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={quantityData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />

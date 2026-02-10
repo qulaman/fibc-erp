@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/my-select";
 import { Badge } from "@/components/ui/badge";
+import { toast } from 'sonner';
 import { Users, Plus, Edit, Power, Search, ShieldCheck, Mail } from "lucide-react";
 
 const ROLES = [
@@ -39,7 +40,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!isAdmin) {
-      alert('Доступ запрещен. Требуются права администратора.');
+      toast.error('Доступ запрещен. Требуются права администратора.');
       window.location.href = '/';
       return;
     }
@@ -73,7 +74,8 @@ export default function UsersPage() {
 
   const handleCreateUser = async () => {
     if (!formData.email || !formData.password) {
-      return alert('Введите email и пароль');
+      toast.warning('Введите email и пароль');
+      return;
     }
 
     try {
@@ -94,16 +96,16 @@ export default function UsersPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        alert('Ошибка создания пользователя: ' + (result.error || 'Неизвестная ошибка'));
+        toast.error('Ошибка создания пользователя: ' + (result.error || 'Неизвестная ошибка'));
         return;
       }
 
-      alert('Пользователь успешно создан!');
+      toast.success('Пользователь успешно создан!');
       setIsDialogOpen(false);
       resetForm();
       fetchUsers();
     } catch (error: any) {
-      alert('Ошибка создания пользователя: ' + error.message);
+      toast.error('Ошибка создания пользователя: ' + error.message);
     }
   };
 
@@ -119,9 +121,9 @@ export default function UsersPage() {
       .eq('id', editingUserId);
 
     if (error) {
-      alert('Ошибка обновления: ' + error.message);
+      toast.error('Ошибка обновления: ' + error.message);
     } else {
-      alert('Профиль обновлен');
+      toast.success('Профиль обновлен');
       setIsDialogOpen(false);
       resetForm();
       fetchUsers();
@@ -158,7 +160,7 @@ export default function UsersPage() {
       .eq('id', userId);
 
     if (error) {
-      alert('Ошибка: ' + error.message);
+      toast.error('Ошибка: ' + error.message);
     } else {
       fetchUsers();
     }
@@ -176,18 +178,20 @@ export default function UsersPage() {
   return (
     <div className="page-container">
 
-      <div className="page-header">
+      <div className="page-header flex-col sm:flex-row gap-3 sm:gap-0">
         <div>
-          <h1 className="h1-bold">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <Users size={24} className="text-white" />
+          <h1 className="h1-bold text-lg md:text-2xl">
+            <div className="bg-blue-600 p-1.5 md:p-2 rounded-lg">
+              <Users size={18} className="text-white md:hidden" />
+              <Users size={24} className="text-white hidden md:block" />
             </div>
-            Управление Пользователями
+            <span className="hidden sm:inline">Управление Пользователями</span>
+            <span className="sm:hidden">Пользователи</span>
           </h1>
-          <p className="page-description">Администрирование доступа к системе</p>
+          <p className="page-description text-xs md:text-sm">Администрирование доступа к системе</p>
         </div>
-        <Button onClick={startCreate} className="bg-white text-black hover:bg-zinc-200 font-bold gap-2">
-          <Plus size={18} /> Создать пользователя
+        <Button onClick={startCreate} className="bg-white text-black hover:bg-zinc-200 font-bold gap-2 text-xs md:text-sm w-full sm:w-auto">
+          <Plus size={16} /> <span className="hidden sm:inline">Создать пользователя</span><span className="sm:hidden">Создать</span>
         </Button>
       </div>
 

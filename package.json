@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "schema:dump": "npx supabase db dump --db-url postgresql://postgres.mgslapkswztsonyooogm:Qq6391463!@aws-0-eu-central-1.pooler.supabase.com:6543/postgres --schema public > supabase/current_schema.sql",
+    "schema:info": "node scripts/dump-schema.js"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
@@ -27,6 +29,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7"
   },

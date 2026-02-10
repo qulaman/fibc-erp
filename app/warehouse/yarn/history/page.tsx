@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
-import { ArrowLeft, FileText, TrendingUp, TrendingDown } from 'lucide-react';
+import { ArrowLeft, FileText, TrendingUp, TrendingDown, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 interface HistoryRecord {
   id: string;
@@ -30,10 +33,15 @@ const formatDate = (dateString: string) => {
 };
 
 export default function YarnHistoryPage() {
+  const { isAdmin } = useAuth();
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'in' | 'out'>('all');
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; record: HistoryRecord | null }>({
+    open: false,
+    record: null,
+  });
 
   useEffect(() => {
     fetchHistory();
@@ -119,9 +127,9 @@ export default function YarnHistoryPage() {
           }
         });
 
-        // Добавляем расход только для завершенных рулонов
+        // Добавляем расход для завершенных и использованных рулонов
         rollConsumptions.forEach((roll, rollId) => {
-          if (roll.status === 'completed' && roll.spec) {
+          if ((roll.status === 'completed' || roll.status === 'used') && roll.spec) {
             const warpConsumption = roll.total_length * (roll.spec.osnova_itogo_kg || 0);
             const weftConsumption = roll.total_length * (roll.spec.utok_itogo_kg || 0);
 
@@ -262,6 +270,79 @@ export default function YarnHistoryPage() {
     }
   };
 
+  const handleDelete = (record: HistoryRecord) => {
+    if (!isAdmin) {
+      toast.warning('Недостаточно прав', {
+        description: 'Только администраторы могут удалять операции',
+      });
+      return;
+    }
+
+    setDeleteDialog({ open: true, record });
+  };
+
+  const confirmDelete = async () => {
+    const record = deleteDialog.record;
+    setDeleteDialog({ open: false, record: null });
+
+    if (!record) return;
+
+    // Парсим ID чтобы понять тип операции и реальный ID
+    const [type, ...idParts] = record.id.split('-');
+    const realId = idParts.join('-');
+
+    try {
+      if (type === 'ext') {
+        // Удаление операции прихода из экструзии
+        const { error } = await supabase
+          .from('production_extrusion')
+          .delete()
+          .eq('id', realId);
+
+        if (error) throw error;
+
+        toast.success('Операция удалена', {
+          description: 'Операция прихода удалена из производства экструзии',
+        });
+      } else if (type === 'weave') {
+        // Для расхода ткачества - это calculated data, нельзя удалить напрямую
+        toast.info('Расход ткачества рассчитывается автоматически', {
+          description: `Чтобы удалить этот расход:\n1. Откройте "Склад ткани"\n2. Найдите рулон: ${record.roll_number}\n3. Удалите рулон оттуда`,
+          duration: 8000,
+        });
+        return;
+      } else if (type === 'strap') {
+        // Удаление операции расхода на стропы
+        const { error } = await supabase
+          .from('production_straps')
+          .delete()
+          .eq('id', realId);
+
+        if (error) throw error;
+
+        toast.success('Операция удалена', {
+          description: 'Операция расхода удалена из производства строп',
+        });
+      }
+
+      // Обновляем список после удаления
+      await fetchHistory();
+    } catch (err: any) {
+      console.error('Error deleting operation:', err);
+      if (err.code === '23503') {
+        toast.error('Невозможно удалить операцию', {
+          description: 'Эта запись связана с другими данными в системе',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Ошибка при удалении', {
+          description: err.message,
+          duration: 5000,
+        });
+      }
+    }
+  };
+
   const filteredRecords = records.filter(record => {
     const matchesType = filterType === 'all' || record.type === filterType;
     const searchLower = searchQuery.toLowerCase();
@@ -393,6 +474,9 @@ export default function YarnHistoryPage() {
                   <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Рулон / Продукция</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Смена</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Примечание</th>
+                  {isAdmin && (
+                    <th className="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Действия</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
@@ -455,6 +539,17 @@ export default function YarnHistoryPage() {
                     <td className="px-4 py-3 text-sm text-zinc-500 max-w-[200px] truncate">
                       {record.notes || '-'}
                     </td>
+                    {isAdmin && (
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => handleDelete(record)}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                          title="Удалить операцию"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -462,6 +557,21 @@ export default function YarnHistoryPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}
+        title="Удалить операцию?"
+        description={
+          deleteDialog.record
+            ? `Вы уверены что хотите удалить эту операцию?\n\nТип: ${deleteDialog.record.type === 'in' ? 'Приход' : 'Расход'}\nИсточник: ${deleteDialog.record.source}\nНить: ${deleteDialog.record.yarn_name}\nКоличество: ${deleteDialog.record.quantity_kg.toFixed(1)} кг\n\n⚠️ ВНИМАНИЕ: Это действие нельзя отменить!`
+            : ''
+        }
+        confirmText="Удалить"
+        cancelText="Отмена"
+        onConfirm={confirmDelete}
+        variant="destructive"
+      />
     </div>
   );
 }

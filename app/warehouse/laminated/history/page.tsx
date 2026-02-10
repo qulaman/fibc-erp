@@ -11,28 +11,27 @@ interface LaminationRecord {
   doc_number: string;
   date: string;
   shift: string;
-  input_length: number;
-  input_weight: number;
-  output_length: number;
-  output_weight: number;
-  waste_weight: number;
+  waste_oploy_kg: number;
+  waste_shift_kg: number;
+  waste_trim_kg: number;
   notes: string;
   equipment: {
     name: string;
   } | null;
-  employees: {
+  operator1: {
     full_name: string;
   } | null;
-  input_roll: {
-    roll_number: string;
-    tkan_specifications: {
-      kod_tkani: string;
-      nazvanie_tkani: string;
-    } | null;
+  operator2: {
+    full_name: string;
   } | null;
-  laminated_rolls: {
-    roll_number: string;
-    status: string;
+  operator3: {
+    full_name: string;
+  } | null;
+  production_lamination_rolls: {
+    input_roll_number: string;
+    input_weight_kg: number;
+    output_roll_number: string;
+    output_weight_kg: number;
   }[];
 }
 
@@ -56,16 +55,19 @@ export default function LaminatedHistoryPage() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('production_lamination')
+        .from('production_lamination_shifts')
         .select(`
           *,
           equipment:machine_id(name),
-          employees:operator_id(full_name),
-          input_roll:input_roll_id(
-            roll_number,
-            tkan_specifications(kod_tkani, nazvanie_tkani)
-          ),
-          laminated_rolls(roll_number, status)
+          operator1:operator1_id(full_name),
+          operator2:operator2_id(full_name),
+          operator3:operator3_id(full_name),
+          production_lamination_rolls(
+            input_roll_number,
+            input_weight_kg,
+            output_roll_number,
+            output_weight_kg
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -82,14 +84,18 @@ export default function LaminatedHistoryPage() {
     const searchLower = searchQuery.toLowerCase();
     return !searchQuery ||
       record.doc_number?.toLowerCase().includes(searchLower) ||
-      record.input_roll?.roll_number?.toLowerCase().includes(searchLower) ||
-      record.input_roll?.tkan_specifications?.kod_tkani?.toLowerCase().includes(searchLower) ||
-      record.laminated_rolls?.some(r => r.roll_number?.toLowerCase().includes(searchLower));
+      record.production_lamination_rolls?.some(r =>
+        r.input_roll_number?.toLowerCase().includes(searchLower) ||
+        r.output_roll_number?.toLowerCase().includes(searchLower)
+      );
   });
 
-  const totalInput = filteredRecords.reduce((sum, r) => sum + (r.input_length || 0), 0);
-  const totalOutput = filteredRecords.reduce((sum, r) => sum + (r.output_length || 0), 0);
-  const totalWaste = filteredRecords.reduce((sum, r) => sum + (r.waste_weight || 0), 0);
+  const totalInput = filteredRecords.reduce((sum, r) =>
+    sum + (r.production_lamination_rolls?.reduce((s, roll) => s + (roll.input_weight_kg || 0), 0) || 0), 0);
+  const totalOutput = filteredRecords.reduce((sum, r) =>
+    sum + (r.production_lamination_rolls?.reduce((s, roll) => s + (roll.output_weight_kg || 0), 0) || 0), 0);
+  const totalWaste = filteredRecords.reduce((sum, r) =>
+    sum + (r.waste_oploy_kg || 0) + (r.waste_shift_kg || 0) + (r.waste_trim_kg || 0), 0);
 
   return (
     <div className="page-container">
@@ -126,16 +132,16 @@ export default function LaminatedHistoryPage() {
       {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-          <p className="text-sm text-zinc-400 mb-1">Всего операций</p>
+          <p className="text-sm text-zinc-400 mb-1">Всего смен</p>
           <p className="text-2xl font-bold text-white">{filteredRecords.length}</p>
         </div>
         <div className="bg-purple-500/10 border border-purple-500/50 rounded-lg p-4">
-          <p className="text-sm text-purple-400 mb-1">Вход ткани (м)</p>
-          <p className="text-2xl font-bold text-purple-500">{totalInput.toLocaleString()}</p>
+          <p className="text-sm text-purple-400 mb-1">Вход ткани (кг)</p>
+          <p className="text-2xl font-bold text-purple-500">{totalInput.toFixed(1)}</p>
         </div>
         <div className="bg-orange-500/10 border border-orange-500/50 rounded-lg p-4">
-          <p className="text-sm text-orange-400 mb-1">Выход ламината (м)</p>
-          <p className="text-2xl font-bold text-orange-500">{totalOutput.toLocaleString()}</p>
+          <p className="text-sm text-orange-400 mb-1">Выход ламината (кг)</p>
+          <p className="text-2xl font-bold text-orange-500">{totalOutput.toFixed(1)}</p>
         </div>
         <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4">
           <p className="text-sm text-red-400 mb-1">Отходы (кг)</p>
@@ -154,64 +160,65 @@ export default function LaminatedHistoryPage() {
             <table className="w-full">
               <thead className="bg-zinc-800/50 border-b border-zinc-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Дата / Время</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Дата</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Документ</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Смена</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Исх. рулон</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Ткань</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Вход (м)</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Выход (м)</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Отходы</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Вых. рулон</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Операторы</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-zinc-400 uppercase">Рулонов</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Вход (кг)</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Выход (кг)</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-zinc-400 uppercase">Отходы (кг)</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-zinc-400 uppercase">Станок</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800">
-                {filteredRecords.map((record) => (
-                  <tr key={record.id} className="hover:bg-zinc-800/50 transition-colors">
-                    <td className="px-4 py-3 text-sm text-zinc-300">
-                      {formatDate(record.created_at)}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-mono text-zinc-500">
-                      {record.doc_number || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        record.shift === 'День' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {record.shift}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-mono text-purple-300">
-                      {record.input_roll?.roll_number || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="font-medium text-white">
-                        {record.input_roll?.tkan_specifications?.kod_tkani || '-'}
-                      </div>
-                      <div className="text-xs text-zinc-500">
-                        {record.input_roll?.tkan_specifications?.nazvanie_tkani || '-'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-red-400">
-                      -{record.input_length || 0}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right">
-                      <span className="font-bold text-green-400">
-                        +{record.output_length || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-zinc-500">
-                      {record.waste_weight?.toFixed(1) || '0'}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-mono text-orange-300">
-                      {record.laminated_rolls?.[0]?.roll_number || '-'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-zinc-400">
-                      {record.equipment?.name || '-'}
-                    </td>
-                  </tr>
-                ))}
+                {filteredRecords.map((record) => {
+                  const totalInputWeight = record.production_lamination_rolls?.reduce((sum, r) => sum + (r.input_weight_kg || 0), 0) || 0;
+                  const totalOutputWeight = record.production_lamination_rolls?.reduce((sum, r) => sum + (r.output_weight_kg || 0), 0) || 0;
+                  const totalWasteKg = (record.waste_oploy_kg || 0) + (record.waste_shift_kg || 0) + (record.waste_trim_kg || 0);
+                  const rollsCount = record.production_lamination_rolls?.length || 0;
+                  const operators = [record.operator1?.full_name, record.operator2?.full_name, record.operator3?.full_name]
+                    .filter(Boolean)
+                    .join(', ');
+
+                  return (
+                    <tr key={record.id} className="hover:bg-zinc-800/50 transition-colors">
+                      <td className="px-4 py-3 text-sm text-zinc-300">
+                        {new Date(record.date).toLocaleDateString('ru-RU')}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-zinc-500">
+                        {record.doc_number || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          record.shift === 'День' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {record.shift}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-zinc-300">
+                        {operators || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center font-bold text-orange-400">
+                        {rollsCount}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-purple-400">
+                        {totalInputWeight.toFixed(1)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right">
+                        <span className="font-bold text-green-400">
+                          {totalOutputWeight.toFixed(1)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right text-red-400">
+                        {totalWasteKg.toFixed(1)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-zinc-400">
+                        {record.equipment?.name || '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

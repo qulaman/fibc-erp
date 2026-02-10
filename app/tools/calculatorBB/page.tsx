@@ -217,7 +217,7 @@ export default function FibcCalculatorPage() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardHeader className="pb-3 border-b border-zinc-800"><CardTitle className="text-white text-lg">1. Тело и Дно</CardTitle></CardHeader>
             <CardContent className="pt-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><Label>Высота (см)</Label><Input type="number" value={height} onChange={e => setHeight(Number(e.target.value))} className="bg-zinc-950 font-bold"/></div>
                 <div><Label>Ширина (см)</Label><Input type="number" value={width} onChange={e => {
                     const v = Number(e.target.value);
@@ -290,7 +290,7 @@ export default function FibcCalculatorPage() {
                {/* ЗАВЯЗКИ */}
                <div>
                    <Label className="text-yellow-400 mb-2 block">Лента для завязки</Label>
-                   <div className="grid grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div><Label className="text-[10px]">Вес (г/м)</Label><Input value={tieWeightPerM} onChange={e=>setTieWeightPerM(Number(e.target.value))} className="bg-zinc-950 text-yellow-500 border-yellow-900/30"/></div>
                       <div><Label className="text-[10px]">Длина (см)</Label><Input value={tieLength} onChange={e=>setTieLength(Number(e.target.value))} className="bg-zinc-950 text-yellow-500 border-yellow-900/30"/></div>
                    </div>
@@ -301,7 +301,7 @@ export default function FibcCalculatorPage() {
 
           <Card className="bg-zinc-900 border-zinc-800">
              <CardHeader className="pb-3 border-b border-zinc-800"><CardTitle className="text-white text-lg">3. Стропы / Нить</CardTitle></CardHeader>
-             <CardContent className="pt-4 grid grid-cols-2 gap-4">
+             <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2"><Label>Тип пришива стропы</Label>
                    <Select value={strapRatioType} onValueChange={(v:any) => setStrapRatioType(v)}>
                       <SelectTrigger className="bg-zinc-950 border-zinc-700 mt-1"><SelectValue /></SelectTrigger>

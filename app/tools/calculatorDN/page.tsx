@@ -86,7 +86,7 @@ export default function DenierCalculatorPage() {
               {/* УТОК */}
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader className="pb-3"><CardTitle className="text-sm uppercase text-zinc-400">Параметры Утка</CardTitle></CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Денье (dtex)</Label>
                       <Input type="number" value={params.weftDenier} onChange={e => handleChange('weftDenier', e.target.value)} className="bg-zinc-950 border-zinc-700"/>
@@ -101,7 +101,7 @@ export default function DenierCalculatorPage() {
               {/* ОСНОВА */}
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader className="pb-3"><CardTitle className="text-sm uppercase text-zinc-400">Параметры Основы</CardTitle></CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Денье (dtex)</Label>
                       <Input type="number" value={params.warpDenier} onChange={e => handleChange('warpDenier', e.target.value)} className="bg-zinc-950 border-zinc-700"/>
@@ -115,7 +115,7 @@ export default function DenierCalculatorPage() {
 
               {/* ДОПОЛНИТЕЛЬНО */}
               <Card className="bg-zinc-900 border-zinc-800">
-                <CardContent className="grid grid-cols-2 gap-4 pt-6">
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
                     <div className="space-y-2">
                       <Label>Факт. плотность (г/м²)</Label>
                       <Input type="number" value={params.actualDensity} onChange={e => handleChange('actualDensity', e.target.value)} className="bg-zinc-950 border-zinc-700 text-yellow-500"/>
@@ -168,7 +168,7 @@ export default function DenierCalculatorPage() {
                       {/* РАСХОД */}
                       <div>
                          <div className="text-sm text-zinc-400 mb-3 flex items-center gap-2"><Scale size={16}/> Расход сырья (на 1 пог. метр)</div>
-                         <div className="grid grid-cols-3 gap-2">
+                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <div className="p-3 bg-zinc-950 rounded border border-zinc-800">
                                <div className="text-xs text-zinc-500">Уток</div>
                                <div className="font-mono font-bold">{result.weftConsumption} кг</div>
