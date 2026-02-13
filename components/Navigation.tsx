@@ -78,7 +78,7 @@ const navigationItems = [
     href: '/production/straps',
     icon: Ribbon,
     submenu: [
-      { name: 'Производство', href: '/production/straps' },
+      { name: 'Статус станков', href: '/production/straps/machines' },
       { name: 'Журнал', href: '/production/straps/history' },
       { name: 'Табель', href: '/production/straps/timesheet' },
       { name: 'Персонал', href: '/production/straps/personnel' },
