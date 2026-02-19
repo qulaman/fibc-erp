@@ -235,6 +235,23 @@ function StrapsProductionContent() {
           }
         }
 
+        // Создаём рулон на складе строп (только при завершении)
+        const rollDate = formData.date.replace(/-/g, '');
+        const specNameClean = (currentSpec?.nazvanie || 'unknown').replace(/[\s/\\]+/g, '-');
+        const rollSuffix = crypto.randomUUID().substring(0, 8);
+        const rollNumber = `STRAP-${rollDate}-${specNameClean}-${rollSuffix}`;
+
+        await supabase.from('straps_warehouse').insert({
+          roll_number: rollNumber,
+          spec_name: currentSpec?.nazvanie || null,
+          width_mm: (currentSpec as any)?.shirina_mm || null,
+          produced_length: newTotalLength,
+          produced_weight: newTotalWeight,
+          length: newTotalLength,
+          weight: newTotalWeight,
+          status: 'available',
+        });
+
         toast.success('Производство завершено! Сырьё списано.', {
           description: `Итого: ${newTotalLength} м / ${newTotalWeight} кг\nСписано: Уток ${totalWeft} кг, Основа ${totalWarp} кг`,
           duration: 5000,

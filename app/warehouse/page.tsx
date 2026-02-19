@@ -25,6 +25,7 @@ const sum = (arr: any[] | null | undefined, key: string) =>
 
 export default function WarehousePage() {
   const [stats, setStats] = useState<WarehouseStat[]>([]);
+  const [rawMaterials, setRawMaterials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +53,16 @@ export default function WarehousePage() {
         supabase.from('view_finished_goods_balance').select('balance'),
         supabase.from('view_material_balances').select('current_balance').neq('type', 'МФН')
       ]);
+
+      // Загружаем детальные данные по сырью
+      const { data: rawMaterialsData } = await supabase
+        .from('view_material_balances')
+        .select('name, current_balance, type')
+        .neq('type', 'МФН')
+        .gt('current_balance', 0)
+        .order('name');
+
+      setRawMaterials(rawMaterialsData || []);
 
       setStats([
         { name: 'Нить (ПП)',        shortName: 'Нить',    href: '/warehouse/yarn',          positions: yarnRes.data?.length || 0,      mainMetric: sum(yarnRes.data, 'quantity_kg'),      unit: 'кг',       color: COLORS[0] },
@@ -110,29 +121,31 @@ export default function WarehousePage() {
         ))}
       </div>
 
-      {/* Pie + кг */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-          <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">Распределение позиций</h3>
-          <div className="h-64" style={{ minHeight: '256px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={4} dataKey="value">
-                  {pieData.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} stroke="rgba(0,0,0,0)" />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }} itemStyle={{ color: '#fff' }} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+      {/* Сырье */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-orange-500" />
+          Остатки сырья
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {rawMaterials.map((material) => (
+            <div key={material.name} className="bg-gradient-to-br from-orange-900/20 to-orange-950/20 border-2 border-orange-800 rounded-xl p-5">
+              <p className="text-sm text-orange-400 font-bold mb-2 uppercase">{material.name}</p>
+              <p className="text-3xl font-bold text-white mb-1">
+                {material.current_balance.toLocaleString('ru-RU', { maximumFractionDigits: 1 })}
+              </p>
+              <p className="text-xs text-zinc-500">кг</p>
+            </div>
+          ))}
         </div>
+      </div>
 
+      {/* Графики остатков */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
           <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По весу (кг)</h3>
           <div className="h-64" style={{ minHeight: '256px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={weightData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
                 <YAxis stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
@@ -142,14 +155,11 @@ export default function WarehousePage() {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
 
-      {/* м + шт */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
           <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По длине (м)</h3>
           <div className="h-64" style={{ minHeight: '256px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={lengthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
                 <YAxis stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
@@ -163,7 +173,7 @@ export default function WarehousePage() {
         <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
           <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По количеству (шт)</h3>
           <div className="h-64" style={{ minHeight: '256px' }}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={quantityData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
                 <YAxis stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 11 }} />

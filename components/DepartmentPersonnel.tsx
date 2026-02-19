@@ -216,9 +216,7 @@ export default function DepartmentPersonnel({
                   <thead className="bg-zinc-950">
                     <tr>
                       <th className="px-2 md:px-4 py-2 md:py-3 text-left text-[10px] md:text-xs font-bold text-zinc-500 uppercase">ФИО</th>
-                      {roles.length > 1 && (
-                        <th className="px-2 md:px-4 py-2 md:py-3 text-left text-[10px] md:text-xs font-bold text-zinc-500 uppercase hidden sm:table-cell">Роль</th>
-                      )}
+                      <th className="px-2 md:px-4 py-2 md:py-3 text-left text-[10px] md:text-xs font-bold text-zinc-500 uppercase hidden sm:table-cell">Должность</th>
                       <th className="px-2 md:px-4 py-2 md:py-3 text-center text-[10px] md:text-xs font-bold text-zinc-500 uppercase">Статус</th>
                       <th className="px-2 md:px-4 py-2 md:py-3 text-center text-[10px] md:text-xs font-bold text-zinc-500 uppercase">Действия</th>
                     </tr>
@@ -226,7 +224,7 @@ export default function DepartmentPersonnel({
                   <tbody className="divide-y divide-zinc-800">
                     {activeEmployees.length === 0 ? (
                       <tr>
-                        <td colSpan={roles.length > 1 ? 4 : 3} className="text-center py-8 text-zinc-500 text-xs md:text-sm">
+                        <td colSpan={4} className="text-center py-8 text-zinc-500 text-xs md:text-sm">
                           Нет активных сотрудников
                         </td>
                       </tr>
@@ -240,33 +238,31 @@ export default function DepartmentPersonnel({
                               </div>
                               <div>
                                 <div className="text-white font-medium text-xs md:text-sm">{emp.full_name}</div>
-                                {roles.length > 1 && (
-                                  <div className="sm:hidden text-[10px] text-zinc-500">{getRoleLabel(emp.role)}</div>
-                                )}
+                                <div className="sm:hidden text-[10px] text-zinc-500">{getRoleLabel(emp.role)}</div>
                               </div>
                             </div>
                           </td>
-                          {roles.length > 1 && (
-                            <td className="px-2 md:px-4 py-2 md:py-3 hidden sm:table-cell">
-                              {editingId === emp.id ? (
-                                <Select
-                                  value={emp.role}
-                                  onValueChange={(v) => handleUpdateRole(emp.id, v)}
-                                >
-                                  <SelectTrigger className="bg-zinc-950 border-zinc-700 text-white w-36 md:w-48 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {roles.map(role => (
-                                      <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-blue-400 border-blue-700 bg-blue-900/10 text-[10px] md:text-xs">
-                                    {getRoleLabel(emp.role)}
-                                  </Badge>
+                          <td className="px-2 md:px-4 py-2 md:py-3 hidden sm:table-cell">
+                            {roles.length > 1 && editingId === emp.id ? (
+                              <Select
+                                value={emp.role}
+                                onValueChange={(v) => handleUpdateRole(emp.id, v)}
+                              >
+                                <SelectTrigger className="bg-zinc-950 border-zinc-700 text-white w-36 md:w-48 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {roles.map(role => (
+                                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-blue-400 border-blue-700 bg-blue-900/10 text-[10px] md:text-xs">
+                                  {getRoleLabel(emp.role)}
+                                </Badge>
+                                {roles.length > 1 && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
@@ -275,10 +271,10 @@ export default function DepartmentPersonnel({
                                   >
                                     <Edit size={10} />
                                   </Button>
-                                </div>
-                              )}
-                            </td>
-                          )}
+                                )}
+                              </div>
+                            )}
+                          </td>
                           <td className="px-2 md:px-4 py-2 md:py-3 text-center">
                             {getStatusBadge(emp)}
                           </td>

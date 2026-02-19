@@ -35,7 +35,7 @@ interface ChangeHistory {
   comment: string;
 }
 
-export default function WeavingTasksPage() {
+export default function OfficeTasksPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,7 +236,7 @@ export default function WeavingTasksPage() {
               <div className="bg-slate-600 p-2 rounded-lg inline-block">
                 <Building2 size={24} className="text-white" />
               </div>
-              {' '}Задачи цеха Ткачества
+              {' '}Задачи Офиса
             </h1>
             <p className="page-description">Задачи от руководства для офиса</p>
           </div>

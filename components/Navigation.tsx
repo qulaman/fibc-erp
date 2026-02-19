@@ -93,6 +93,7 @@ const navigationItems = [
       { name: 'Производство', href: '/production/cutting' },
       { name: 'Журнал', href: '/production/cutting/history' },
       { name: 'Рулоны в крое', href: '/production/cutting/rolls' },
+      { name: 'Справочник деталей', href: '/production/cutting/cutting-types' },
       { name: 'Табель', href: '/production/cutting/timesheet' },
       { name: 'Персонал', href: '/production/cutting/personnel' },
       { name: 'Задачи', href: '/tasks/cutting' },
@@ -105,29 +106,25 @@ const navigationItems = [
     submenu: [
       { name: 'Производство', href: '/production/printing' },
       { name: 'Журнал', href: '/production/printing/history' },
+      { name: 'Персонал', href: '/production/printing/personnel' },
+      { name: 'Задачи', href: '/tasks/printing' },
     ]
   },
   {
-    name: 'Пошив',
-    href: '/production/sewing/daily',
+    name: 'Пошив и ОТК',
+    href: '/production/sewing',
     icon: Package,
     submenu: [
-      { name: 'Производство', href: '/production/sewing/daily' },
-      { name: 'Журнал', href: '/production/sewing/history' },
+      { name: 'Главная', href: '/production/sewing' },
+      { name: 'Биг-Бэг', href: '/production/sewing/bigbag' },
+      { name: 'Вкладыши', href: '/production/sewing/liners' },
+      { name: 'Приёмка ОТК', href: '/production/qc' },
+      { name: 'Журнал пошива', href: '/production/sewing/history' },
+      { name: 'Журнал ОТК', href: '/production/qc/history' },
       { name: 'Спецификации (BOM)', href: '/production/sewing-specs' },
       { name: 'Табель', href: '/production/sewing/timesheet' },
       { name: 'Персонал', href: '/production/sewing/personnel' },
       { name: 'Задачи', href: '/tasks/sewing' },
-    ]
-  },
-  {
-    name: 'ОТК',
-    href: '/production/qc',
-    icon: CheckCircle2,
-    submenu: [
-      { name: 'Приёмка ОТК', href: '/production/qc' },
-      { name: 'Журнал', href: '/production/qc/history' },
-      { name: 'Задачи', href: '/tasks/qc' },
     ]
   },
   {
@@ -174,20 +171,19 @@ const navigationItems = [
       { name: 'Склад строп', href: '/warehouse/straps' },
       { name: 'Кроеные детали', href: '/warehouse/cutting-parts' },
       { name: 'Готовая продукция', href: '/warehouse/finished-goods' },
+      { name: 'Отпуск ГП клиентам', href: '/warehouse/finished-goods/shipment' },
+      { name: 'Журнал отпусков', href: '/warehouse/finished-goods/shipment/history' },
       { name: 'Сырье', href: '/warehouse/raw-materials' },
     ]
   },
   {
-    name: 'Заказы',
-    href: '/orders',
+    name: 'Задачи',
+    href: '/tasks/management',
     icon: ClipboardList,
-    badge: 'Скоро'
-  },
-  {
-    name: 'Клиенты',
-    href: '/clients',
-    icon: Users,
-    badge: 'Скоро'
+    submenu: [
+      { name: 'Управление задачами', href: '/tasks/management' },
+      { name: 'Задачи офиса', href: '/tasks/office' },
+    ]
   },
   {
     name: 'Отчеты',
@@ -199,8 +195,6 @@ const navigationItems = [
     href: '/admin',
     icon: ShieldCheck,
     submenu: [
-      { name: 'Управление задачами', href: '/tasks/management' },
-      { name: 'Задачи офиса', href: '/tasks/office' },
       { name: 'Пользователи', href: '/admin/users' },
       { name: 'Сотрудники', href: '/admin/employees' },
       { name: 'Оборудование', href: '/admin/equipment' },
@@ -288,11 +282,6 @@ export default function Navigation({ isOpen, onClose }: { isOpen?: boolean; onCl
                 >
                   <Icon size={20} />
                   <span className="font-medium">{item.name}</span>
-                  {item.badge && (
-                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-500 font-medium">
-                      {item.badge}
-                    </span>
-                  )}
                 </Link>
 
                 {/* Submenu */}

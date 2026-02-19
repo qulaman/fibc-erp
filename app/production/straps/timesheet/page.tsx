@@ -45,7 +45,7 @@ export default function StrapsTimesheetPage() {
         .from('employees')
         .select('id, full_name, role')
         .eq('is_active', true)
-        .in('role', ['strap_operator', 'strap_master'])
+        .in('role', ['operator_straps', 'strap_operator', 'strap_master'])
         .order('full_name');
 
       if (empError) throw empError;

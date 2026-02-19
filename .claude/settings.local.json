@@ -13,7 +13,22 @@
       "Bash(find:*)",
       "Bash(cat:*)",
       "Bash(supabase db push:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(scoop:*)",
+      "Bash(powershell -Command \"Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force; Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression\")",
+      "Bash(powershell -Command:*)",
+      "Bash(npx supabase:*)",
+      "Bash(chmod:*)",
+      "Bash(export:*)",
+      "Bash(docker:*)",
+      "Bash(npm run schema:dump:*)",
+      "Bash(del appproductionextrusionpage.tsx)",
+      "Bash(apply_migration.bat:*)",
+      "Bash(check_tkan_table.sql << 'EOF'\n-- Получить все колонки таблицы tkan_specifications\nSELECT column_name, data_type \nFROM information_schema.columns \nWHERE table_name = 'tkan_specifications'\nORDER BY ordinal_position;\nEOF)",
+      "Bash(check_lamination_schema.sql << 'EOF'\n-- Структура таблицы production_lamination\nSELECT \n    column_name,\n    data_type,\n    is_nullable,\n    column_default\nFROM information_schema.columns\nWHERE table_name = 'production_lamination'\nORDER BY ordinal_position;\n\n-- Связанные таблицы \\(если есть\\)\nSELECT \n    table_name,\n    column_name,\n    data_type\nFROM information_schema.columns\nWHERE table_name IN \\('laminated_rolls', 'lamination_specifications'\\)\nORDER BY table_name, ordinal_position;\nEOF)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

@@ -51,20 +51,12 @@ export default function QCPage() {
     const { data } = await supabase
       .from('employees')
       .select('full_name')
-      .eq('department', 'qc')
+      .eq('role', 'qc_inspector')
       .eq('is_active', true)
       .order('full_name');
 
-    if (data && data.length > 0) {
+    if (data) {
       setInspectors(data);
-    } else {
-      // Если нет контролеров ОТК, показываем всех активных
-      const { data: allEmployees } = await supabase
-        .from('employees')
-        .select('full_name')
-        .eq('is_active', true)
-        .order('full_name');
-      if (allEmployees) setInspectors(allEmployees);
     }
   };
 
@@ -228,6 +220,13 @@ export default function QCPage() {
     }
   };
 
+  // Проверка обязательных полей
+  const missingFields = [];
+  if (!inspectionDate) missingFields.push('Укажите дату проверки');
+  if (!inspector) missingFields.push('Выберите контролера ОТК');
+  if (!productCode || !selectedProduct) missingFields.push('Выберите изделие');
+  if (!quantityGood || parseInt(quantityGood) <= 0) missingFields.push('Укажите количество принятых изделий');
+
   return (
     <div className="p-8 font-sans bg-black min-h-screen text-white">
       {/* Заголовок */}
@@ -246,6 +245,26 @@ export default function QCPage() {
           </Link>
         </div>
       </div>
+
+      {/* Индикатор обязательных полей */}
+      {missingFields.length > 0 && (
+        <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-2 border-yellow-600/50 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-yellow-500 shrink-0 mt-0.5" size={24} />
+            <div>
+              <h3 className="text-yellow-500 font-bold text-lg mb-2">Заполните обязательные поля</h3>
+              <ul className="space-y-1 text-zinc-300">
+                {missingFields.map((field, idx) => (
+                  <li key={idx} className="flex items-center gap-2">
+                    <span className="text-yellow-500">•</span>
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Форма приёмки */}
@@ -268,22 +287,42 @@ export default function QCPage() {
                     className="bg-zinc-950 border-zinc-700 text-white"
                   />
                 </div>
-                <div>
-                  <Label className="flex items-center gap-2 text-zinc-400">
-                    <Users size={16} /> Контролер ОТК
+                <div className="col-span-2">
+                  <Label className="flex items-center gap-2 text-zinc-400 mb-3">
+                    <Users size={16} /> Контролер ОТК *
                   </Label>
-                  <Select value={inspector} onValueChange={setInspector}>
-                    <SelectTrigger className="bg-zinc-950 border-zinc-700 text-white">
-                      <SelectValue placeholder="Выберите контролера" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {inspectors.map((emp) => (
-                        <SelectItem key={emp.full_name} value={emp.full_name}>
-                          {emp.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {inspectors.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {inspectors.map((emp) => {
+                        const isSelected = inspector === emp.full_name;
+                        const initials = emp.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2);
+                        return (
+                          <button
+                            key={emp.full_name}
+                            type="button"
+                            onClick={() => setInspector(emp.full_name)}
+                            className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                              isSelected
+                                ? 'bg-red-600 border-red-500 text-white shadow-lg scale-105'
+                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-white'
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                              isSelected ? 'bg-white text-red-600' : 'bg-zinc-700 text-zinc-400'
+                            }`}>
+                              {initials}
+                            </div>
+                            <span>{emp.full_name}</span>
+                            {isSelected && <CheckCircle2 size={16} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-zinc-500 text-sm p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                      Нет контролёров ОТК. Добавьте сотрудников с ролью &quot;Контролёр ОТК&quot; в <a href="/production/sewing/personnel" className="text-red-400 underline">персонале</a>.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -400,9 +439,20 @@ export default function QCPage() {
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full bg-[#E60012] hover:bg-red-700 text-white font-bold text-lg py-6"
+                size="lg"
+                className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white font-bold text-lg py-6 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Обработка...' : '✅ Провести приёмку ОТК'}
+                {loading ? (
+                  <>
+                    <CheckCircle2 className="mr-2 h-5 w-5 animate-spin" />
+                    Обработка...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="mr-2 h-5 w-5" />
+                    Провести приёмку ОТК
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

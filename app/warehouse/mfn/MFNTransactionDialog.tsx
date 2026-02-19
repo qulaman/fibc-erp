@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { CheckCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -309,9 +310,20 @@ export default function MFNTransactionDialog() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-purple-600 text-white hover:bg-purple-700"
+            size="lg"
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-6 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Проводка...' : 'Провести документ'}
+            {loading ? (
+              <>
+                <CheckCircle className="mr-2 h-5 w-5 animate-spin" />
+                Проводка...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-2 h-5 w-5" />
+                Провести документ
+              </>
+            )}
           </Button>
         </form>
       </DialogContent>

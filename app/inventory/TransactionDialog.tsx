@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from 'sonner';
+import { CheckCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -121,8 +122,23 @@ export default function TransactionDialog({ materialId, materialName, currentBat
             />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full bg-white text-black hover:bg-gray-200">
-            {loading ? 'Проводка...' : 'Провести документ'}
+          <Button
+            type="submit"
+            disabled={loading}
+            size="lg"
+            className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-bold py-6 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <>
+                <CheckCircle className="mr-2 h-5 w-5 animate-spin" />
+                Проводка...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="mr-2 h-5 w-5" />
+                Провести документ
+              </>
+            )}
           </Button>
         </form>
       </DialogContent>

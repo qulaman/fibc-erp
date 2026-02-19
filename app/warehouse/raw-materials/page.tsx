@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Package, Trash2, Plus } from 'lucide-react';
+import { Package, Trash2, Plus, CheckCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -535,9 +535,20 @@ export default function RawMaterialsWarehousePage() {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-white text-black hover:bg-gray-200 font-medium text-sm md:text-base"
+              size="lg"
+              className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-bold text-base py-6 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Проводка...' : 'Провести документ'}
+              {isSubmitting ? (
+                <>
+                  <CheckCircle className="mr-2 h-5 w-5 animate-spin" />
+                  Проводка...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-5 w-5" />
+                  Провести документ
+                </>
+              )}
             </Button>
           </form>
         </DialogContent>

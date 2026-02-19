@@ -10,6 +10,8 @@ interface RollRecord {
   id: string;
   roll_number: string;
   strap_type_id: string;
+  spec_name?: string;
+  width_mm?: number;
   produced_length: number;
   produced_weight: number;
   length: number;
@@ -25,6 +27,7 @@ interface RollRecord {
   production_straps: {
     date: string;
     shift: string;
+    spec_name?: string;
   } | null;
 }
 
@@ -48,7 +51,7 @@ export default function StrapsWarehousePage() {
         .select(`
           *,
           strap_types(code, name, width_mm, color),
-          production_straps(date, shift)
+          production_straps(date, shift, spec_name)
         `)
         .order('created_at', { ascending: false });
 
@@ -99,10 +102,12 @@ export default function StrapsWarehousePage() {
 
   const filteredRolls = rolls.filter(record => {
     const matchesStatus = filterStatus === 'all' || record.status === filterStatus;
+    const specName = record.spec_name || (record.production_straps as any)?.spec_name || '';
     const matchesSearch = !searchQuery ||
       record.roll_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       record.strap_types?.code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.strap_types?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      record.strap_types?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      specName.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesStatus && matchesSearch;
   });
 
@@ -263,11 +268,17 @@ export default function StrapsWarehousePage() {
                         {record.roll_number || '-'}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <div className="font-medium">{record.strap_types?.code || '-'}</div>
-                        <div className="text-xs text-zinc-500">{record.strap_types?.name || '-'}</div>
+                        <div className="font-medium">
+                          {record.strap_types?.code || record.spec_name || (record.production_straps as any)?.spec_name || '-'}
+                        </div>
+                        <div className="text-xs text-zinc-500">{record.strap_types?.name || ''}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-right text-zinc-400">
-                        {record.strap_types?.width_mm || '-'} мм
+                        {record.strap_types?.width_mm
+                          ? `${record.strap_types.width_mm} мм`
+                          : record.width_mm
+                          ? `${record.width_mm} мм`
+                          : '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-right font-semibold">
                         {Math.round(length).toLocaleString()}

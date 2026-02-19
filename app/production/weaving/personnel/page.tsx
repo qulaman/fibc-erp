@@ -201,6 +201,7 @@ export default function WeavingPersonnelPage() {
                   <thead className="bg-zinc-950">
                     <tr>
                       <th className="px-3 md:px-4 py-3 text-left text-xs font-bold text-zinc-500 uppercase">ФИО</th>
+                      <th className="px-3 md:px-4 py-3 text-left text-xs font-bold text-zinc-500 uppercase hidden sm:table-cell">Должность</th>
                       <th className="px-3 md:px-4 py-3 text-center text-xs font-bold text-zinc-500 uppercase">Статус</th>
                       <th className="px-3 md:px-4 py-3 text-center text-xs font-bold text-zinc-500 uppercase">Действия</th>
                     </tr>
@@ -208,7 +209,7 @@ export default function WeavingPersonnelPage() {
                   <tbody className="divide-y divide-zinc-800">
                     {activeEmployees.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="text-center py-8 text-zinc-500 text-sm">
+                        <td colSpan={4} className="text-center py-8 text-zinc-500 text-sm">
                           Нет активных сотрудников
                         </td>
                       </tr>
@@ -220,8 +221,16 @@ export default function WeavingPersonnelPage() {
                               <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-sm text-zinc-400">
                                 {emp.full_name.charAt(0)}
                               </div>
-                              <span className="text-white font-medium text-sm">{emp.full_name}</span>
+                              <div>
+                                <div className="text-white font-medium text-sm">{emp.full_name}</div>
+                                <div className="sm:hidden text-xs text-zinc-500">{getRoleLabel(emp.role)}</div>
+                              </div>
                             </div>
+                          </td>
+                          <td className="px-3 md:px-4 py-3 hidden sm:table-cell">
+                            <Badge variant="outline" className="text-blue-400 border-blue-700 bg-blue-900/10 text-xs">
+                              {getRoleLabel(emp.role)}
+                            </Badge>
                           </td>
                           <td className="px-3 md:px-4 py-3 text-center">
                             {getStatusBadge(emp)}
