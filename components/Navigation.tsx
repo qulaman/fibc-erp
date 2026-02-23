@@ -130,7 +130,11 @@ const navigationItems = [
   {
     name: 'Отходы и брак',
     href: '/production/waste',
-    icon: AlertTriangle
+    icon: AlertTriangle,
+    submenu: [
+      { name: 'Внести данные', href: '/production/waste' },
+      { name: 'Журнал', href: '/production/waste/journal' },
+    ]
   },
   {
     name: 'Лаборатория',

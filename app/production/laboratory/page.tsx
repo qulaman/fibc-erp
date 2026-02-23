@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { toast } from 'sonner';
+import { Microscope, BookOpen, CheckCircle2, XCircle, Save } from 'lucide-react';
+import Link from 'next/link';
+
+// ─── Утилиты ─────────────────────────────────────────────────────────────────
+function getToday() {
+  const d = new Date();
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+}
 
 const PREFIXES: Record<string, string> = {
   yarn: 'LAB-YARN',
@@ -20,424 +22,495 @@ const PREFIXES: Record<string, string> = {
   mfi: 'LAB-MFI',
 };
 
-// ─── Начальные состояния форм ────────────────────────────────────────────────
-const INITIAL_YARN = { yarn_code: '', batch: '', denier: '', strength: '', elasticity: '', width: '', operator: '', result: '', notes: '' };
-const INITIAL_EXTRUDER = { shift: 'День', machine: '', temp1: '', temp2: '', temp3: '', temp4: '', temp5: '', annealing: '', d1: '', d2: '', d3: '', d4: '', d5: '', d6: '', operator: '', result: '', notes: '' };
-const INITIAL_MACHINE = { machine_number: '', width: '', visual_check: '', defects: '', operator: '', result: '', notes: '' };
-const INITIAL_FABRIC = { machine_number: '', roll_number: '', fabric_code: '', warp_strength_kg: '', warp_strength_n: '', warp_elasticity: '', weft_strength_kg: '', weft_strength_n: '', weft_elasticity: '', density: '', operator: '', result: '', notes: '' };
-const INITIAL_STRAP = { batch_number: '', strap_type: '', tension_kg: '', tension_n: '', elasticity: '', density: '', operator: '', result: '', notes: '' };
-const INITIAL_LAMINATION = { roll_number: '', roll_info: '', width: '', warp_strength_kg: '', warp_strength_n: '', warp_elasticity: '', weft_strength_kg: '', weft_strength_n: '', weft_elasticity: '', density: '', adhesion: '', operator: '', result: '', notes: '' };
-const INITIAL_MFI = { material_type: '', material_code: '', batch: '', mfi: '', temperature: '', load: '', operator: '', result: '', notes: '' };
+const TEST_TABS = [
+  { value: 'yarn',       label: 'Нить' },
+  { value: 'extruder',   label: 'Экструдер' },
+  { value: 'machine',    label: 'Станки КТС' },
+  { value: 'fabric',     label: 'Ткань КТС' },
+  { value: 'strap',      label: 'Стропы ПТС' },
+  { value: 'lamination', label: 'Ламинация' },
+  { value: 'mfi',        label: 'ПТР Сырья' },
+];
 
+// ─── Начальные состояния ──────────────────────────────────────────────────────
+const base = { date: getToday(), operator: '', result: '', notes: '' };
+
+const INIT = {
+  yarn:       { ...base, yarn_code: '', batch: '', denier: '', strength: '', elasticity: '', width: '' },
+  extruder:   { ...base, shift: 'День', machine: '', temp1: '', temp2: '', temp3: '', temp4: '', temp5: '', annealing: '', d1: '', d2: '', d3: '', d4: '', d5: '', d6: '' },
+  machine:    { ...base, machine_number: '', width: '', visual_check: '', defects: '' },
+  fabric:     { ...base, machine_number: '', roll_number: '', fabric_code: '', warp_strength_kg: '', warp_strength_n: '', warp_elasticity: '', weft_strength_kg: '', weft_strength_n: '', weft_elasticity: '', density: '' },
+  strap:      { ...base, batch_number: '', strap_type: '', tension_kg: '', tension_n: '', elasticity: '', density: '' },
+  lamination: { ...base, roll_number: '', roll_info: '', width: '', warp_strength_kg: '', warp_strength_n: '', warp_elasticity: '', weft_strength_kg: '', weft_strength_n: '', weft_elasticity: '', density: '', adhesion: '' },
+  mfi:        { ...base, material_type: '', material_code: '', batch: '', mfi: '', temperature: '', load: '' },
+};
+
+type TestType = keyof typeof INIT;
+type FormData = Record<string, string>;
+
+// ─── Компоненты ───────────────────────────────────────────────────────────────
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium text-zinc-400 uppercase tracking-wide">
+        {label} {required && <span className="text-red-400">*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function NumInput({ value, onChange, step = '0.01', placeholder = '' }: { value: string; onChange: (v: string) => void; step?: string; placeholder?: string }) {
+  return (
+    <input
+      type="number"
+      step={step}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  );
+}
+
+function TextInput({ value, onChange, placeholder = '', required }: { value: string; onChange: (v: string) => void; placeholder?: string; required?: boolean }) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      required={required}
+      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+    />
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest pt-2 pb-1 border-b border-zinc-800">{children}</p>;
+}
+
+// Кнопки выбора (2-4 варианта)
+function ToggleGroup({ options, value, onChange, accent = 'blue' }: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  accent?: 'blue' | 'green' | 'red';
+}) {
+  const activeClass = {
+    blue:  'bg-blue-600 border-blue-500 text-white',
+    green: 'bg-green-600 border-green-500 text-white',
+    red:   'bg-red-600 border-red-500 text-white',
+  }[accent];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
+            value === opt.value ? activeClass : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Блок основа/уток (переиспользуется в ткань + ламинация)
+function WarpWeft({ form, setForm }: { form: FormData; setForm: (v: FormData) => void }) {
+  return (
+    <>
+      <SectionTitle>Основа</SectionTitle>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Прочность кг"><NumInput value={form.warp_strength_kg} onChange={(v) => setForm({ ...form, warp_strength_kg: v })} /></Field>
+        <Field label="Прочность Н"><NumInput value={form.warp_strength_n} onChange={(v) => setForm({ ...form, warp_strength_n: v })} /></Field>
+        <Field label="Эластичность %"><NumInput value={form.warp_elasticity} onChange={(v) => setForm({ ...form, warp_elasticity: v })} /></Field>
+      </div>
+      <SectionTitle>Уток</SectionTitle>
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="Прочность кг"><NumInput value={form.weft_strength_kg} onChange={(v) => setForm({ ...form, weft_strength_kg: v })} /></Field>
+        <Field label="Прочность Н"><NumInput value={form.weft_strength_n} onChange={(v) => setForm({ ...form, weft_strength_n: v })} /></Field>
+        <Field label="Эластичность %"><NumInput value={form.weft_elasticity} onChange={(v) => setForm({ ...form, weft_elasticity: v })} /></Field>
+      </div>
+    </>
+  );
+}
+
+// Общие поля (дата / оператор / результат / примечания) — верх формы
+function CommonHeader({ form, setForm }: { form: FormData; setForm: (v: FormData) => void }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-zinc-800">
+      <Field label="Дата" required>
+        <input
+          type="date"
+          value={form.date}
+          onChange={(e) => setForm({ ...form, date: e.target.value })}
+          required
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        />
+      </Field>
+      <Field label="Лаборант">
+        <TextInput value={form.operator} onChange={(v) => setForm({ ...form, operator: v })} placeholder="ФИО" />
+      </Field>
+    </div>
+  );
+}
+
+// Финальные поля (результат + примечания) — низ формы
+function CommonFooter({ form, setForm }: { form: FormData; setForm: (v: FormData) => void }) {
+  return (
+    <div className="space-y-4 pt-4 border-t border-zinc-800">
+      <Field label="Результат" required>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, result: 'Годен' })}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg border font-bold text-sm transition-all ${
+              form.result === 'Годен'
+                ? 'bg-green-600 border-green-500 text-white'
+                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-green-700 hover:text-green-400'
+            }`}
+          >
+            <CheckCircle2 size={16} />
+            Годен
+          </button>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, result: 'Брак' })}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg border font-bold text-sm transition-all ${
+              form.result === 'Брак'
+                ? 'bg-red-600 border-red-500 text-white'
+                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-red-700 hover:text-red-400'
+            }`}
+          >
+            <XCircle size={16} />
+            Брак
+          </button>
+        </div>
+      </Field>
+      <Field label="Примечания">
+        <textarea
+          value={form.notes}
+          onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          rows={2}
+          placeholder="Дополнительная информация..."
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+        />
+      </Field>
+    </div>
+  );
+}
+
+// ─── Главный компонент ────────────────────────────────────────────────────────
 export default function LaboratoryPage() {
+  const [activeTab, setActiveTab] = useState<TestType>('yarn');
   const [loading, setLoading] = useState(false);
 
-  const [yarnForm, setYarnForm] = useState(INITIAL_YARN);
-  const [extruderForm, setExtruderForm] = useState(INITIAL_EXTRUDER);
-  const [machineForm, setMachineForm] = useState(INITIAL_MACHINE);
-  const [fabricForm, setFabricForm] = useState(INITIAL_FABRIC);
-  const [strapForm, setStrapForm] = useState(INITIAL_STRAP);
-  const [laminationForm, setLaminationForm] = useState(INITIAL_LAMINATION);
-  const [mfiForm, setMfiForm] = useState(INITIAL_MFI);
+  const [forms, setForms] = useState<{ [K in TestType]: FormData }>({
+    yarn:       { ...INIT.yarn },
+    extruder:   { ...INIT.extruder },
+    machine:    { ...INIT.machine },
+    fabric:     { ...INIT.fabric },
+    strap:      { ...INIT.strap },
+    lamination: { ...INIT.lamination },
+    mfi:        { ...INIT.mfi },
+  });
 
-  const handleSubmit = async (testType: string, formData: Record<string, string>, resetFn: () => void) => {
+  const form = forms[activeTab];
+  const setForm = (data: FormData) => setForms((prev) => ({ ...prev, [activeTab]: data }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.result) {
+      toast.warning('Укажите результат испытания (Годен / Брак)');
+      return;
+    }
     setLoading(true);
     try {
-      const { operator, result, notes, ...testData } = formData;
+      const { operator, result, notes, date, ...testData } = form;
 
       const { data: docNumber, error: rpcErr } = await supabase.rpc('generate_lab_doc_number', {
-        p_prefix: PREFIXES[testType],
+        p_prefix: PREFIXES[activeTab],
       });
       if (rpcErr) throw rpcErr;
 
-      const { error } = await supabase.from('lab_tests').insert([
-        { doc_number: docNumber, test_type: testType, operator, result, notes, test_data: testData },
-      ]);
+      const { error } = await supabase.from('lab_tests').insert([{
+        created_at: date + 'T12:00:00',
+        doc_number: docNumber,
+        test_type: activeTab,
+        operator,
+        result,
+        notes,
+        test_data: testData,
+      }]);
       if (error) throw error;
 
-      resetFn();
-      alert('Записано: ' + docNumber);
-    } catch (err) {
-      console.error(err);
-      alert('Ошибка при сохранении');
+      toast.success('Испытание сохранено', {
+        description: `${docNumber} — ${result}`,
+      });
+
+      // Сбрасываем форму, сохраняя дату и оператора
+      setForms((prev) => ({
+        ...prev,
+        [activeTab]: { ...INIT[activeTab], date: form.date, operator: form.operator },
+      }));
+    } catch (err: any) {
+      toast.error('Ошибка сохранения', { description: err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  // ─── Общие поля (оператор / результат / примечания) ─────────────────────────
-  const renderCommon = (form: Record<string, string>, setForm: (v: Record<string, string>) => void) => (
-    <>
-      <div>
-        <Label>Оператор</Label>
-        <Input value={form.operator} onChange={(e) => setForm({ ...form, operator: e.target.value })} placeholder="ФИО" />
-      </div>
-      <div>
-        <Label>Результат *</Label>
-        <Select value={form.result} onValueChange={(v) => setForm({ ...form, result: v })}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите результат" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Годен">Годен</SelectItem>
-            <SelectItem value="Брак">Брак</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label>Примечания</Label>
-        <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
-      </div>
-    </>
-  );
-
-  // ─── Секция «Основа / Уток» (ткань + ламинация) ─────────────────────────────
-  const renderWarpWeft = (form: Record<string, string>, setForm: (v: Record<string, string>) => void) => (
-    <>
-      <p className="text-sm text-zinc-400 font-medium pt-2">Основа</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <Label>Прочность кг</Label>
-          <Input type="number" step="0.01" value={form.warp_strength_kg} onChange={(e) => setForm({ ...form, warp_strength_kg: e.target.value })} />
-        </div>
-        <div>
-          <Label>Прочность Н</Label>
-          <Input type="number" step="0.01" value={form.warp_strength_n} onChange={(e) => setForm({ ...form, warp_strength_n: e.target.value })} />
-        </div>
-        <div>
-          <Label>Эластичность</Label>
-          <Input type="number" step="0.01" value={form.warp_elasticity} onChange={(e) => setForm({ ...form, warp_elasticity: e.target.value })} />
-        </div>
-      </div>
-      <p className="text-sm text-zinc-400 font-medium pt-2">Уток</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <Label>Прочность кг</Label>
-          <Input type="number" step="0.01" value={form.weft_strength_kg} onChange={(e) => setForm({ ...form, weft_strength_kg: e.target.value })} />
-        </div>
-        <div>
-          <Label>Прочность Н</Label>
-          <Input type="number" step="0.01" value={form.weft_strength_n} onChange={(e) => setForm({ ...form, weft_strength_n: e.target.value })} />
-        </div>
-        <div>
-          <Label>Эластичность</Label>
-          <Input type="number" step="0.01" value={form.weft_elasticity} onChange={(e) => setForm({ ...form, weft_elasticity: e.target.value })} />
-        </div>
-      </div>
-    </>
-  );
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Лаборатория</h1>
+    <div className="page-container">
+      {/* Заголовок */}
+      <div className="page-header">
+        <div>
+          <h1 className="h1-bold">
+            <div className="bg-blue-700 p-2 rounded-lg inline-flex items-center justify-center">
+              <Microscope size={24} className="text-white" />
+            </div>
+            Лаборатория
+          </h1>
+          <p className="page-description">Испытания и контроль качества материалов</p>
+        </div>
+        <Link
+          href="/production/laboratory/journal"
+          className="flex items-center gap-2 px-4 py-2 bg-zinc-900 border border-zinc-700 hover:border-blue-600 text-zinc-300 hover:text-blue-400 rounded-lg transition-all text-sm font-medium"
+        >
+          <BookOpen size={16} />
+          Журнал испытаний
+        </Link>
+      </div>
 
-      <Tabs defaultValue="yarn">
-        <TabsList className="flex flex-wrap h-auto gap-1 bg-zinc-900 p-1 mb-6">
-          <TabsTrigger value="yarn">Нить</TabsTrigger>
-          <TabsTrigger value="extruder">Экструдер</TabsTrigger>
-          <TabsTrigger value="machine">Станки КТС</TabsTrigger>
-          <TabsTrigger value="fabric">Ткань КТС</TabsTrigger>
-          <TabsTrigger value="strap">Стропы ПТС</TabsTrigger>
-          <TabsTrigger value="lamination">Ламинация</TabsTrigger>
-          <TabsTrigger value="mfi">ПТР Сырья</TabsTrigger>
-        </TabsList>
+      {/* Выбор типа испытания */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {TEST_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setActiveTab(tab.value as TestType)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+              activeTab === tab.value
+                ? 'bg-blue-700 text-white'
+                : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* ════════════════════════════════════════════════════════════════════
-            1. НИТЬ
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="yarn">
-          <Card className="bg-zinc-950 border-zinc-800">
-            <CardHeader>
-              <CardTitle>Испытание нити</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit('yarn', yarnForm as unknown as Record<string, string>, () => setYarnForm(INITIAL_YARN)); }} className="space-y-4">
+      {/* Форма */}
+      <div className="max-w-2xl">
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+          <h2 className="text-lg font-bold text-white mb-5">
+            {TEST_TABS.find((t) => t.value === activeTab)?.label} — внести данные
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <CommonHeader form={form} setForm={setForm} />
+
+            {/* ── Нить ─────────────────────────────────────────────────────── */}
+            {activeTab === 'yarn' && (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <Field label="Код нити" required>
+                    <TextInput value={form.yarn_code} onChange={(v) => setForm({ ...form, yarn_code: v })} required placeholder="YARN-001" />
+                  </Field>
+                  <Field label="Партия">
+                    <TextInput value={form.batch} onChange={(v) => setForm({ ...form, batch: v })} />
+                  </Field>
+                  <Field label="Денье">
+                    <NumInput value={form.denier} onChange={(v) => setForm({ ...form, denier: v })} step="1" />
+                  </Field>
+                  <Field label="Прочность">
+                    <NumInput value={form.strength} onChange={(v) => setForm({ ...form, strength: v })} />
+                  </Field>
+                  <Field label="Эластичность %">
+                    <NumInput value={form.elasticity} onChange={(v) => setForm({ ...form, elasticity: v })} />
+                  </Field>
+                  <Field label="Ширина см">
+                    <NumInput value={form.width} onChange={(v) => setForm({ ...form, width: v })} step="0.1" />
+                  </Field>
+                </div>
+              </>
+            )}
+
+            {/* ── Экструдер ────────────────────────────────────────────────── */}
+            {activeTab === 'extruder' && (
+              <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Код нити *</Label>
-                    <Input value={yarnForm.yarn_code} onChange={(e) => setYarnForm({ ...yarnForm, yarn_code: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label>Партия</Label>
-                    <Input value={yarnForm.batch} onChange={(e) => setYarnForm({ ...yarnForm, batch: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Денье</Label>
-                    <Input type="number" value={yarnForm.denier} onChange={(e) => setYarnForm({ ...yarnForm, denier: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Прочность</Label>
-                    <Input type="number" step="0.01" value={yarnForm.strength} onChange={(e) => setYarnForm({ ...yarnForm, strength: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Эластичность</Label>
-                    <Input type="number" step="0.01" value={yarnForm.elasticity} onChange={(e) => setYarnForm({ ...yarnForm, elasticity: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Ширина (см)</Label>
-                    <Input type="number" step="0.1" value={yarnForm.width} onChange={(e) => setYarnForm({ ...yarnForm, width: e.target.value })} />
-                  </div>
+                  <Field label="Смена">
+                    <ToggleGroup
+                      options={[{ value: 'День', label: '☀️ День' }, { value: 'Ночь', label: '🌙 Ночь' }]}
+                      value={form.shift}
+                      onChange={(v) => setForm({ ...form, shift: v })}
+                    />
+                  </Field>
+                  <Field label="Станок" required>
+                    <TextInput value={form.machine} onChange={(v) => setForm({ ...form, machine: v })} required placeholder="Э-01" />
+                  </Field>
                 </div>
-                {renderCommon(yarnForm as unknown as Record<string, string>, (v) => setYarnForm(v as typeof INITIAL_YARN))}
-                <Button type="submit" className="w-full" disabled={loading}>Сохранить</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                <SectionTitle>Температуры (°C)</SectionTitle>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                  {['temp1','temp2','temp3','temp4','temp5'].map((k, i) => (
+                    <Field key={k} label={`T${i + 1}`}><NumInput value={form[k]} onChange={(v) => setForm({ ...form, [k]: v })} step="0.1" /></Field>
+                  ))}
+                  <Field label="Отжиг"><NumInput value={form.annealing} onChange={(v) => setForm({ ...form, annealing: v })} step="0.1" /></Field>
+                </div>
+                <SectionTitle>Дозаторы</SectionTitle>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                  {['d1','d2','d3','d4','d5','d6'].map((k, i) => (
+                    <Field key={k} label={`Доз. ${i + 1}`}><NumInput value={form[k]} onChange={(v) => setForm({ ...form, [k]: v })} /></Field>
+                  ))}
+                </div>
+              </>
+            )}
 
-        {/* ════════════════════════════════════════════════════════════════════
-            2. ЭКСТРУДЕР
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="extruder">
-          <Card className="bg-zinc-950 border-zinc-800">
-            <CardHeader>
-              <CardTitle>Испытание экструдера</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit('extruder', extruderForm as unknown as Record<string, string>, () => setExtruderForm(INITIAL_EXTRUDER)); }} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Смена</Label>
-                    <Select value={extruderForm.shift} onValueChange={(v) => setExtruderForm({ ...extruderForm, shift: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="День">День</SelectItem>
-                        <SelectItem value="Ночь">Ночь</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Станок *</Label>
-                    <Input value={extruderForm.machine} onChange={(e) => setExtruderForm({ ...extruderForm, machine: e.target.value })} required />
-                  </div>
+            {/* ── Станки КТС ───────────────────────────────────────────────── */}
+            {activeTab === 'machine' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="№ станка" required>
+                    <TextInput value={form.machine_number} onChange={(v) => setForm({ ...form, machine_number: v })} required placeholder="КТС-01" />
+                  </Field>
+                  <Field label="Ширина см">
+                    <NumInput value={form.width} onChange={(v) => setForm({ ...form, width: v })} step="0.1" />
+                  </Field>
                 </div>
+                <Field label="Визуальный осмотр">
+                  <textarea
+                    value={form.visual_check}
+                    onChange={(e) => setForm({ ...form, visual_check: e.target.value })}
+                    rows={2}
+                    placeholder="Описание осмотра..."
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500 resize-none"
+                  />
+                </Field>
+                <Field label="Дефекты">
+                  <TextInput value={form.defects} onChange={(v) => setForm({ ...form, defects: v })} placeholder="Нет / описание дефектов" />
+                </Field>
+              </>
+            )}
 
-                <p className="text-sm text-zinc-400 font-medium pt-2">Температуры (°C)</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div><Label>T1</Label><Input type="number" step="0.1" value={extruderForm.temp1} onChange={(e) => setExtruderForm({ ...extruderForm, temp1: e.target.value })} /></div>
-                  <div><Label>T2</Label><Input type="number" step="0.1" value={extruderForm.temp2} onChange={(e) => setExtruderForm({ ...extruderForm, temp2: e.target.value })} /></div>
-                  <div><Label>T3</Label><Input type="number" step="0.1" value={extruderForm.temp3} onChange={(e) => setExtruderForm({ ...extruderForm, temp3: e.target.value })} /></div>
-                  <div><Label>T4</Label><Input type="number" step="0.1" value={extruderForm.temp4} onChange={(e) => setExtruderForm({ ...extruderForm, temp4: e.target.value })} /></div>
-                  <div><Label>T5</Label><Input type="number" step="0.1" value={extruderForm.temp5} onChange={(e) => setExtruderForm({ ...extruderForm, temp5: e.target.value })} /></div>
-                  <div><Label>Отжиг</Label><Input type="number" step="0.1" value={extruderForm.annealing} onChange={(e) => setExtruderForm({ ...extruderForm, annealing: e.target.value })} /></div>
+            {/* ── Ткань КТС ────────────────────────────────────────────────── */}
+            {activeTab === 'fabric' && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="№ станка">
+                    <TextInput value={form.machine_number} onChange={(v) => setForm({ ...form, machine_number: v })} />
+                  </Field>
+                  <Field label="№ рулона">
+                    <TextInput value={form.roll_number} onChange={(v) => setForm({ ...form, roll_number: v })} />
+                  </Field>
+                  <Field label="Код ткани">
+                    <TextInput value={form.fabric_code} onChange={(v) => setForm({ ...form, fabric_code: v })} />
+                  </Field>
                 </div>
+                <WarpWeft form={form} setForm={setForm} />
+                <Field label="Плотность">
+                  <NumInput value={form.density} onChange={(v) => setForm({ ...form, density: v })} />
+                </Field>
+              </>
+            )}
 
-                <p className="text-sm text-zinc-400 font-medium pt-2">Дозаторы</p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div><Label>Дозатор 1</Label><Input type="number" step="0.01" value={extruderForm.d1} onChange={(e) => setExtruderForm({ ...extruderForm, d1: e.target.value })} /></div>
-                  <div><Label>Дозатор 2</Label><Input type="number" step="0.01" value={extruderForm.d2} onChange={(e) => setExtruderForm({ ...extruderForm, d2: e.target.value })} /></div>
-                  <div><Label>Дозатор 3</Label><Input type="number" step="0.01" value={extruderForm.d3} onChange={(e) => setExtruderForm({ ...extruderForm, d3: e.target.value })} /></div>
-                  <div><Label>Дозатор 4</Label><Input type="number" step="0.01" value={extruderForm.d4} onChange={(e) => setExtruderForm({ ...extruderForm, d4: e.target.value })} /></div>
-                  <div><Label>Дозатор 5</Label><Input type="number" step="0.01" value={extruderForm.d5} onChange={(e) => setExtruderForm({ ...extruderForm, d5: e.target.value })} /></div>
-                  <div><Label>Дозатор 6</Label><Input type="number" step="0.01" value={extruderForm.d6} onChange={(e) => setExtruderForm({ ...extruderForm, d6: e.target.value })} /></div>
+            {/* ── Стропы ПТС ───────────────────────────────────────────────── */}
+            {activeTab === 'strap' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="№ партии">
+                    <TextInput value={form.batch_number} onChange={(v) => setForm({ ...form, batch_number: v })} />
+                  </Field>
+                  <Field label="Тип стропы">
+                    <TextInput value={form.strap_type} onChange={(v) => setForm({ ...form, strap_type: v })} placeholder="ПС-50, УС-35..." />
+                  </Field>
+                  <Field label="Натяжение кг">
+                    <NumInput value={form.tension_kg} onChange={(v) => setForm({ ...form, tension_kg: v })} />
+                  </Field>
+                  <Field label="Натяжение Н">
+                    <NumInput value={form.tension_n} onChange={(v) => setForm({ ...form, tension_n: v })} />
+                  </Field>
+                  <Field label="Эластичность %">
+                    <NumInput value={form.elasticity} onChange={(v) => setForm({ ...form, elasticity: v })} />
+                  </Field>
+                  <Field label="Плотность">
+                    <NumInput value={form.density} onChange={(v) => setForm({ ...form, density: v })} />
+                  </Field>
                 </div>
+              </>
+            )}
 
-                {renderCommon(extruderForm as unknown as Record<string, string>, (v) => setExtruderForm(v as typeof INITIAL_EXTRUDER))}
-                <Button type="submit" className="w-full" disabled={loading}>Сохранить</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            {/* ── Ламинация ────────────────────────────────────────────────── */}
+            {activeTab === 'lamination' && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="№ рулона">
+                    <TextInput value={form.roll_number} onChange={(v) => setForm({ ...form, roll_number: v })} />
+                  </Field>
+                  <Field label="Информация рулона">
+                    <TextInput value={form.roll_info} onChange={(v) => setForm({ ...form, roll_info: v })} />
+                  </Field>
+                  <Field label="Ширина см">
+                    <NumInput value={form.width} onChange={(v) => setForm({ ...form, width: v })} step="0.1" />
+                  </Field>
+                </div>
+                <WarpWeft form={form} setForm={setForm} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Плотность">
+                    <NumInput value={form.density} onChange={(v) => setForm({ ...form, density: v })} />
+                  </Field>
+                  <Field label="Адгезия">
+                    <TextInput value={form.adhesion} onChange={(v) => setForm({ ...form, adhesion: v })} />
+                  </Field>
+                </div>
+              </>
+            )}
 
-        {/* ════════════════════════════════════════════════════════════════════
-            3. СТАНКИ КТС
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="machine">
-          <Card className="bg-zinc-950 border-zinc-800">
-            <CardHeader>
-              <CardTitle>Испытание станка КТС</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit('machine', machineForm as unknown as Record<string, string>, () => setMachineForm(INITIAL_MACHINE)); }} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>№ станка *</Label>
-                    <Input value={machineForm.machine_number} onChange={(e) => setMachineForm({ ...machineForm, machine_number: e.target.value })} required />
-                  </div>
-                  <div>
-                    <Label>Ширина (см)</Label>
-                    <Input type="number" step="0.1" value={machineForm.width} onChange={(e) => setMachineForm({ ...machineForm, width: e.target.value })} />
-                  </div>
+            {/* ── ПТР Сырья ────────────────────────────────────────────────── */}
+            {activeTab === 'mfi' && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Тип материала">
+                    <TextInput value={form.material_type} onChange={(v) => setForm({ ...form, material_type: v })} placeholder="ПП, ПЭВП..." />
+                  </Field>
+                  <Field label="Код материала">
+                    <TextInput value={form.material_code} onChange={(v) => setForm({ ...form, material_code: v })} />
+                  </Field>
+                  <Field label="Партия">
+                    <TextInput value={form.batch} onChange={(v) => setForm({ ...form, batch: v })} />
+                  </Field>
+                  <Field label="ПТР (г/10мин)">
+                    <NumInput value={form.mfi} onChange={(v) => setForm({ ...form, mfi: v })} />
+                  </Field>
+                  <Field label="Температура °C">
+                    <NumInput value={form.temperature} onChange={(v) => setForm({ ...form, temperature: v })} step="0.1" />
+                  </Field>
+                  <Field label="Нагрузка кг">
+                    <NumInput value={form.load} onChange={(v) => setForm({ ...form, load: v })} />
+                  </Field>
                 </div>
-                <div>
-                  <Label>Визуальный осмотр</Label>
-                  <Textarea value={machineForm.visual_check} onChange={(e) => setMachineForm({ ...machineForm, visual_check: e.target.value })} rows={2} placeholder="Описание осмотра" />
-                </div>
-                <div>
-                  <Label>Дефекты</Label>
-                  <Input value={machineForm.defects} onChange={(e) => setMachineForm({ ...machineForm, defects: e.target.value })} placeholder="Описание дефектов или «нет»" />
-                </div>
-                {renderCommon(machineForm as unknown as Record<string, string>, (v) => setMachineForm(v as typeof INITIAL_MACHINE))}
-                <Button type="submit" className="w-full" disabled={loading}>Сохранить</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </>
+            )}
 
-        {/* ════════════════════════════════════════════════════════════════════
-            4. ТКАНЬ КТС
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="fabric">
-          <Card className="bg-zinc-950 border-zinc-800">
-            <CardHeader>
-              <CardTitle>Испытание ткани КТС</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit('fabric', fabricForm as unknown as Record<string, string>, () => setFabricForm(INITIAL_FABRIC)); }} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <Label>№ станка</Label>
-                    <Input value={fabricForm.machine_number} onChange={(e) => setFabricForm({ ...fabricForm, machine_number: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>№ рулона</Label>
-                    <Input value={fabricForm.roll_number} onChange={(e) => setFabricForm({ ...fabricForm, roll_number: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Код ткани</Label>
-                    <Input value={fabricForm.fabric_code} onChange={(e) => setFabricForm({ ...fabricForm, fabric_code: e.target.value })} />
-                  </div>
-                </div>
-                {renderWarpWeft(fabricForm as unknown as Record<string, string>, (v) => setFabricForm(v as typeof INITIAL_FABRIC))}
-                <div>
-                  <Label>Плотность</Label>
-                  <Input type="number" step="0.01" value={fabricForm.density} onChange={(e) => setFabricForm({ ...fabricForm, density: e.target.value })} />
-                </div>
-                {renderCommon(fabricForm as unknown as Record<string, string>, (v) => setFabricForm(v as typeof INITIAL_FABRIC))}
-                <Button type="submit" className="w-full" disabled={loading}>Сохранить</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <CommonFooter form={form} setForm={setForm} />
 
-        {/* ════════════════════════════════════════════════════════════════════
-            5. СТРОПЫ ПТС
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="strap">
-          <Card className="bg-zinc-950 border-zinc-800">
-            <CardHeader>
-              <CardTitle>Испытание строп ПТС</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit('strap', strapForm as unknown as Record<string, string>, () => setStrapForm(INITIAL_STRAP)); }} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>№ партии</Label>
-                    <Input value={strapForm.batch_number} onChange={(e) => setStrapForm({ ...strapForm, batch_number: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Тип стропы</Label>
-                    <Input value={strapForm.strap_type} onChange={(e) => setStrapForm({ ...strapForm, strap_type: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Натяжение кг</Label>
-                    <Input type="number" step="0.01" value={strapForm.tension_kg} onChange={(e) => setStrapForm({ ...strapForm, tension_kg: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Натяжение Н</Label>
-                    <Input type="number" step="0.01" value={strapForm.tension_n} onChange={(e) => setStrapForm({ ...strapForm, tension_n: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Эластичность</Label>
-                    <Input type="number" step="0.01" value={strapForm.elasticity} onChange={(e) => setStrapForm({ ...strapForm, elasticity: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Плотность</Label>
-                    <Input type="number" step="0.01" value={strapForm.density} onChange={(e) => setStrapForm({ ...strapForm, density: e.target.value })} />
-                  </div>
-                </div>
-                {renderCommon(strapForm as unknown as Record<string, string>, (v) => setStrapForm(v as typeof INITIAL_STRAP))}
-                <Button type="submit" className="w-full" disabled={loading}>Сохранить</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ════════════════════════════════════════════════════════════════════
-            6. ЛАМИНАЦИЯ
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="lamination">
-          <Card className="bg-zinc-950 border-zinc-800">
-            <CardHeader>
-              <CardTitle>Испытание ламинации</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit('lamination', laminationForm as unknown as Record<string, string>, () => setLaminationForm(INITIAL_LAMINATION)); }} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <Label>№ рулона</Label>
-                    <Input value={laminationForm.roll_number} onChange={(e) => setLaminationForm({ ...laminationForm, roll_number: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Информация рулона</Label>
-                    <Input value={laminationForm.roll_info} onChange={(e) => setLaminationForm({ ...laminationForm, roll_info: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Ширина (см)</Label>
-                    <Input type="number" step="0.1" value={laminationForm.width} onChange={(e) => setLaminationForm({ ...laminationForm, width: e.target.value })} />
-                  </div>
-                </div>
-                {renderWarpWeft(laminationForm as unknown as Record<string, string>, (v) => setLaminationForm(v as typeof INITIAL_LAMINATION))}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Плотность</Label>
-                    <Input type="number" step="0.01" value={laminationForm.density} onChange={(e) => setLaminationForm({ ...laminationForm, density: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Адгезия</Label>
-                    <Input value={laminationForm.adhesion} onChange={(e) => setLaminationForm({ ...laminationForm, adhesion: e.target.value })} />
-                  </div>
-                </div>
-                {renderCommon(laminationForm as unknown as Record<string, string>, (v) => setLaminationForm(v as typeof INITIAL_LAMINATION))}
-                <Button type="submit" className="w-full" disabled={loading}>Сохранить</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ════════════════════════════════════════════════════════════════════
-            7. ПТР СЫРЬЯ
-        ════════════════════════════════════════════════════════════════════ */}
-        <TabsContent value="mfi">
-          <Card className="bg-zinc-950 border-zinc-800">
-            <CardHeader>
-              <CardTitle>ПТР сырья</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={(e) => { e.preventDefault(); handleSubmit('mfi', mfiForm as unknown as Record<string, string>, () => setMfiForm(INITIAL_MFI)); }} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Тип материала</Label>
-                    <Input value={mfiForm.material_type} onChange={(e) => setMfiForm({ ...mfiForm, material_type: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Код материала</Label>
-                    <Input value={mfiForm.material_code} onChange={(e) => setMfiForm({ ...mfiForm, material_code: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Партия</Label>
-                    <Input value={mfiForm.batch} onChange={(e) => setMfiForm({ ...mfiForm, batch: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>ПТР (г/10мин)</Label>
-                    <Input type="number" step="0.01" value={mfiForm.mfi} onChange={(e) => setMfiForm({ ...mfiForm, mfi: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Температура (°C)</Label>
-                    <Input type="number" step="0.1" value={mfiForm.temperature} onChange={(e) => setMfiForm({ ...mfiForm, temperature: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>Нагрузка (кг)</Label>
-                    <Input type="number" step="0.01" value={mfiForm.load} onChange={(e) => setMfiForm({ ...mfiForm, load: e.target.value })} />
-                  </div>
-                </div>
-                {renderCommon(mfiForm as unknown as Record<string, string>, (v) => setMfiForm(v as typeof INITIAL_MFI))}
-                <Button type="submit" className="w-full" disabled={loading}>Сохранить</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              <Save size={18} />
+              {loading ? 'Сохранение...' : 'Сохранить испытание'}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
