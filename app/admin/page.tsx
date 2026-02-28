@@ -96,6 +96,14 @@ export default function AdminDashboardPage() {
 
   const adminSections = [
     {
+      title: 'Мониторинг заказов',
+      description: 'Статус выполнения заказов по цехам',
+      icon: BarChart3,
+      color: 'from-indigo-600 to-indigo-700',
+      borderColor: 'border-indigo-800',
+      href: '/admin/orders'
+    },
+    {
       title: 'Пользователи',
       description: 'Управление учетными записями',
       icon: Users,

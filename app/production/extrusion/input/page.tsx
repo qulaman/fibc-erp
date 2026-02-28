@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from 'sonner';
 import {
   Save, Users, Package,
-  Calendar, Factory, Scale, CheckCircle2,
+  Calendar, Cable, Scale, CheckCircle2,
   Palette, Ruler
 } from "lucide-react";
 
@@ -56,8 +56,8 @@ export default function ExtrusionInputPage() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: emp } = await supabase.from('employees').select('*').eq('is_active', true);
-      const { data: mat } = await supabase.from('raw_materials').select('*').order('name');
-      const { data: mach } = await supabase.from('equipment').select('*').eq('type', 'extruder');
+      const { data: mat } = await supabase.from('raw_materials').select('*').contains('departments', ['extrusion']).order('name');
+      const { data: mach } = await supabase.from('equipment').select('*').eq('type', 'extruder').eq('is_active', true);
       const { data: specs } = await supabase.from('tkan_specifications').select('*');
 
       if (emp) setEmployees(emp);
@@ -241,7 +241,7 @@ export default function ExtrusionInputPage() {
       <div className="page-header">
         <div>
           <h1 className="h1-bold">
-            <div className="bg-[#E60012] p-2 rounded-lg"><Factory size={24} className="text-white" /></div>
+            <div className="bg-[#E60012] p-2 rounded-lg"><Cable size={24} className="text-white" /></div>
             Внесение Производства
           </h1>
         </div>
@@ -309,7 +309,7 @@ export default function ExtrusionInputPage() {
                       : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-white'
                   }`}
                 >
-                  <Factory size={20} />
+                  <Cable size={20} />
                   {machine.name}
                   {isSelected && <CheckCircle2 size={18} />}
                 </button>

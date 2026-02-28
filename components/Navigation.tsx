@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Factory,
-  Package,
+  Cable,
+  Spool,
   ClipboardList,
-  Users,
   FileText,
   TrendingUp,
   Home,
@@ -15,15 +14,15 @@ import {
   Layers,
   Scissors,
   Calculator,
-  CheckCircle2,
   Grid3x3,
   Ribbon,
   LogOut,
   User as UserIcon,
   X,
   AlertTriangle,
-  Microscope,
-  Printer
+  FlaskConical,
+  Stamp,
+  Target,
 } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAuth } from '@/lib/auth-context';
@@ -37,12 +36,14 @@ const navigationItems = [
   {
     name: 'Экструзия',
     href: '/production/extrusion',
-    icon: Factory,
+    icon: Cable,
     submenu: [
+      { name: 'Заказы', href: '/production/extrusion/orders' },
       { name: 'Производство', href: '/production/extrusion/input' },
       { name: 'Журнал', href: '/production/extrusion/history' },
       { name: 'Простои', href: '/production/extrusion/downtimes' },
       { name: 'Табель', href: '/production/extrusion/timesheet' },
+      { name: 'Обслуживание оборудования', href: '/production/extrusion/maintenance' },
       { name: 'Персонал', href: '/production/extrusion/personnel' },
       { name: 'Задачи', href: '/tasks/extrusion' },
     ]
@@ -52,11 +53,13 @@ const navigationItems = [
     href: '/production/weaving',
     icon: Grid3x3,
     submenu: [
+      { name: 'Заказы', href: '/production/weaving/orders' },
       { name: 'Статус станков', href: '/production/weaving/machines' },
       { name: 'Журнал', href: '/production/weaving/history' },
       { name: 'Простои', href: '/production/weaving/downtimes' },
       { name: 'Заправочные карты', href: '/production/weaving/weaving-setup' },
       { name: 'Табель', href: '/production/weaving/timesheet' },
+      { name: 'Обслуживание оборудования', href: '/production/weaving/maintenance' },
       { name: 'Персонал', href: '/production/weaving/personnel' },
       { name: 'Задачи', href: '/tasks/weaving' },
     ]
@@ -66,9 +69,11 @@ const navigationItems = [
     href: '/production/lamination',
     icon: Layers,
     submenu: [
-      { name: 'Производство', href: '/production/lamination' },
+      { name: 'Заказы', href: '/production/lamination/orders' },
+      { name: 'Производство', href: '/production/lamination/input' },
       { name: 'Журнал', href: '/production/lamination/history' },
       { name: 'Табель', href: '/production/lamination/timesheet' },
+      { name: 'Обслуживание оборудования', href: '/production/lamination/maintenance' },
       { name: 'Персонал', href: '/production/lamination/personnel' },
       { name: 'Задачи', href: '/tasks/lamination' },
     ]
@@ -78,6 +83,7 @@ const navigationItems = [
     href: '/production/straps',
     icon: Ribbon,
     submenu: [
+      { name: 'Заказы', href: '/production/straps/orders' },
       { name: 'Статус станков', href: '/production/straps/machines' },
       { name: 'Журнал', href: '/production/straps/history' },
       { name: 'Табель', href: '/production/straps/timesheet' },
@@ -90,6 +96,7 @@ const navigationItems = [
     href: '/production/cutting',
     icon: Scissors,
     submenu: [
+      { name: 'Заказы', href: '/production/cutting/orders' },
       { name: 'Производство', href: '/production/cutting' },
       { name: 'Журнал', href: '/production/cutting/history' },
       { name: 'Рулоны в крое', href: '/production/cutting/rolls' },
@@ -102,7 +109,7 @@ const navigationItems = [
   {
     name: 'Печать',
     href: '/production/printing',
-    icon: Printer,
+    icon: Stamp,
     submenu: [
       { name: 'Производство', href: '/production/printing' },
       { name: 'Журнал', href: '/production/printing/history' },
@@ -113,8 +120,9 @@ const navigationItems = [
   {
     name: 'Пошив и ОТК',
     href: '/production/sewing',
-    icon: Package,
+    icon: Spool,
     submenu: [
+      { name: 'Заказы', href: '/production/sewing/orders' },
       { name: 'Главная', href: '/production/sewing' },
       { name: 'Биг-Бэг', href: '/production/sewing/bigbag' },
       { name: 'Вкладыши', href: '/production/sewing/liners' },
@@ -139,10 +147,19 @@ const navigationItems = [
   {
     name: 'Лаборатория',
     href: '/production/laboratory',
-    icon: Microscope,
+    icon: FlaskConical,
     submenu: [
       { name: 'Внести данные', href: '/production/laboratory' },
       { name: 'Журнал', href: '/production/laboratory/journal' },
+    ]
+  },
+  {
+    name: 'Планирование',
+    href: '/planning',
+    icon: Target,
+    submenu: [
+      { name: 'Журнал заказов', href: '/planning' },
+      { name: 'Новый заказ', href: '/planning/new' },
     ]
   },
   {
@@ -199,6 +216,7 @@ const navigationItems = [
     href: '/admin',
     icon: ShieldCheck,
     submenu: [
+      { name: 'Мониторинг заказов', href: '/admin/orders' },
       { name: 'Пользователи', href: '/admin/users' },
       { name: 'Сотрудники', href: '/admin/employees' },
       { name: 'Оборудование', href: '/admin/equipment' },
@@ -266,7 +284,7 @@ export default function Navigation({ isOpen, onClose }: { isOpen?: boolean; onCl
         </div>
 
         {/* Navigation Items */}
-        <div className="flex-1 overflow-y-auto py-4 px-3">
+        <div className="flex-1 overflow-y-auto py-4 px-3 dark-scrollbar">
         <div className="space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon;

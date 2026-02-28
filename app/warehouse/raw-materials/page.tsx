@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Package, Trash2, Plus, CheckCircle } from 'lucide-react';
+import { Package, Trash2, Plus, CheckCircle, Settings, Pencil } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,17 @@ interface MaterialRecord {
   unit: string;
   current_balance: number;
   min_stock: number;
+  departments?: string[];
 }
+
+const ALL_DEPARTMENTS = [
+  { value: 'extrusion', label: 'Экструзия', color: 'bg-red-600' },
+  { value: 'lamination', label: 'Ламинация', color: 'bg-orange-600' },
+  { value: 'weaving', label: 'Ткачество', color: 'bg-amber-600' },
+  { value: 'straps', label: 'Стропы', color: 'bg-purple-600' },
+  { value: 'printing', label: 'Печать', color: 'bg-pink-600' },
+  { value: 'sewing', label: 'Пошив', color: 'bg-green-600' },
+];
 
 export default function RawMaterialsWarehousePage() {
   const { isAdmin } = useAuth();
@@ -48,6 +58,19 @@ export default function RawMaterialsWarehousePage() {
   const [transactionQuantity, setTransactionQuantity] = useState('');
   const [transactionBatch, setTransactionBatch] = useState('');
   const [transactionCounterparty, setTransactionCounterparty] = useState('');
+
+  // Для редактирования материала
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editMaterial, setEditMaterial] = useState<MaterialRecord | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState('');
+  const [editUnit, setEditUnit] = useState('');
+  const [editMinStock, setEditMinStock] = useState('0');
+
+  // Для назначения цехов
+  const [isDeptDialogOpen, setIsDeptDialogOpen] = useState(false);
+  const [deptMaterial, setDeptMaterial] = useState<MaterialRecord | null>(null);
+  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
 
   useEffect(() => {
     fetchMaterials();
@@ -186,6 +209,68 @@ export default function RawMaterialsWarehousePage() {
     } catch (err: any) {
       console.error('Error adding transaction:', err);
       toast.error('Ошибка регистрации движения: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openDeptDialog = (material: MaterialRecord) => {
+    setDeptMaterial(material);
+    setSelectedDepts(material.departments || []);
+    setIsDeptDialogOpen(true);
+  };
+
+  const toggleDept = (dept: string) => {
+    setSelectedDepts(prev =>
+      prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]
+    );
+  };
+
+  const handleSaveDepts = async () => {
+    if (!deptMaterial) return;
+    try {
+      const { error } = await supabase
+        .from('raw_materials')
+        .update({ departments: selectedDepts })
+        .eq('id', deptMaterial.id);
+      if (error) throw error;
+      toast.success('Цеха обновлены', { description: deptMaterial.name });
+      setIsDeptDialogOpen(false);
+      fetchMaterials();
+    } catch (err: any) {
+      toast.error('Ошибка: ' + err.message);
+    }
+  };
+
+  const openEditDialog = (material: MaterialRecord) => {
+    setEditMaterial(material);
+    setEditName(material.name);
+    setEditType(material.type || '');
+    setEditUnit(material.unit || 'кг');
+    setEditMinStock(String(material.min_stock || 0));
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editMaterial) return;
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('raw_materials')
+        .update({
+          name: editName,
+          type: editType,
+          unit: editUnit,
+          min_stock: parseFloat(editMinStock) || 0,
+        })
+        .eq('id', editMaterial.id);
+      if (error) throw error;
+      toast.success('Материал обновлён', { description: editName });
+      setIsEditDialogOpen(false);
+      fetchMaterials();
+    } catch (err: any) {
+      toast.error('Ошибка: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -386,6 +471,7 @@ export default function RawMaterialsWarehousePage() {
                     <span className="hidden md:inline">Ед. изм.</span>
                     <span className="md:hidden">Ед.</span>
                   </th>
+                  <th className="px-2 md:px-4 py-2 md:py-3 text-left font-semibold hidden lg:table-cell">Цеха</th>
                   <th className="px-2 md:px-4 py-2 md:py-3 text-center font-semibold">
                     <span className="hidden sm:inline">Действия</span>
                   </th>
@@ -422,6 +508,22 @@ export default function RawMaterialsWarehousePage() {
                       <td className="px-2 md:px-4 py-2 md:py-3 text-zinc-500 hidden sm:table-cell">
                         {item.unit}
                       </td>
+                      <td className="px-2 md:px-4 py-2 md:py-3 hidden lg:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {(item.departments || []).length > 0 ? (
+                            item.departments!.map(dept => {
+                              const d = ALL_DEPARTMENTS.find(ad => ad.value === dept);
+                              return d ? (
+                                <span key={dept} className={`${d.color} text-white text-[9px] px-1.5 py-0.5 rounded font-medium`}>
+                                  {d.label}
+                                </span>
+                              ) : null;
+                            })
+                          ) : (
+                            <span className="text-zinc-600 text-[10px]">Все цеха</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 md:px-4 py-2 md:py-3 text-center">
                         <div className="flex items-center justify-center gap-1 md:gap-2">
                           <button
@@ -432,14 +534,32 @@ export default function RawMaterialsWarehousePage() {
                             ⚖️ <span className="hidden sm:inline">Движение</span>
                           </button>
                           {isAdmin && (
-                            <button
-                              onClick={() => handleDelete(item.id, item.name)}
-                              className="p-1.5 md:p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
-                              title="Удалить запись"
-                            >
-                              <Trash2 size={14} className="md:hidden" />
-                              <Trash2 size={16} className="hidden md:block" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => openEditDialog(item)}
+                                className="p-1.5 md:p-2 text-zinc-400 hover:text-yellow-400 hover:bg-yellow-950 rounded transition-colors"
+                                title="Редактировать"
+                              >
+                                <Pencil size={14} className="md:hidden" />
+                                <Pencil size={16} className="hidden md:block" />
+                              </button>
+                              <button
+                                onClick={() => openDeptDialog(item)}
+                                className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-400 hover:bg-blue-950 rounded transition-colors"
+                                title="Назначить цеха"
+                              >
+                                <Settings size={14} className="md:hidden" />
+                                <Settings size={16} className="hidden md:block" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item.id, item.name)}
+                                className="p-1.5 md:p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                                title="Удалить запись"
+                              >
+                                <Trash2 size={14} className="md:hidden" />
+                                <Trash2 size={16} className="hidden md:block" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -455,6 +575,118 @@ export default function RawMaterialsWarehousePage() {
       <div className="mt-4 text-center text-[10px] md:text-xs text-zinc-600">
         Данные синхронизируются в реальном времени с Supabase PostgreSQL
       </div>
+
+      {/* Диалог редактирования материала */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="bg-zinc-900 text-white border-zinc-800 max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg md:text-xl flex items-center gap-2">
+              <Pencil size={18} className="text-yellow-400" />
+              Редактировать материал
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditMaterial} className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name" className="text-zinc-400 text-xs md:text-sm">Название</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="bg-zinc-800 border-zinc-700 text-white text-sm md:text-base mt-1"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-type" className="text-zinc-400 text-xs md:text-sm">Тип</Label>
+              <Input
+                id="edit-type"
+                value={editType}
+                onChange={(e) => setEditType(e.target.value)}
+                className="bg-zinc-800 border-zinc-700 text-white text-sm md:text-base mt-1"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="edit-unit" className="text-zinc-400 text-xs md:text-sm">Ед. измерения</Label>
+                <Input
+                  id="edit-unit"
+                  value={editUnit}
+                  onChange={(e) => setEditUnit(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white text-sm md:text-base mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-min-stock" className="text-zinc-400 text-xs md:text-sm">Мин. запас</Label>
+                <Input
+                  id="edit-min-stock"
+                  type="number"
+                  step="0.01"
+                  value={editMinStock}
+                  onChange={(e) => setEditMinStock(e.target.value)}
+                  className="bg-zinc-800 border-zinc-700 text-white text-sm md:text-base mt-1"
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-medium text-sm md:text-base"
+            >
+              {isSubmitting ? 'Сохранение...' : 'Сохранить изменения'}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог назначения цехов */}
+      <Dialog open={isDeptDialogOpen} onOpenChange={setIsDeptDialogOpen}>
+        <DialogContent className="bg-zinc-900 text-white border-zinc-800 max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg md:text-xl">
+              Цеха: {deptMaterial?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-400 mb-4">
+            Выберите цеха, которые используют это сырьё. Если ничего не выбрано — сырьё доступно всем.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {ALL_DEPARTMENTS.map(dept => {
+              const active = selectedDepts.includes(dept.value);
+              return (
+                <button
+                  key={dept.value}
+                  type="button"
+                  onClick={() => toggleDept(dept.value)}
+                  className={`px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                    active
+                      ? `${dept.color} text-white border-transparent shadow-lg`
+                      : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500'
+                  }`}
+                >
+                  {dept.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-3 mt-4">
+            <Button
+              onClick={() => { setSelectedDepts([]); }}
+              variant="outline"
+              className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700"
+            >
+              Сбросить
+            </Button>
+            <Button
+              onClick={handleSaveDepts}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Сохранить
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Диалог движения материалов */}
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
@@ -501,7 +733,7 @@ export default function RawMaterialsWarehousePage() {
                 step="0.01"
                 value={transactionQuantity}
                 onChange={(e) => setTransactionQuantity(e.target.value)}
-                className="bg-white text-black text-base md:text-lg font-bold mt-1"
+                className="bg-zinc-800 border-zinc-700 text-white text-base md:text-lg font-bold mt-1"
                 required
               />
             </div>

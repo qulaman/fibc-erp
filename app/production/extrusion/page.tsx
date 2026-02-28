@@ -7,8 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import DowntimeDialog from "@/components/DowntimeDialog";
 import {
-  Factory, FileText, Users, Calendar, AlertTriangle,
-  ChevronRight, TrendingUp
+  Cable, FileText, Users, Calendar, AlertTriangle,
+  ChevronRight, TrendingUp, Wrench, Target
 } from "lucide-react";
 
 export default function ExtrusionDashboardPage() {
@@ -85,9 +85,17 @@ export default function ExtrusionDashboardPage() {
 
   const menuItems = [
     {
+      title: 'Заказы',
+      description: 'Заказы из планирования',
+      icon: Target,
+      color: 'from-indigo-600 to-indigo-700',
+      borderColor: 'border-indigo-800',
+      href: '/production/extrusion/orders'
+    },
+    {
       title: 'Внести Производство',
       description: 'Регистрация выпуска нити',
-      icon: Factory,
+      icon: Cable,
       color: 'from-red-600 to-red-700',
       borderColor: 'border-red-800',
       href: '/production/extrusion/input'
@@ -132,6 +140,14 @@ export default function ExtrusionDashboardPage() {
       borderColor: 'border-green-800',
       href: '/production/extrusion/timesheet'
     },
+    {
+      title: 'Обслуживание оборудования',
+      description: 'ТО и ремонт экструдеров',
+      icon: Wrench,
+      color: 'from-cyan-600 to-cyan-700',
+      borderColor: 'border-cyan-800',
+      href: '/production/extrusion/maintenance'
+    },
   ];
 
   return (
@@ -141,7 +157,7 @@ export default function ExtrusionDashboardPage() {
         <div>
           <h1 className="h1-bold">
             <div className="bg-[#E60012] p-2 rounded-lg">
-              <Factory size={24} className="text-white" />
+              <Cable size={24} className="text-white" />
             </div>
             Цех Экструзии
           </h1>
@@ -243,7 +259,7 @@ export default function ExtrusionDashboardPage() {
                 }}
                 className="p-6 bg-zinc-900 border-2 border-zinc-700 rounded-lg hover:border-red-600 hover:bg-zinc-800 transition-all text-white font-bold text-lg flex flex-col items-center gap-3"
               >
-                <Factory size={32} className="text-red-400" />
+                <Cable size={32} className="text-red-400" />
                 {machine.name}
               </button>
             ))}

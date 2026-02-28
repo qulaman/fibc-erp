@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Eye, User, Factory, Scale } from "lucide-react"
+import { Eye, User, Cable, Scale } from "lucide-react"
 
 // Типизация входящих данных
 export default function ExtrusionDetailsDialog({ record }: { record: any }) {
@@ -52,7 +52,7 @@ export default function ExtrusionDetailsDialog({ record }: { record: any }) {
           {/* Блок 1: Оборудование и Команда */}
           <div className="grid grid-cols-2 gap-4 bg-zinc-900 p-3 rounded-lg border border-zinc-800">
              <div>
-                <span className="text-xs text-zinc-500 uppercase flex items-center gap-1 mb-1"><Factory size={12}/> Линия</span>
+                <span className="text-xs text-zinc-500 uppercase flex items-center gap-1 mb-1"><Cable size={12}/> Линия</span>
                 <div className="font-bold">{record.equipment?.name || 'Не указано'}</div>
              </div>
              <div>

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import { AlertTriangle, Clock, Calendar, Factory } from "lucide-react";
+import { AlertTriangle, Clock, Calendar, Cable } from "lucide-react";
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
@@ -232,7 +232,7 @@ export default function ExtrusionDowntimesPage() {
                     <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                       <div className="flex items-center gap-3">
                         <div className="bg-red-950 p-2 rounded border border-red-800">
-                          <Factory size={20} className="text-red-400" />
+                          <Cable size={20} className="text-red-400" />
                         </div>
                         <div>
                           <div className="font-bold text-white">{dt.machine_name}</div>

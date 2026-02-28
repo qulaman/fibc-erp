@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Microscope, BookOpen, CheckCircle2, XCircle, Save } from 'lucide-react';
+import { FlaskConical, BookOpen, CheckCircle2, XCircle, Save } from 'lucide-react';
 import Link from 'next/link';
 
 // ─── Утилиты ─────────────────────────────────────────────────────────────────
@@ -274,7 +274,7 @@ export default function LaboratoryPage() {
         <div>
           <h1 className="h1-bold">
             <div className="bg-blue-700 p-2 rounded-lg inline-flex items-center justify-center">
-              <Microscope size={24} className="text-white" />
+              <FlaskConical size={24} className="text-white" />
             </div>
             Лаборатория
           </h1>

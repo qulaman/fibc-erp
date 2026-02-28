@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Card } from "@/components/ui/card";
 import {
   Ribbon, FileText, Users, Calendar, Factory,
-  ChevronRight, TrendingUp
+  ChevronRight, TrendingUp, Target
 } from "lucide-react";
 
 export default function StrapsDashboardPage() {
@@ -65,6 +65,14 @@ export default function StrapsDashboardPage() {
   };
 
   const menuItems = [
+    {
+      title: 'Заказы',
+      description: 'Заказы из планирования',
+      icon: Target,
+      color: 'from-indigo-600 to-indigo-700',
+      borderColor: 'border-indigo-800',
+      href: '/production/straps/orders'
+    },
     {
       title: 'Статус станков',
       description: 'Начать производство строп',

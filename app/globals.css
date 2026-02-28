@@ -92,6 +92,27 @@
   }
 }
 
+/* Кастомный скроллбар (тёмный) */
+.dark-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.dark-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 9999px;
+}
+.dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Firefox */
+.dark-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a transparent;
+}
+
 /* Общие стили для страниц */
 @layer components {
   /* Контейнер страницы */

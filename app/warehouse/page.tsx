@@ -3,10 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts';
+import { AlertTriangle } from 'lucide-react';
 
 interface WarehouseStat {
   name: string;
@@ -57,7 +54,7 @@ export default function WarehousePage() {
       // Загружаем детальные данные по сырью
       const { data: rawMaterialsData } = await supabase
         .from('view_material_balances')
-        .select('name, current_balance, type')
+        .select('name, current_balance, min_stock, unit, type')
         .neq('type', 'МФН')
         .gt('current_balance', 0)
         .order('name');
@@ -80,13 +77,6 @@ export default function WarehousePage() {
       setLoading(false);
     }
   };
-
-  const pieData = stats.filter(s => s.positions > 0).map(s => ({ name: s.name, value: s.positions }));
-
-  // Графики по единицам измерения
-  const weightData = stats.filter(s => s.unit === 'кг').map(s => ({ name: s.shortName, value: s.mainMetric }));
-  const lengthData = stats.filter(s => s.unit === 'м').map(s => ({ name: s.shortName, value: s.mainMetric }));
-  const quantityData = stats.filter(s => s.unit === 'шт').map(s => ({ name: s.shortName, value: s.mainMetric }));
 
   const totalPositions = stats.reduce((s, w) => s + w.positions, 0);
 
@@ -128,60 +118,37 @@ export default function WarehousePage() {
           Остатки сырья
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {rawMaterials.map((material) => (
-            <div key={material.name} className="bg-gradient-to-br from-orange-900/20 to-orange-950/20 border-2 border-orange-800 rounded-xl p-5">
-              <p className="text-sm text-orange-400 font-bold mb-2 uppercase">{material.name}</p>
-              <p className="text-3xl font-bold text-white mb-1">
-                {material.current_balance.toLocaleString('ru-RU', { maximumFractionDigits: 1 })}
-              </p>
-              <p className="text-xs text-zinc-500">кг</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Графики остатков */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-          <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По весу (кг)</h3>
-          <div className="h-64" style={{ minHeight: '256px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={weightData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
-                <YAxis stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
-                <Tooltip cursor={{ fill: '#27272a' }} contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }} formatter={(value) => [Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 1 }), 'кг']} />
-                <Bar dataKey="value" fill="#E60012" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-          <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По длине (м)</h3>
-          <div className="h-64" style={{ minHeight: '256px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={lengthData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
-                <YAxis stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
-                <Tooltip cursor={{ fill: '#27272a' }} contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }} formatter={(value) => [Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 1 }), 'м']} />
-                <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-          <h3 className="text-zinc-400 text-sm font-bold mb-4 uppercase">По количеству (шт)</h3>
-          <div className="h-64" style={{ minHeight: '256px' }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <BarChart data={quantityData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <XAxis dataKey="name" stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
-                <YAxis stroke="#52525B" tick={{ fill: '#a1a1aa', fontSize: 11 }} />
-                <Tooltip cursor={{ fill: '#27272a' }} contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', color: '#fff' }} formatter={(value) => [Number(value).toLocaleString('ru-RU'), 'шт']} />
-                <Bar dataKey="value" fill="#10B981" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {rawMaterials.map((material) => {
+            const isCritical = material.min_stock > 0 && material.current_balance <= material.min_stock;
+            return (
+              <div
+                key={material.name}
+                className={`rounded-xl p-5 border-2 ${
+                  isCritical
+                    ? 'bg-gradient-to-br from-red-900/30 to-red-950/30 border-red-700 animate-pulse'
+                    : 'bg-gradient-to-br from-orange-900/20 to-orange-950/20 border-orange-800'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <p className={`text-sm font-bold uppercase ${isCritical ? 'text-red-400' : 'text-orange-400'}`}>
+                    {material.name}
+                  </p>
+                  {isCritical && <AlertTriangle size={16} className="text-red-400" />}
+                </div>
+                <p className={`text-3xl font-bold mb-1 ${isCritical ? 'text-red-300' : 'text-white'}`}>
+                  {material.current_balance.toLocaleString('ru-RU', { maximumFractionDigits: 1 })}
+                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-zinc-500">{material.unit || 'кг'}</p>
+                  {isCritical && (
+                    <p className="text-[10px] text-red-400 font-medium">
+                      мин: {material.min_stock}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

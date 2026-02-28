@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import DowntimeDialog from "@/components/DowntimeDialog";
 import {
   Factory, FileText, Users, Calendar, AlertTriangle,
-  ChevronRight, TrendingUp, Settings
+  ChevronRight, TrendingUp, Settings, Wrench, Target
 } from "lucide-react";
 
 export default function WeavingDashboardPage() {
@@ -101,6 +101,14 @@ export default function WeavingDashboardPage() {
 
   const menuItems = [
     {
+      title: 'Заказы',
+      description: 'Заказы из планирования',
+      icon: Target,
+      color: 'from-indigo-600 to-indigo-700',
+      borderColor: 'border-indigo-800',
+      href: '/production/weaving/orders'
+    },
+    {
       title: 'Выбрать Станок',
       description: 'Начать производство ткани',
       icon: Factory,
@@ -155,6 +163,14 @@ export default function WeavingDashboardPage() {
       color: 'from-indigo-600 to-indigo-700',
       borderColor: 'border-indigo-800',
       href: '/production/weaving/weaving-setup'
+    },
+    {
+      title: 'Обслуживание оборудования',
+      description: 'ТО и ремонт станков',
+      icon: Wrench,
+      color: 'from-cyan-600 to-cyan-700',
+      borderColor: 'border-cyan-800',
+      href: '/production/weaving/maintenance'
     },
   ];
 

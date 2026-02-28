@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
 import {
-  Printer, Sun, Moon, Users, Scissors, Package, CheckCircle2,
+  Stamp, Sun, Moon, Users, Scissors, Package, CheckCircle2,
   Droplet, TrendingDown, ArrowRight, Sparkles, AlertTriangle
 } from "lucide-react";
 
@@ -173,7 +173,7 @@ export default function ProductionPrintingPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold flex items-center gap-3 mb-2">
           <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-2 rounded-lg">
-            <Printer size={28} className="text-white" />
+            <Stamp size={28} className="text-white" />
           </div>
           <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
             Производство Печати
@@ -460,7 +460,7 @@ export default function ProductionPrintingPage() {
               </>
             ) : (
               <>
-                <Printer className="mr-2 h-5 w-5" />
+                <Stamp className="mr-2 h-5 w-5" />
                 Провести операцию
               </>
             )}
