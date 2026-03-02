@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/my-select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from 'sonner';
-import { Users, Plus, Edit, Power, Search, ShieldCheck, Mail } from "lucide-react";
+import { Users, Plus, Edit, Power, Search, ShieldCheck, Mail, Eye, EyeOff, Trash2 } from "lucide-react";
 
 const ROLES = [
   { value: 'admin', label: 'Администратор', color: 'text-red-400 border-red-900' },
@@ -30,10 +30,13 @@ export default function UsersPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreateMode, setIsCreateMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<any | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    newPassword: '',
     employee_id: '',
     role: 'operator'
   });
@@ -122,12 +125,32 @@ export default function UsersPage() {
 
     if (error) {
       toast.error('Ошибка обновления: ' + error.message);
+      return;
+    }
+
+    if (formData.newPassword) {
+      if (formData.newPassword.length < 6) {
+        toast.warning('Пароль должен быть не менее 6 символов');
+        return;
+      }
+      const response = await fetch('/api/admin/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: editingUserId, password: formData.newPassword }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast.error('Профиль обновлён, но ошибка смены пароля: ' + (result.error || ''));
+        return;
+      }
+      toast.success('Профиль и пароль обновлены');
     } else {
       toast.success('Профиль обновлен');
-      setIsDialogOpen(false);
-      resetForm();
-      fetchUsers();
     }
+
+    setIsDialogOpen(false);
+    resetForm();
+    fetchUsers();
   };
 
   const startEdit = (user: any) => {
@@ -136,6 +159,7 @@ export default function UsersPage() {
     setFormData({
       email: user.email || '',
       password: '',
+      newPassword: '',
       employee_id: user.employee_id || '',
       role: user.role
     });
@@ -150,7 +174,24 @@ export default function UsersPage() {
   };
 
   const resetForm = () => {
-    setFormData({ email: '', password: '', employee_id: '', role: 'operator' });
+    setFormData({ email: '', password: '', newPassword: '', employee_id: '', role: 'operator' });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirmUser) return;
+    const response = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: deleteConfirmUser.id }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      toast.error('Ошибка удаления: ' + (result.error || ''));
+    } else {
+      toast.success('Пользователь удалён');
+      fetchUsers();
+    }
+    setDeleteConfirmUser(null);
   };
 
   const toggleStatus = async (userId: string, currentStatus: boolean) => {
@@ -257,6 +298,15 @@ export default function UsersPage() {
                     >
                       <Power size={16} />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-zinc-600 hover:text-red-400 hover:bg-red-950"
+                      onClick={() => setDeleteConfirmUser(user)}
+                      title="Удалить пользователя"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -265,7 +315,7 @@ export default function UsersPage() {
         </div>
       )}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={v => { setIsDialogOpen(v); if (!v) setShowPassword(false); }}>
         <DialogContent className="bg-zinc-950 border-zinc-800 text-white">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -275,7 +325,7 @@ export default function UsersPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
 
-            {isCreateMode && (
+            {isCreateMode ? (
               <>
                 <div className="space-y-2">
                   <label className="text-sm text-zinc-400">Email</label>
@@ -289,16 +339,38 @@ export default function UsersPage() {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm text-zinc-400">Пароль</label>
-                  <Input
-                    type="password"
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                    placeholder="Минимум 6 символов"
-                    className="bg-zinc-900 border-zinc-700"
-                  />
-                  <p className="text-xs text-zinc-600">Пользователь сможет изменить пароль после входа</p>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={e => setFormData({...formData, password: e.target.value})}
+                      placeholder="Минимум 6 символов"
+                      className="bg-zinc-900 border-zinc-700 pr-10"
+                    />
+                    <button type="button" onClick={() => setShowPassword(v => !v)} tabIndex={-1}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors">
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm text-zinc-400">Новый пароль <span className="text-zinc-600">(оставьте пустым, чтобы не менять)</span></label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.newPassword}
+                    onChange={e => setFormData({...formData, newPassword: e.target.value})}
+                    placeholder="Минимум 6 символов"
+                    className="bg-zinc-900 border-zinc-700 pr-10"
+                  />
+                  <button type="button" onClick={() => setShowPassword(v => !v)} tabIndex={-1}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors">
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
             )}
 
             <div className="space-y-2">
@@ -342,6 +414,36 @@ export default function UsersPage() {
               className="w-full bg-blue-600 hover:bg-blue-700 font-bold mt-4"
             >
               {isCreateMode ? 'Создать пользователя' : 'Сохранить изменения'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog open={!!deleteConfirmUser} onOpenChange={v => { if (!v) setDeleteConfirmUser(null); }}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 text-white max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-400">
+              <Trash2 size={20} />
+              Удалить пользователя?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-zinc-300 text-sm mb-1">
+              Вы собираетесь удалить пользователя:
+            </p>
+            <p className="font-bold text-white">{deleteConfirmUser?.full_name || deleteConfirmUser?.email}</p>
+            <p className="text-xs text-zinc-500 font-mono mt-1">{deleteConfirmUser?.email}</p>
+            <p className="text-xs text-red-400 mt-4">
+              Это действие необратимо. Пользователь потеряет доступ к системе навсегда.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1 border-zinc-700 hover:bg-zinc-800" onClick={() => setDeleteConfirmUser(null)}>
+              Отмена
+            </Button>
+            <Button className="flex-1 bg-red-700 hover:bg-red-600 font-bold" onClick={handleDelete}>
+              <Trash2 size={15} className="mr-2" /> Удалить
             </Button>
           </div>
         </DialogContent>

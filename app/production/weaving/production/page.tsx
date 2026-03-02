@@ -74,7 +74,7 @@ export default function WeavingPage() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: mach } = await supabase.from('equipment').select('*').or('type.eq.loom,type.eq.weaving,type.eq.loom_round');
-      const { data: emp } = await supabase.from('employees').select('*').eq('is_active', true);
+      const { data: emp } = await supabase.from('employees').select('*').eq('is_active', true).order('full_name');
       const { data: specs } = await supabase.from('tkan_specifications').select('*').order('shirina_polotna_sm');
       const { data: yarn } = await supabase.from('yarn_inventory').select('*').gt('quantity_kg', 0);
 

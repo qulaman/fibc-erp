@@ -12,11 +12,21 @@ import { toast } from 'sonner';
 import { Settings, Plus, Edit, Power, Search } from "lucide-react";
 
 const EQUIPMENT_TYPES = [
-  { value: 'extruder', label: 'Экструдер' },
-  { value: 'weaving', label: 'Ткацкий станок' },
-  { value: 'lamination', label: 'Ламинатор' },
-  { value: 'cutting', label: 'Резка' },
-  { value: 'sewing', label: 'Швейная машина' },
+  { value: 'extruder',   label: 'Экструдер',               department: 'Экструзия' },
+  { value: 'weaving',    label: 'Ткацкий станок (рукав)',   department: 'Ткачество' },
+  { value: 'loom_flat',  label: 'Плоскоткацкий станок',     department: 'Ткачество' },
+  { value: 'lamination', label: 'Ламинатор',                department: 'Ламинация' },
+  { value: 'cutting',    label: 'Резка / Крой',             department: 'Крой' },
+  { value: 'sewing',     label: 'Швейная машина',           department: 'Пошив и ОТК' },
+];
+
+const DEPARTMENTS = [
+  { name: 'Экструзия',              color: 'bg-red-900/40 border-red-800',       badge: 'text-red-400 border-red-800',       types: ['extruder'] },
+  { name: 'Ткачество — Круглоткацкие', color: 'bg-orange-900/30 border-orange-800',  badge: 'text-orange-400 border-orange-800', types: ['weaving'] },
+  { name: 'Ткачество — Плоскоткацкие', color: 'bg-amber-900/30 border-amber-700',    badge: 'text-amber-400 border-amber-700',   types: ['loom_flat'] },
+  { name: 'Ламинация',              color: 'bg-purple-900/30 border-purple-800',  badge: 'text-purple-400 border-purple-800', types: ['lamination'] },
+  { name: 'Крой',                   color: 'bg-yellow-900/20 border-yellow-800',  badge: 'text-yellow-400 border-yellow-800', types: ['cutting'] },
+  { name: 'Пошив и ОТК',           color: 'bg-blue-900/30 border-blue-800',      badge: 'text-blue-400 border-blue-800',     types: ['sewing'] },
 ];
 
 export default function EquipmentPage() {
@@ -40,12 +50,7 @@ export default function EquipmentPage() {
   const fetchEquipment = async () => {
     const { data } = await supabase.from('equipment').select('*').order('name');
     if (data) {
-      // Если is_active отсутствует в БД, считаем все активными
-      const normalizedData = data.map(eq => ({
-        ...eq,
-        is_active: eq.is_active !== undefined ? eq.is_active : true
-      }));
-      setEquipment(normalizedData);
+      setEquipment(data.map(eq => ({ ...eq, is_active: eq.is_active !== undefined ? eq.is_active : true })));
     }
     setLoading(false);
   };
@@ -56,31 +61,18 @@ export default function EquipmentPage() {
       return;
     }
 
-    const payload: any = {
-      name: formData.name,
-      code: formData.code,
-      type: formData.type
-    };
-
-    // Добавляем is_active только если колонка существует
-    // Попробуем сначала с is_active, если ошибка - без него
+    const payload = { name: formData.name, code: formData.code, type: formData.type };
     let error;
     if (editingId) {
-      const { error: updateError } = await supabase
-        .from('equipment')
-        .update(payload)
-        .eq('id', editingId);
-      error = updateError;
+      ({ error } = await supabase.from('equipment').update(payload).eq('id', editingId));
     } else {
-      const { error: insertError } = await supabase
-        .from('equipment')
-        .insert([payload]);
-      error = insertError;
+      ({ error } = await supabase.from('equipment').insert([payload]));
     }
 
     if (error) {
       toast.error('Ошибка: ' + error.message);
     } else {
+      toast.success(editingId ? 'Обновлено' : 'Добавлено');
       setIsDialogOpen(false);
       resetForm();
       fetchEquipment();
@@ -89,12 +81,7 @@ export default function EquipmentPage() {
 
   const startEdit = (eq: any) => {
     setEditingId(eq.id);
-    setFormData({
-      name: eq.name,
-      code: eq.code || '',
-      type: eq.type,
-      is_active: eq.is_active
-    });
+    setFormData({ name: eq.name, code: eq.code || '', type: eq.type, is_active: eq.is_active });
     setIsDialogOpen(true);
   };
 
@@ -105,16 +92,54 @@ export default function EquipmentPage() {
 
   const toggleStatus = async (id: string, currentStatus: boolean) => {
     const { error } = await supabase.from('equipment').update({ is_active: !currentStatus }).eq('id', id);
-    if (error) {
-      toast.error('Колонка is_active не существует в таблице equipment. Добавьте её в БД.');
-    } else {
-      fetchEquipment();
-    }
+    if (error) toast.error('Ошибка: ' + error.message);
+    else fetchEquipment();
   };
 
-  const filteredEquipment = equipment.filter(e =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    EQUIPMENT_TYPES.find(t => t.value === e.type)?.label.toLowerCase().includes(search.toLowerCase())
+  const getTypeLabel = (type: string) =>
+    EQUIPMENT_TYPES.find(t => t.value === type)?.label || type;
+
+  const filtered = search
+    ? equipment.filter(e =>
+        e.name.toLowerCase().includes(search.toLowerCase()) ||
+        getTypeLabel(e.type).toLowerCase().includes(search.toLowerCase()) ||
+        e.code?.toLowerCase().includes(search.toLowerCase())
+      )
+    : null;
+
+  const EquipmentCard = ({ eq, badgeClass }: { eq: any; badgeClass: string }) => (
+    <Card className={`border-zinc-800 bg-zinc-900 transition-all ${!eq.is_active ? 'opacity-50 grayscale' : ''}`}>
+      <CardHeader className="flex flex-row justify-between items-start pb-2">
+        <div className="h-9 w-9 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400">
+          <Settings size={18}/>
+        </div>
+        <Badge variant="outline" className={eq.is_active ? "text-green-400 border-green-900 bg-green-900/10" : "text-red-400 border-red-900"}>
+          {eq.is_active ? 'Активен' : 'Неактивен'}
+        </Badge>
+      </CardHeader>
+      <CardContent>
+        <div className="font-bold text-white mb-0.5">{eq.name}</div>
+        <div className="text-xs text-zinc-500 mb-2">{getTypeLabel(eq.type)}</div>
+        {eq.code && (
+          <div className="text-xs font-mono text-blue-400 bg-blue-950/30 px-2 py-0.5 rounded inline-block mb-3">
+            {eq.code}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1 bg-zinc-950 border-zinc-800 hover:bg-zinc-800 text-xs" onClick={() => startEdit(eq)}>
+            <Edit size={13} className="mr-1.5"/> Изменить
+          </Button>
+          <Button
+            variant="ghost" size="icon"
+            className={eq.is_active ? "text-red-500 hover:text-red-400 hover:bg-red-950" : "text-green-500 hover:text-green-400 hover:bg-green-950"}
+            onClick={() => toggleStatus(eq.id, eq.is_active)}
+            title={eq.is_active ? "Деактивировать" : "Активировать"}
+          >
+            <Power size={15} />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 
   return (
@@ -140,7 +165,7 @@ export default function EquipmentPage() {
       <div className="search-container">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 h-4 w-4" />
         <Input
-          placeholder="Поиск по названию или типу..."
+          placeholder="Поиск по названию, коду или типу..."
           className="pl-10 bg-zinc-900 border-zinc-800 text-white"
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -148,48 +173,58 @@ export default function EquipmentPage() {
       </div>
 
       {loading ? <div className="text-zinc-500">Загрузка...</div> : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredEquipment.map((eq) => {
-            const typeLabel = EQUIPMENT_TYPES.find(t => t.value === eq.type)?.label || eq.type;
-
-            return (
-              <Card key={eq.id} className={`border-zinc-800 bg-zinc-900 transition-all ${!eq.is_active ? 'opacity-50 grayscale' : ''}`}>
-                <CardHeader className="flex flex-row justify-between items-start pb-2">
-                  <div className="h-10 w-10 rounded-full bg-zinc-800 flex items-center justify-center font-bold text-lg text-zinc-400">
-                    <Settings size={20}/>
+        search && filtered ? (
+          /* Результаты поиска — плоский список */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.length === 0
+              ? <div className="col-span-full text-zinc-500">Ничего не найдено</div>
+              : filtered.map(eq => <EquipmentCard key={eq.id} eq={eq} badgeClass="" />)
+            }
+          </div>
+        ) : (
+          /* Группировка по цехам */
+          <div className="space-y-8">
+            {DEPARTMENTS.map(dept => {
+              const items = equipment.filter(e => dept.types.includes(e.type));
+              return (
+                <div key={dept.name}>
+                  <div className={`flex items-center gap-3 mb-4 px-4 py-2.5 rounded-xl border ${dept.color}`}>
+                    <span className={`font-bold text-sm ${dept.badge.split(' ')[0]}`}>{dept.name}</span>
+                    <span className="text-zinc-500 text-xs">{items.length} ед.</span>
+                    <span className="text-zinc-600 text-xs ml-auto">
+                      {items.filter(e => e.is_active).length} активных
+                    </span>
                   </div>
-                  <Badge variant="outline" className={eq.is_active ? "text-green-400 border-green-900 bg-green-900/10" : "text-red-400 border-red-900"}>
-                    {eq.is_active ? 'Активен' : 'Неактивен'}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="font-bold text-lg text-white mb-1">{eq.name}</div>
-                  <div className="text-sm text-zinc-400">{typeLabel}</div>
-                  {eq.code && (
-                    <div className="text-xs font-mono text-blue-400 mt-1 bg-blue-950/30 px-2 py-1 rounded inline-block">
-                      {eq.code}
+                  {items.length === 0 ? (
+                    <div className="text-zinc-600 text-sm pl-2">Нет оборудования</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {items.map(eq => <EquipmentCard key={eq.id} eq={eq} badgeClass={dept.badge} />)}
                     </div>
                   )}
+                </div>
+              );
+            })}
 
-                  <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1 bg-zinc-950 border-zinc-800 hover:bg-zinc-800" onClick={() => startEdit(eq)}>
-                      <Edit size={14} className="mr-2"/> Изменить
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={eq.is_active ? "text-red-500 hover:text-red-400 hover:bg-red-950" : "text-green-500 hover:text-green-400 hover:bg-green-950"}
-                      onClick={() => toggleStatus(eq.id, eq.is_active)}
-                      title={eq.is_active ? "Деактивировать" : "Активировать"}
-                    >
-                      <Power size={16} />
-                    </Button>
+            {/* Оборудование с неизвестным типом */}
+            {(() => {
+              const knownTypes = DEPARTMENTS.flatMap(d => d.types);
+              const unknown = equipment.filter(e => !knownTypes.includes(e.type));
+              if (unknown.length === 0) return null;
+              return (
+                <div>
+                  <div className="flex items-center gap-3 mb-4 px-4 py-2.5 rounded-xl border bg-zinc-800/40 border-zinc-700">
+                    <span className="font-bold text-sm text-zinc-400">Прочее</span>
+                    <span className="text-zinc-500 text-xs">{unknown.length} ед.</span>
                   </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {unknown.map(eq => <EquipmentCard key={eq.id} eq={eq} badgeClass="" />)}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -203,7 +238,7 @@ export default function EquipmentPage() {
               <Input
                 value={formData.code}
                 onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})}
-                placeholder="СКН-1"
+                placeholder="LT-1"
                 className="bg-zinc-900 border-zinc-700 font-mono"
               />
               <p className="text-xs text-zinc-500">Используется в номерах партий и документов</p>
@@ -213,7 +248,7 @@ export default function EquipmentPage() {
               <Input
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
-                placeholder="Экструдер №1"
+                placeholder="Плоскоткацкий станок №1"
                 className="bg-zinc-900 border-zinc-700"
               />
             </div>
@@ -224,8 +259,15 @@ export default function EquipmentPage() {
                   <SelectValue placeholder="Выберите тип..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {EQUIPMENT_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                  {DEPARTMENTS.map(dept => (
+                    <div key={dept.name}>
+                      <div className="px-2 py-1 text-xs text-zinc-500 font-semibold uppercase tracking-wide">
+                        {dept.name}
+                      </div>
+                      {EQUIPMENT_TYPES.filter(t => dept.types.includes(t.value)).map(type => (
+                        <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                      ))}
+                    </div>
                   ))}
                 </SelectContent>
               </Select>

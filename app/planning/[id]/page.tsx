@@ -370,6 +370,7 @@ export default function OrderDetailsPage() {
                     { label: 'Люк (низ)', formula: calc.unitWeight.formulas.bottomSpout, value: calc.unitWeight.bottomSpout_g, show: calc.unitWeight.bottomSpout_g > 0 },
                     { label: 'Завязки', formula: calc.unitWeight.formulas.ties, value: calc.unitWeight.ties_g, show: calc.unitWeight.ties_g > 0 },
                     { label: 'Стропа (4 шт)', formula: calc.unitWeight.formulas.straps, value: calc.unitWeight.straps_g, show: true },
+                    { label: 'Крышка (лам.)', formula: calc.unitWeight.formulas?.lid, value: calc.unitWeight.lid_g || 0, show: (calc.unitWeight.lid_g || 0) > 0 },
                   ].filter(r => r.show).map((row) => (
                     <tr key={row.label}>
                       <td className="p-3 pl-6 font-bold text-white">{row.label}</td>

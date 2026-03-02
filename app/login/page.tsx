@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/Logo';
-import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { LogIn, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -66,7 +67,7 @@ export default function LoginPage() {
               Вход в систему
             </CardTitle>
             <p className="text-sm text-zinc-400 text-center">
-              FIBC ERP - Система управления производством
+              FIBC Kazakhstan ERP - Система управления производством
             </p>
           </CardHeader>
           <CardContent>
@@ -104,16 +105,26 @@ export default function LoginPage() {
                   <Lock size={14} />
                   Пароль
                 </label>
-                <Input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="bg-zinc-950 border-zinc-700 text-white"
-                  required
-                  autoComplete="current-password"
-                  disabled={loading}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="••••••••"
+                    className="bg-zinc-950 border-zinc-700 text-white pr-10"
+                    required
+                    autoComplete="current-password"
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               {/* Submit Button */}
@@ -147,7 +158,7 @@ export default function LoginPage() {
 
         {/* Version */}
         <p className="text-xs text-zinc-600 text-center">
-          FIBC ERP v1.0 • Powered by Supabase
+          FIBC Kazakhstan ERP v1.0 • Powered by Supabase
         </p>
       </div>
     </div>

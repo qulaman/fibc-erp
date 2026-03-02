@@ -37,7 +37,7 @@ export interface BigBagParams {
   threadWeightPerCm: number; // г/см шва
 
   // Ламинация
-  needsLamination: boolean;
+  laminationDensity: number; // г/м², 0 = без ламинации
 
   // Дополнительно
   hasPeLiner: boolean;          // ПЭ вкладыш
@@ -58,8 +58,10 @@ export interface BigBagWeightBreakdown {
   strapSleeve_g: number;    // чехол стропы (2х стропный)
   narrowRibbon_g: number;   // узкая лента
   infoPocket_g: number;     // информационный карман
+  lid_g: number;            // крышка (лам. ткань)
   thread_g: number;
   peLiner_g: number;           // ПЭ вкладыш
+  lamination_g: number;        // ламинация
   total_g: number;
   total_kg: number;
   // Формулы для отображения расчёта
@@ -73,9 +75,11 @@ export interface BigBagWeightBreakdown {
     strapSleeve: string;
     narrowRibbon: string;
     infoPocket: string;
+    lid: string;
     thread: string;
     threadDetails: string;
     peLiner: string;
+    lamination: string;
   };
 }
 
@@ -120,9 +124,58 @@ export interface DepartmentRequirement {
 }
 
 export interface ProductionCalculation {
-  unitWeight: BigBagWeightBreakdown;
+  unitWeight: BigBagWeightBreakdown | VVMRWeightBreakdown;
   quantity: number;
   departments: DepartmentRequirement[];
+}
+
+// ===== ВВМР (Вагонный Вкладыш) =====
+
+export interface VVMRParams {
+  productType: 'vvmr';
+  width: number;           // ширина (короткая сторона), см
+  length: number;          // длина (длинная сторона), см
+  wallHeight: number;      // высота стенки, см
+  lidLongHeight: number;   // высота длинной крышки, см
+  lidShortHeight: number;  // высота короткой крышки, см
+  surfaceDensity: number;  // г/м² (95)
+
+  // Тесьма 20мм
+  tapeWeightPerCm: number; // г/см (0.05)
+
+  // Петли (на торцах)
+  loopHeight: number;   // см (15)
+  loopCount: number;    // шт (92)
+
+  // Верёвки (тесьма)
+  ropeWallLength: number;   // см (105) — короткие верёвки на дно
+  ropeWallCount: number;    // шт (22)
+  ropeBottomLength: number; // см (305) — длинные верёвки на торцы
+  ropeBottomCount: number;  // шт (34)
+  ropeTopLength: number;    // см (205) — верёвки на крышки
+  ropeTopCount: number;     // шт (34)
+
+  // Нить
+  threadWeightPerCm: number; // г/см (0.05)
+
+  // Ламинация
+  laminationDensity: number; // г/м², 0 = без ламинации
+}
+
+export interface VVMRWeightBreakdown {
+  bottomFabric_g: number;
+  longWallFabric_g: number;
+  shortWallFabric_g: number;
+  longLidFabric_g: number;
+  shortLidFabric_g: number;
+  loops_g: number;
+  ropeWall_g: number;
+  ropeBottom_g: number;
+  ropeTop_g: number;
+  thread_g: number;
+  lamination_g: number;
+  total_g: number;
+  total_kg: number;
 }
 
 /** Расчёт веса одного Биг-Бэга (диспетчер по типу) */
@@ -135,36 +188,21 @@ export function calculateBigBagWeight(p: BigBagParams, tkanSpec?: TkanSpec): Big
 
 /** Расчёт веса 4х стропного Биг-Бэга */
 function calculate4StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeightBreakdown {
-  // Расход нити на 1 погонный метр ткани (из спецификации)
-  const yarnPerMeter = tkanSpec
-    ? (tkanSpec.osnova_itogo_kg + tkanSpec.utok_itogo_kg)
-    : 0;
   const K_main = p.mainDensity / 10000;
   const K_aux = p.auxDensity / 10000;
 
-  // 1. Тело (рукав)
-  // Припуск на подворот: +8 см (открытый/юбка) или +10 см (с люками)
+  // 1. Тело (рукав): ширина × (высота + загиб) × 4 стороны × плотность
+  // Загиб: 8 см без патрубков, 10 см с патрубком (те же значения что в раскрое)
   const hasSpouts = p.topType === 'spout' || p.hasBottomSpout;
   const bodyAllowance = hasSpouts ? 10 : 8;
-  const bodyLengthCm = p.height + bodyAllowance;
-  const bodyLengthM = bodyLengthCm / 100;
-  // Вес через реальный расход нити на метр ткани (из tkan_specifications)
-  const body_g = tkanSpec
-    ? bodyLengthM * yarnPerMeter * 1000
-    : p.width * bodyLengthCm * 4 * K_main;
-  const bodyFormula = tkanSpec
-    ? `(${p.height}+${bodyAllowance})/100 = ${round2(bodyLengthM)}м × ${round2(yarnPerMeter)}кг/м × 1000`
-    : `${p.width}×(${p.height}+${bodyAllowance})×4 × ${K_main}`;
+  const bodyBlankCm = p.height + bodyAllowance;
+  const body_g = p.width * bodyBlankCm * 4 * K_main;
+  const bodyFormula = `${p.width}×(${p.height}+${bodyAllowance})×4 × ${K_main}`;
 
-  // 2. Дно (отдельный кусок ткани, +10 см припуск на шов)
-  const bottomCutSize = p.bottomSize + 10; // см, с припуском
-  const bottomLengthM = bottomCutSize / 100;
-  const bottom_g = tkanSpec
-    ? bottomLengthM * yarnPerMeter * 1000
-    : bottomCutSize * bottomCutSize * K_main;
-  const bottomFormula = tkanSpec
-    ? `(${p.bottomSize}+10)/100 = ${round2(bottomLengthM)}м × ${round2(yarnPerMeter)}кг/м × 1000`
-    : `(${p.bottomSize}+10)×(${p.bottomSize}+10) × ${K_main}`;
+  // 2. Дно (отдельный кусок ткани, +5 см припуск на шов — по технологу)
+  const bottomCutSize = p.bottomSize + 5;
+  const bottom_g = bottomCutSize * bottomCutSize * K_main;
+  const bottomFormula = `(${p.bottomSize}+5)×(${p.bottomSize}+5) × ${K_main}`;
 
   // 3. Верх
   // Люк — из основной ткани (K_main), Юбка — из лёгкой вспомогательной (K_aux)
@@ -197,19 +235,27 @@ function calculate4StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
   const tiesFormula = `${tiesCount}шт × ${p.tieLength}см × ${p.tieWeightPerM}г/м`;
 
   // 6. Стропы (4 шт)
+  // По технологу: стропа проходит через дно (cross-bottom)
+  // Длина одной стропы = 2 × (высота + петля)
   const strapWeightPerCm = p.strapWeightPerM / 100;
-  const sewnLength = p.strapRatioType === '2/3'
-    ? p.height * (2 / 3)
-    : p.height * (1 / 3);
-  const oneStrapLen = (sewnLength * 2) + (p.strapLoopHeight * 2);
+  const oneStrapLen = 2 * (p.height + p.strapLoopHeight);
   const straps_g = oneStrapLen * 4 * strapWeightPerCm;
-  const strapsFormula = `((${p.height}×${p.strapRatioType}×2)+${p.strapLoopHeight}×2)×4 × ${round2(strapWeightPerCm)}`;
+  const strapsFormula = `2×(${p.height}+${p.strapLoopHeight})×4 × ${round2(strapWeightPerCm)}`;
 
-  // 7. Узкая лента (4х стропный: 2 шт)
+  // 7. Крышка (при наличии люка — закрывает дно/верх, из лам. ткани)
+  // По технологу: (дно+5) × (дно+5) × K_aux (лам.ткань ~95 г/м²)
+  const K_lam = 0.0095; // 95 г/м² ламинированная ткань
+  const hasLid = p.topType === 'spout' || p.hasBottomSpout;
+  const lid_g = hasLid ? (p.bottomSize + 5) * (p.bottomSize + 5) * K_lam : 0;
+  const lidFormula = hasLid
+    ? `(${p.bottomSize}+5)×(${p.bottomSize}+5) × ${K_lam}`
+    : '—';
+
+  // 8. Узкая лента (4х стропный: 2 шт)
   const narrowRibbon_g = 13;
   const narrowRibbonFormula = '2см×130см×2слоя×0.05 = 13';
 
-  // 8. Информационный карман
+  // 9. Информационный карман
   const infoPocket_g = 5;
   const infoPocketFormula = 'карман А4 = 5';
 
@@ -239,13 +285,14 @@ function calculate4StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
     seamBotDesc = `Низ: пришив дна ${seamPerimeter}`;
   }
 
-  const seamStraps = sewnLength * 4;
+  // Швы строп: стропа пришивается к телу на всю высоту
+  const seamStraps = p.height * 4;
   const totalSeamCm = seamTop + seamBot + seamStraps;
   const thread_g = totalSeamCm * p.threadWeightPerCm;
   const threadFormula = `${round2(totalSeamCm)} см × ${p.threadWeightPerCm} г/см`;
-  const threadDetails = `${seamTopDesc}\n${seamBotDesc}\nСтропы: ${round2(sewnLength)}×4 = ${round2(seamStraps)}`;
+  const threadDetails = `${seamTopDesc}\n${seamBotDesc}\nСтропы: ${p.height}×4 = ${seamStraps}`;
 
-  // 10. ПЭ вкладыш
+  // 11. ПЭ вкладыш
   // Плотность ПЭ ≈ 0.92 г/см³, плёнка в микронах → толщина в см = мкм / 10000
   // Вес = длина_см × ширина_см × (мкм / 10000) × 0.92
   const peLiner_g = p.hasPeLiner
@@ -255,7 +302,14 @@ function calculate4StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
     ? `${p.peLinerLength}×${p.peLinerWidth}×(${p.peLinerDensity}/10000)×0.92`
     : '—';
 
-  const total_g = body_g + bottom_g + top_g + bottomSpout_g + ties_g + straps_g + narrowRibbon_g + infoPocket_g + thread_g + peLiner_g;
+  // 12. Ламинация — площадь тела × плотность ламината
+  const laminationAreaM2 = p.width * bodyBlankCm * 4 / 10000;
+  const lamination_g = p.laminationDensity > 0 ? round2(laminationAreaM2 * p.laminationDensity) : 0;
+  const laminationFormula = p.laminationDensity > 0
+    ? `${p.width}×${bodyBlankCm}×4/10000×${p.laminationDensity}`
+    : '—';
+
+  const total_g = body_g + bottom_g + top_g + bottomSpout_g + ties_g + straps_g + lid_g + narrowRibbon_g + infoPocket_g + thread_g + peLiner_g + lamination_g;
 
   return {
     body_g: round2(body_g),
@@ -267,8 +321,10 @@ function calculate4StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
     strapSleeve_g: 0,
     narrowRibbon_g,
     infoPocket_g,
+    lid_g: round2(lid_g),
     thread_g: round2(thread_g),
     peLiner_g: round2(peLiner_g),
+    lamination_g,
     total_g: round2(total_g),
     total_kg: round3(total_g / 1000),
     formulas: {
@@ -281,9 +337,11 @@ function calculate4StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
       strapSleeve: '—',
       narrowRibbon: narrowRibbonFormula,
       infoPocket: infoPocketFormula,
+      lid: lidFormula,
       thread: threadFormula,
       threadDetails,
       peLiner: peLinerFormula,
+      lamination: laminationFormula,
     },
   };
 }
@@ -298,11 +356,13 @@ function calculate2StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
   const K_aux = p.auxDensity / 10000;
 
   // 1. Тело (фальц рукав)
-  // 2х стропный: петля формируется из тела, подворот не нужен
-  // Дно звезда: заготовка = height + петля + bottom/1.55
-  // Разгруз. люк: тело = height + петля (дно — отдельный кусок)
-  const bottomFabricCm = p.hasBottomSpout ? 0 : p.bottomSize / 1.55;
-  const bodyLengthCm = p.height + p.strapLoopHeight + bottomFabricCm;
+  // 2х стропный: петля формируется из тела
+  // +20 см — припуск на стропу (подворот/усиление петли, по технологу)
+  // Дно звезда: запас ≈ bottomSize / √2 + 2 (геометрия диагональной складки)
+  // Разгруз. люк: дно — отдельный кусок
+  const strapAllowance = 20; // припуск на стропу (по технологу)
+  const bottomFabricCm = p.hasBottomSpout ? 0 : Math.round(p.bottomSize / 1.414) + 2;
+  const bodyLengthCm = p.height + p.strapLoopHeight + strapAllowance + bottomFabricCm;
   const bodyLengthM = bodyLengthCm / 100;
   // Вес через реальный расход нити на метр ткани (из tkan_specifications)
   const body_g = tkanSpec
@@ -311,20 +371,18 @@ function calculate2StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
   const bodyFormula = tkanSpec
     ? (p.hasBottomSpout
         ? `${round2(bodyLengthM)}м × ${round2(yarnPerMeter)}кг/м × 1000`
-        : `(${p.height}+${p.strapLoopHeight}+${p.bottomSize}/1.55)/100 × ${round2(yarnPerMeter)}кг/м × 1000`)
+        : `(${p.height}+${p.strapLoopHeight}+20+${bottomFabricCm})/100 × ${round2(yarnPerMeter)}кг/м × 1000`)
     : (p.hasBottomSpout
-        ? `${p.width}×(${p.height}+${p.strapLoopHeight})×4 × ${K_main}`
-        : `${p.width}×(${p.height}+${p.strapLoopHeight}+${p.bottomSize}/1.55)×4 × ${K_main}`);
+        ? `${p.width}×(${p.height}+${p.strapLoopHeight}+20)×4 × ${K_main}`
+        : `${p.width}×(${p.height}+${p.strapLoopHeight}+20+${bottomFabricCm})×4 × ${K_main}`);
 
-  // 2. Дно — звезда: 0 (входит в тело), разгруз. люк: отдельный кусок
-  const bottomLengthM = p.bottomSize / 100;
+  // 2. Дно — звезда: 0 (входит в тело), разгруз. люк: отдельный кусок (+5 шов)
+  const bottomCutSize2 = p.bottomSize + 5;
   const bottom_g = p.hasBottomSpout
-    ? (tkanSpec ? bottomLengthM * yarnPerMeter * 1000 : p.bottomSize * p.bottomSize * K_main)
+    ? bottomCutSize2 * bottomCutSize2 * K_main
     : 0;
   const bottomFormula = p.hasBottomSpout
-    ? (tkanSpec
-        ? `${round2(bottomLengthM)}м × ${round2(yarnPerMeter)}кг/м × 1000`
-        : `${p.bottomSize}×${p.bottomSize} × ${K_main}`)
+    ? `(${p.bottomSize}+5)×(${p.bottomSize}+5) × ${K_main}`
     : '0 (входит в тело рукава)';
 
   // 3. Верх
@@ -402,8 +460,15 @@ function calculate2StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
     ? `${p.peLinerLength}×${p.peLinerWidth}×(${p.peLinerDensity}/10000)×0.92`
     : '—';
 
+  // 12. Ламинация — площадь тела × плотность ламината
+  const laminationAreaM2 = bodyLengthCm * p.width * 4 / 10000;
+  const lamination_g = p.laminationDensity > 0 ? round2(laminationAreaM2 * p.laminationDensity) : 0;
+  const laminationFormula = p.laminationDensity > 0
+    ? `${bodyLengthCm}×${p.width}×4/10000×${p.laminationDensity}`
+    : '—';
+
   const total_g = body_g + bottom_g + top_g + bottomSpout_g + ties_g + straps_g
-    + strapSleeve_g + narrowRibbon_g + infoPocket_g + thread_g + peLiner_g;
+    + strapSleeve_g + narrowRibbon_g + infoPocket_g + thread_g + peLiner_g + lamination_g;
 
   return {
     body_g: round2(body_g),
@@ -415,8 +480,10 @@ function calculate2StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
     strapSleeve_g: round2(strapSleeve_g),
     narrowRibbon_g,
     infoPocket_g,
+    lid_g: 0,
     thread_g: round2(thread_g),
     peLiner_g: round2(peLiner_g),
+    lamination_g,
     total_g: round2(total_g),
     total_kg: round3(total_g / 1000),
     formulas: {
@@ -429,9 +496,11 @@ function calculate2StrapWeight(p: BigBagParams, tkanSpec?: TkanSpec): BigBagWeig
       strapSleeve: strapSleeveFormula,
       narrowRibbon: narrowRibbonFormula,
       infoPocket: infoPocketFormula,
+      lid: '—',
       thread: threadFormula,
       threadDetails,
       peLiner: peLinerFormula,
+      lamination: laminationFormula,
     },
   };
 }
@@ -465,8 +534,8 @@ function calculate4StrapNeeds(
   const bodyAllowance = hasSpouts ? 10 : 8;
   const bodyBlankCm = p.height + bodyAllowance;
   const bodyBlankM = round2(bodyBlankCm / 100);
-  // Дно: отдельный кусок (bottomSize + 10 см припуск на шов)
-  const bottomCutSize = p.bottomSize + 10;
+  // Дно: отдельный кусок (bottomSize + 5 см припуск на шов — по технологу)
+  const bottomCutSize = p.bottomSize + 5;
   const bottomBlankM = round2(bottomCutSize / 100);
   // Итого на 1 шт: тело + дно (в погонных метрах рукава)
   const fabricMetersPerUnit = round2(bodyBlankM + bottomBlankM);
@@ -485,10 +554,9 @@ function calculate4StrapNeeds(
   const dyeKg = round2(totalFabricMeters * (tkanSpec.receptura_krasitel_kg || 0));
 
   // --- СТРОПЫ ---
-  const sewnLength = p.strapRatioType === '2/3'
-    ? p.height * (2 / 3)
-    : p.height * (1 / 3);
-  const oneStrapCm = (sewnLength * 2) + (p.strapLoopHeight * 2);
+  // По технологу: стропа проходит через дно (cross-bottom)
+  // Длина одной стропы = 2 × (высота + петля)
+  const oneStrapCm = 2 * (p.height + p.strapLoopHeight);
   const totalStrapM = round2(oneStrapCm * 4 * quantity / 100);
 
   const strapMfnKg = round2(totalStrapM * (stropSpec.mfn_rashod_kg || 0));
@@ -512,7 +580,9 @@ function calculate4StrapNeeds(
   const totalThreadKg = round2(unitWeight.thread_g * quantity / 1000);
 
   // --- ЛАМИНАЦИЯ ---
-  const laminationMeters = p.needsLamination ? totalFabricMeters : 0;
+  const laminationMeters = p.laminationDensity > 0 ? totalFabricMeters : 0;
+  const laminationAreaM2Total = laminationMeters * fabricWidthCm / 100;
+  const laminationKg = round2(laminationAreaM2Total * p.laminationDensity / 1000);
 
   // Общее сырьё: ткань + стропы
   const totalPpKg = round2(ppKg + strapPpKg);
@@ -548,16 +618,18 @@ function calculate4StrapNeeds(
       items: [
         { name: 'Ткань (рукав)', quantity: totalFabricMeters, unit: 'м' },
         { name: `Тело: (${p.height}+${bodyAllowance})/100`, quantity: bodyBlankM, unit: 'м/шт' },
-        { name: `Дно: (${p.bottomSize}+10)/100`, quantity: bottomBlankM, unit: 'м/шт' },
+        { name: `Дно: (${p.bottomSize}+5)/100`, quantity: bottomBlankM, unit: 'м/шт' },
         { name: `На 1 шт`, quantity: fabricMetersPerUnit, unit: 'м/шт' },
         { name: `Запас на отходы: 2%`, quantity: round2(fabricMetersPerUnit * quantity * 0.02), unit: 'м' },
       ],
     },
-    ...(p.needsLamination ? [{
+    ...(p.laminationDensity > 0 ? [{
       department: 'Ламинация',
-      description: 'Ламинирование ткани',
+      description: `Ламинирование ткани (${p.laminationDensity} г/м²)`,
       items: [
-        { name: 'Ламинация ткани', quantity: laminationMeters, unit: 'м' },
+        { name: 'Ткань под ламинацию', quantity: laminationMeters, unit: 'м' },
+        { name: 'Плотность ламината', quantity: p.laminationDensity, unit: 'г/м²' },
+        { name: 'Вес ламината', quantity: laminationKg, unit: 'кг' },
       ],
     }] : []),
     {
@@ -565,7 +637,7 @@ function calculate4StrapNeeds(
       description: `${stropSpec.nazvanie} (${stropSpec.shirina_mm}мм, ${stropSpec.osnova_nit_type === 'МФН' ? '100% МФН' : 'ПП+МФН'})`,
       items: [
         { name: 'Стропа', quantity: totalStrapM, unit: 'м' },
-        { name: `4шт×(${round2(sewnLength)}×2+${p.strapLoopHeight}×2)=${round2(oneStrapCm * 4)} см/шт`, quantity: round2(oneStrapCm * 4 / 100), unit: 'м/шт' },
+        { name: `4шт×2×(${p.height}+${p.strapLoopHeight})=${round2(oneStrapCm * 4)} см/шт`, quantity: round2(oneStrapCm * 4 / 100), unit: 'м/шт' },
         ...(strapPpYarnKg > 0 ? [{ name: 'ПП нить (основа)', quantity: strapPpYarnKg, unit: 'кг' }] : []),
         { name: 'МФН нить', quantity: strapMfnKg, unit: 'кг' },
       ],
@@ -575,7 +647,7 @@ function calculate4StrapNeeds(
       description: 'Раскрой деталей',
       items: [
         { name: `Тело (рукав ${bodyBlankCm} см = ${p.height}+${bodyAllowance})`, quantity: bodyTubes, unit: 'шт' },
-        { name: `Донышко (${bottomCutSize}×${bottomCutSize} см = ${p.bottomSize}+10)`, quantity: bottomParts, unit: 'шт' },
+        { name: `Донышко (${bottomCutSize}×${bottomCutSize} см = ${p.bottomSize}+5)`, quantity: bottomParts, unit: 'шт' },
         ...(topParts > 0 && p.topType === 'spout' ? [{
           name: `Люк верх (Ø${p.topSpoutDia}×${p.topSpoutHeight} см)`, quantity: topParts, unit: 'шт'
         }] : []),
@@ -628,11 +700,12 @@ function calculate2StrapNeeds(
 
   // --- ТКАЧЕСТВО ---
   // Фальцевый рукав — ширина полотна = ширина мешка
-  // 2х стропный: петля из тела (подворот не нужен, ткань уходит в стропу)
-  // Дно звезда: заготовка = (высота + петля + дно/1.55) / 100 м/шт
-  // Разгрузочный люк: дно отдельное, заготовка = (высота + петля) / 100 м/шт
-  const bottomFabricCm = p.hasBottomSpout ? 0 : p.bottomSize / 1.55;
-  const blankLengthM = round2((p.height + p.strapLoopHeight + bottomFabricCm) / 100);
+  // 2х стропный: петля из тела + 20 см припуск на стропу (по технологу)
+  // Дно звезда: запас ≈ bottomSize / √2 + 2 (геометрия складки)
+  // Разгрузочный люк: дно отдельное
+  const strapAllowance = 20; // припуск на стропу (по технологу)
+  const bottomFabricCm = p.hasBottomSpout ? 0 : Math.round(p.bottomSize / 1.414) + 2;
+  const blankLengthM = round2((p.height + p.strapLoopHeight + strapAllowance + bottomFabricCm) / 100);
   // 2% запас на отходы (по технологу)
   const totalFabricMeters = round2(blankLengthM * quantity * 1.02);
 
@@ -659,7 +732,9 @@ function calculate2StrapNeeds(
   const totalThreadKg = round2(unitWeight.thread_g * quantity / 1000);
 
   // --- ЛАМИНАЦИЯ ---
-  const laminationMeters = p.needsLamination ? totalFabricMeters : 0;
+  const laminationMeters = p.laminationDensity > 0 ? totalFabricMeters : 0;
+  const laminationAreaM2Total = laminationMeters * fabricWidthCm / 100;
+  const laminationKg = round2(laminationAreaM2Total * p.laminationDensity / 1000);
 
   const departments: DepartmentRequirement[] = [
     {
@@ -687,17 +762,19 @@ function calculate2StrapNeeds(
       items: [
         { name: 'Ткань (фальц рукав)', quantity: totalFabricMeters, unit: 'м' },
         { name: p.hasBottomSpout
-            ? `Заготовка: (${p.height}+${p.strapLoopHeight})/100`
-            : `Заготовка: (${p.height}+${p.strapLoopHeight}+${p.bottomSize}/1.55)/100`,
+            ? `Заготовка: (${p.height}+${p.strapLoopHeight}+20)/100`
+            : `Заготовка: (${p.height}+${p.strapLoopHeight}+20+${bottomFabricCm})/100`,
           quantity: blankLengthM, unit: 'м/шт' },
         { name: `Запас на отходы: 2%`, quantity: round2(blankLengthM * quantity * 0.02), unit: 'м' },
       ],
     },
-    ...(p.needsLamination ? [{
+    ...(p.laminationDensity > 0 ? [{
       department: 'Ламинация',
-      description: 'Ламинирование ткани',
+      description: `Ламинирование ткани (${p.laminationDensity} г/м²)`,
       items: [
-        { name: 'Ламинация ткани', quantity: laminationMeters, unit: 'м' },
+        { name: 'Ткань под ламинацию', quantity: laminationMeters, unit: 'м' },
+        { name: 'Плотность ламината', quantity: p.laminationDensity, unit: 'г/м²' },
+        { name: 'Вес ламината', quantity: laminationKg, unit: 'кг' },
       ],
     }] : []),
     {
@@ -747,6 +824,219 @@ function calculate2StrapNeeds(
         }] : []),
       ],
     }] : []),
+  ];
+
+  return { unitWeight, quantity, departments };
+}
+
+// ===== ВВМР: Расчёт веса =====
+
+export function calculateVVMRWeight(p: VVMRParams): VVMRWeightBreakdown {
+  const K = p.surfaceDensity / 10000; // г/м² → г/см²
+
+  // Панели (по формулам технолога, припуски на швы)
+  const bottomFabric_g = (p.width + 10) * (p.length + 10) * 1 * K;
+  const longWallFabric_g = (p.wallHeight + 30) * (p.length + 10) * 2 * K;
+  const shortWallFabric_g = (p.wallHeight + 24) * (p.width + 10) * 2 * K;
+  const longLidFabric_g = (p.lidLongHeight + 26) * (p.length + 10) * 2 * K;
+  const shortLidFabric_g = (p.lidShortHeight + 22) * (p.width + 10) * 2 * K;
+
+  // Петли: loopCount × (loopHeight×2+5) × tapeWeightPerCm
+  const loops_g = p.loopCount * (p.loopHeight * 2 + 5) * p.tapeWeightPerCm;
+
+  // Верёвки (тесьма 20мм)
+  const ropeWall_g = p.ropeWallCount * p.ropeWallLength * p.tapeWeightPerCm;
+  const ropeBottom_g = p.ropeBottomCount * p.ropeBottomLength * p.tapeWeightPerCm;
+  const ropeTop_g = p.ropeTopCount * p.ropeTopLength * p.tapeWeightPerCm;
+
+  // Нить на прошив: length*8 + 8*(width+10) + 4*(wallHeight+30)
+  const threadCm = p.length * 8 + 8 * (p.width + 10) + 4 * (p.wallHeight + 30);
+  const thread_g = threadCm * p.threadWeightPerCm;
+
+  // Ламинация — суммарная площадь всех панелей × плотность ламината
+  const totalFabricAreaM2 = (
+    (p.width + 10) * (p.length + 10) +
+    (p.wallHeight + 30) * (p.length + 10) * 2 +
+    (p.wallHeight + 24) * (p.width + 10) * 2 +
+    (p.lidLongHeight + 26) * (p.length + 10) * 2 +
+    (p.lidShortHeight + 22) * (p.width + 10) * 2
+  ) / 10000;
+  const lamination_g = p.laminationDensity > 0 ? round2(totalFabricAreaM2 * p.laminationDensity) : 0;
+
+  const total_g = bottomFabric_g + longWallFabric_g + shortWallFabric_g
+    + longLidFabric_g + shortLidFabric_g
+    + loops_g + ropeWall_g + ropeBottom_g + ropeTop_g + thread_g + lamination_g;
+
+  return {
+    bottomFabric_g: round2(bottomFabric_g),
+    longWallFabric_g: round2(longWallFabric_g),
+    shortWallFabric_g: round2(shortWallFabric_g),
+    longLidFabric_g: round2(longLidFabric_g),
+    shortLidFabric_g: round2(shortLidFabric_g),
+    loops_g: round2(loops_g),
+    ropeWall_g: round2(ropeWall_g),
+    ropeBottom_g: round2(ropeBottom_g),
+    ropeTop_g: round2(ropeTop_g),
+    thread_g: round2(thread_g),
+    lamination_g,
+    total_g: round2(total_g),
+    total_kg: round3(total_g / 1000),
+  };
+}
+
+// ===== ВВМР: Потребности по цехам =====
+
+export function calculateVVMRNeeds(
+  p: VVMRParams,
+  quantity: number,
+  tkanSpec: TkanSpec,
+  stropSpec?: StropSpec | null
+): ProductionCalculation {
+  const unitWeight = calculateVVMRWeight(p);
+
+  // --- ТКАЧЕСТВО ---
+  // 3 типа ткани (разная ширина станка):
+  // Дно: (length+10)/100 м/шт
+  const bottomFabricM = round2((p.length + 10) / 100);
+  // Торцы: ((length+10)+(width+10))×2 / 100 м/шт
+  const wallsFabricM = round2(((p.length + 10) + (p.width + 10)) * 2 / 100);
+  // Крышки: ((length+10)+(width+10))×2 / 100 м/шт (та же формула, другая ширина ткани)
+  const lidsFabricM = round2(((p.length + 10) + (p.width + 10)) * 2 / 100);
+
+  const totalFabricPerUnit = round2(bottomFabricM + wallsFabricM + lidsFabricM);
+  const totalFabricM = round2(totalFabricPerUnit * quantity * 1.02);
+
+  // --- ЭКСТРУЗИЯ ---
+  const warpKg = round2(totalFabricM * (tkanSpec.osnova_itogo_kg || 0));
+  const weftKg = round2(totalFabricM * (tkanSpec.utok_itogo_kg || 0));
+  const totalYarnKg = round2(warpKg + weftKg);
+
+  // --- СЫРЬЁ ---
+  const ppKg = round2(totalFabricM * (tkanSpec.receptura_pp_kg || 0));
+  const carbonateKg = round2(totalFabricM * (tkanSpec.receptura_karbonat_kg || 0));
+  const uvKg = round2(totalFabricM * (tkanSpec.receptura_uf_stabilizator_kg || 0));
+  const dyeKg = round2(totalFabricM * (tkanSpec.receptura_krasitel_kg || 0));
+
+  // --- СТРОПЫ (тесьма) ---
+  const tapeWeightPerCm = stropSpec ? stropSpec.plotnost_gr_mp / 100 : p.tapeWeightPerCm;
+  // Метры на 1 шт по типу
+  const loopCmPerUnit = p.loopCount * (p.loopHeight * 2 + 5);
+  const ropeWallCmPerUnit = p.ropeWallCount * p.ropeWallLength;
+  const ropeBottomCmPerUnit = p.ropeBottomCount * p.ropeBottomLength;
+  const ropeTopCmPerUnit = p.ropeTopCount * p.ropeTopLength;
+  const loopMPerUnit = round2(loopCmPerUnit / 100);
+  const ropeWallMPerUnit = round2(ropeWallCmPerUnit / 100);
+  const ropeBottomMPerUnit = round2(ropeBottomCmPerUnit / 100);
+  const ropeTopMPerUnit = round2(ropeTopCmPerUnit / 100);
+  const totalTapeMPerUnit = round2(loopMPerUnit + ropeWallMPerUnit + ropeBottomMPerUnit + ropeTopMPerUnit);
+  const totalTapeM = round2(totalTapeMPerUnit * quantity);
+
+  const tapeKgPerUnit = round2((loopCmPerUnit + ropeWallCmPerUnit + ropeBottomCmPerUnit + ropeTopCmPerUnit) * tapeWeightPerCm / 1000);
+  const totalTapeKg = round2(tapeKgPerUnit * quantity);
+
+  // Сырьё для строп
+  const strapPpKg = stropSpec && !stropSpec.is_fully_purchased ? round2(totalTapeM * stropSpec.receptura_pp_kg) : 0;
+  const strapCarbonateKg = stropSpec && !stropSpec.is_fully_purchased ? round2(totalTapeM * stropSpec.receptura_karbonat_kg) : 0;
+  const strapUvKg = stropSpec && !stropSpec.is_fully_purchased ? round2(totalTapeM * stropSpec.receptura_uf_kg) : 0;
+  const strapDyeKg = stropSpec && !stropSpec.is_fully_purchased ? round2(totalTapeM * stropSpec.receptura_krasitel_kg) : 0;
+  const strapMfnKg = stropSpec ? round2(totalTapeM * stropSpec.mfn_rashod_kg) : 0;
+  const strapPpYarnKg = stropSpec && !stropSpec.is_fully_purchased ? round2(totalTapeM * (stropSpec.osnova_itogo_kg + stropSpec.utok_itogo_kg)) : 0;
+
+  // --- НИТЬ ---
+  const totalThreadKg = round2(unitWeight.thread_g * quantity / 1000);
+
+  // --- ЛАМИНАЦИЯ ---
+  const laminationMeters = p.laminationDensity > 0 ? totalFabricM : 0;
+  const laminationAreaM2PerUnit = (
+    (p.width + 10) * (p.length + 10) +
+    (p.wallHeight + 30) * (p.length + 10) * 2 +
+    (p.wallHeight + 24) * (p.width + 10) * 2 +
+    (p.lidLongHeight + 26) * (p.length + 10) * 2 +
+    (p.lidShortHeight + 22) * (p.width + 10) * 2
+  ) / 10000;
+  const laminationTotalAreaM2 = round2(laminationAreaM2PerUnit * quantity * 1.02);
+  const laminationKg = round2(laminationTotalAreaM2 * p.laminationDensity / 1000);
+
+  const departments: DepartmentRequirement[] = [
+    {
+      department: 'Сырьё',
+      description: 'Закупка сырья и материалов',
+      items: [
+        { name: 'Полипропилен (ПП)', quantity: ppKg, unit: 'кг' },
+        { name: 'Карбонат кальция', quantity: carbonateKg, unit: 'кг' },
+        { name: 'УФ-стабилизатор', quantity: uvKg, unit: 'кг' },
+        { name: 'Краситель', quantity: dyeKg, unit: 'кг' },
+      ].filter(i => i.quantity > 0),
+    },
+    {
+      department: 'Экструзия',
+      description: 'Производство ПП нити',
+      items: [
+        { name: 'Итого ПП нити', quantity: totalYarnKg, unit: 'кг' },
+        { name: `Нить основа${tkanSpec.osnova_denye ? ` ${tkanSpec.osnova_denye}den` : ''}${tkanSpec.osnova_shirina_niti_sm ? ` ${tkanSpec.osnova_shirina_niti_sm}см` : ''}`, quantity: warpKg, unit: 'кг' },
+        { name: `Нить уток${tkanSpec.utok_denye ? ` ${tkanSpec.utok_denye}den` : ''}${tkanSpec.utok_shirina_niti_sm ? ` ${tkanSpec.utok_shirina_niti_sm}см` : ''}`, quantity: weftKg, unit: 'кг' },
+      ],
+    },
+    {
+      department: 'Ткачество',
+      description: `Ткань ${tkanSpec.nazvanie_tkani}`,
+      items: [
+        { name: 'Всего ткани', quantity: totalFabricM, unit: 'м' },
+        { name: `Дно: (${p.length}+10)/100`, quantity: bottomFabricM, unit: 'м/шт' },
+        { name: `Торцы: ((${p.length}+10)+(${p.width}+10))×2/100`, quantity: wallsFabricM, unit: 'м/шт' },
+        { name: `Крышки: ((${p.length}+10)+(${p.width}+10))×2/100`, quantity: lidsFabricM, unit: 'м/шт' },
+        { name: `На 1 шт`, quantity: totalFabricPerUnit, unit: 'м/шт' },
+        { name: `Запас на отходы: 2%`, quantity: round2(totalFabricPerUnit * quantity * 0.02), unit: 'м' },
+      ],
+    },
+    ...(p.laminationDensity > 0 ? [{
+      department: 'Ламинация',
+      description: `Ламинирование ткани (${p.laminationDensity} г/м²)`,
+      items: [
+        { name: 'Ткань под ламинацию', quantity: laminationMeters, unit: 'м' },
+        { name: 'Плотность ламината', quantity: p.laminationDensity, unit: 'г/м²' },
+        { name: 'Вес ламината', quantity: laminationKg, unit: 'кг' },
+      ],
+    }] : []),
+    {
+      department: 'Стропы',
+      description: `${stropSpec ? `${stropSpec.nazvanie} ${stropSpec.shirina_mm}мм` : 'Тесьма 20мм'}`,
+      items: [
+        { name: 'Всего стропы', quantity: totalTapeM, unit: 'м' },
+        { name: `Петли: ${p.loopCount}шт × ${p.loopHeight * 2 + 5}см`, quantity: loopMPerUnit, unit: 'м/шт' },
+        { name: `Стропы (дно): ${p.ropeWallCount}шт × ${p.ropeWallLength}см`, quantity: ropeWallMPerUnit, unit: 'м/шт' },
+        { name: `Стропы (торцы): ${p.ropeBottomCount}шт × ${p.ropeBottomLength}см`, quantity: ropeBottomMPerUnit, unit: 'м/шт' },
+        { name: `Стропы (крышки): ${p.ropeTopCount}шт × ${p.ropeTopLength}см`, quantity: ropeTopMPerUnit, unit: 'м/шт' },
+        { name: 'На 1 шт', quantity: totalTapeMPerUnit, unit: 'м/шт' },
+        ...(strapPpYarnKg > 0 ? [{ name: 'ПП нить (основа+уток)', quantity: strapPpYarnKg, unit: 'кг' }] : []),
+        ...(strapMfnKg > 0 ? [{ name: 'МФН нить', quantity: strapMfnKg, unit: 'кг' }] : []),
+        ...(stropSpec?.is_fully_purchased ? [{ name: `Покупная стропа (${stropSpec.nazvanie})`, quantity: totalTapeM, unit: 'м' }] : []),
+      ],
+    },
+    {
+      department: 'Крой',
+      description: 'Раскрой панелей ВВМР и резка строп',
+      items: [
+        { name: `Дно (${p.width + 10}×${p.length + 10} см)`, quantity: quantity, unit: 'шт' },
+        { name: `Торец длинный (${p.wallHeight + 30}×${p.length + 10} см)`, quantity: 2 * quantity, unit: 'шт' },
+        { name: `Торец короткий (${p.wallHeight + 24}×${p.width + 10} см)`, quantity: 2 * quantity, unit: 'шт' },
+        { name: `Крышка длинная (${p.lidLongHeight + 26}×${p.length + 10} см)`, quantity: 2 * quantity, unit: 'шт' },
+        { name: `Крышка короткая (${p.lidShortHeight + 22}×${p.width + 10} см)`, quantity: 2 * quantity, unit: 'шт' },
+        { name: `Резка строп — петли (${p.loopHeight * 2 + 5} см)`, quantity: p.loopCount * quantity, unit: 'шт' },
+        { name: `Резка строп — дно (${p.ropeWallLength} см)`, quantity: p.ropeWallCount * quantity, unit: 'шт' },
+        { name: `Резка строп — торцы (${p.ropeBottomLength} см)`, quantity: p.ropeBottomCount * quantity, unit: 'шт' },
+        { name: `Резка строп — крышки (${p.ropeTopLength} см)`, quantity: p.ropeTopCount * quantity, unit: 'шт' },
+      ],
+    },
+    {
+      department: 'Пошив',
+      description: `Сборка ${quantity} шт ВВМР`,
+      items: [
+        { name: 'ВВМР (Вагонный вкладыш)', quantity: quantity, unit: 'шт' },
+        { name: `Нить швейная (${unitWeight.thread_g} г/шт)`, quantity: totalThreadKg, unit: 'кг' },
+        { name: `${stropSpec ? `${stropSpec.nazvanie} ${stropSpec.shirina_mm}мм` : 'Тесьма 20мм'} (${round2(tapeKgPerUnit * 1000)} г/шт)`, quantity: totalTapeKg, unit: 'кг' },
+      ],
+    },
   ];
 
   return { unitWeight, quantity, departments };
