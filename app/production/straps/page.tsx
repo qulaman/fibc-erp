@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Card } from "@/components/ui/card";
 import {
   Ribbon, FileText, Users, Calendar, Factory,
-  ChevronRight, TrendingUp, Target
+  ChevronRight, TrendingUp, Target, Wrench
 } from "lucide-react";
 
 export default function StrapsDashboardPage() {
@@ -104,6 +104,14 @@ export default function StrapsDashboardPage() {
       color: 'from-green-600 to-green-700',
       borderColor: 'border-green-800',
       href: '/production/straps/timesheet',
+    },
+    {
+      title: 'Обслуживание',
+      description: 'ТО и ремонт оборудования',
+      icon: Wrench,
+      color: 'from-orange-600 to-orange-700',
+      borderColor: 'border-orange-800',
+      href: '/production/straps/maintenance',
     },
   ];
 

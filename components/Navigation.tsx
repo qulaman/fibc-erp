@@ -88,6 +88,7 @@ const navigationItems = [
       { name: 'Журнал', href: '/production/straps/history' },
       { name: 'Табель', href: '/production/straps/timesheet' },
       { name: 'Персонал', href: '/production/straps/personnel' },
+      { name: 'Обслуживание оборудования', href: '/production/straps/maintenance' },
       { name: 'Задачи', href: '/tasks/straps' },
     ]
   },

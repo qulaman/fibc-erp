@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, Calendar, Plus, Scissors, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Calendar, Plus, Scissors, Trash2, Pencil, X } from "lucide-react";
 import SewingDetailsDialog from './SewingDetailsDialog';
 
 // Форматирование даты
@@ -23,6 +23,8 @@ export default function SewingHistoryPage() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchLogs();
@@ -73,6 +75,33 @@ export default function SewingHistoryPage() {
     }
   };
 
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('production_sewing')
+        .update({
+          date: editingRecord.date,
+          seamstress: editingRecord.seamstress || null,
+          shift_master: editingRecord.shift_master || null,
+          operation_name: editingRecord.operation_name || null,
+          operation_category: editingRecord.operation_category || null,
+          quantity_good: Number(editingRecord.quantity_good),
+          quantity_defect: Number(editingRecord.quantity_defect) || 0,
+          amount_kzt: Number(editingRecord.amount_kzt) || 0,
+          notes: editingRecord.notes || null,
+        })
+        .eq('id', editingRecord.id);
+      if (updateError) throw updateError;
+      setEditingRecord(null);
+      fetchLogs();
+    } catch (err: any) {
+      alert('Ошибка сохранения: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (error) return <div className="text-white p-8">Ошибка загрузки: {error}</div>;
   if (loading) return <div className="text-white p-8">Загрузка...</div>;
 
@@ -82,6 +111,7 @@ export default function SewingHistoryPage() {
   const totalDefect = logs.reduce((sum, log) => sum + (log.quantity_defect || 0), 0);
 
   return (
+    <>
     <div className="page-container">
 
       {/* Заголовок */}
@@ -221,16 +251,25 @@ export default function SewingHistoryPage() {
                       <SewingDetailsDialog record={row} />
                     </td>
 
-                    {/* Кнопка Удаления (только для админа) */}
+                    {/* Кнопки редактирования и удаления (только для админа) */}
                     {isAdmin && (
                       <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => handleDelete(row.id, row.date)}
-                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
-                          title="Удалить запись"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setEditingRecord({ ...row })}
+                            className="p-2 text-zinc-400 hover:text-blue-400 hover:bg-blue-950 rounded transition-colors"
+                            title="Редактировать"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(row.id, row.date)}
+                            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                            title="Удалить запись"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     )}
 
@@ -242,5 +281,80 @@ export default function SewingHistoryPage() {
         </div>
       </div>
     </div>
+
+    {/* Модальное окно редактирования */}
+    {editingRecord && (
+      <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setEditingRecord(null)}>
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+            <div>
+              <h2 className="text-lg font-bold">Редактировать запись пошива</h2>
+              <p className="text-xs text-zinc-500 font-mono mt-0.5">{editingRecord.doc_number}</p>
+            </div>
+            <button onClick={() => setEditingRecord(null)} className="p-1 text-zinc-500 hover:text-white"><X size={18} /></button>
+          </div>
+          <div className="px-6 py-5 overflow-y-auto max-h-[65vh] space-y-4">
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">Дата</label>
+              <input type="date" value={editingRecord.date} onChange={e => setEditingRecord({ ...editingRecord, date: e.target.value })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Швея</label>
+                <input type="text" value={editingRecord.seamstress || ''} onChange={e => setEditingRecord({ ...editingRecord, seamstress: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Мастер смены</label>
+                <input type="text" value={editingRecord.shift_master || ''} onChange={e => setEditingRecord({ ...editingRecord, shift_master: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Операция</label>
+                <input type="text" value={editingRecord.operation_name || ''} onChange={e => setEditingRecord({ ...editingRecord, operation_name: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Категория</label>
+                <input type="text" value={editingRecord.operation_category || ''} onChange={e => setEditingRecord({ ...editingRecord, operation_category: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Годных (шт)</label>
+                <input type="number" value={editingRecord.quantity_good} onChange={e => setEditingRecord({ ...editingRecord, quantity_good: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Брак (шт)</label>
+                <input type="number" value={editingRecord.quantity_defect || 0} onChange={e => setEditingRecord({ ...editingRecord, quantity_defect: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">Сумма оплаты (₸)</label>
+              <input type="number" value={editingRecord.amount_kzt || 0} onChange={e => setEditingRecord({ ...editingRecord, amount_kzt: e.target.value })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1">Примечания</label>
+              <textarea rows={2} value={editingRecord.notes || ''} onChange={e => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm resize-none" />
+            </div>
+          </div>
+          <div className="flex gap-3 px-6 py-4 border-t border-zinc-800">
+            <button onClick={() => setEditingRecord(null)} className="flex-1 py-2 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors">Отмена</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 rounded-lg font-bold transition-colors">
+              {saving ? 'Сохранение...' : 'Сохранить'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

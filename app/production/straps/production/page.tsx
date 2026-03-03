@@ -39,6 +39,7 @@ function StrapsProductionContent() {
     date: new Date().toISOString().split('T')[0],
     shift: 'День' as 'День' | 'Ночь',
     operator_id: '',
+    operator_id_2: '',
     // Для НОВОЙ сессии
     strap_spec_id: '',
     weft_item_id: '',
@@ -74,10 +75,12 @@ function StrapsProductionContent() {
       if (yarnRes.data) setYarnStock(yarnRes.data);
       if (sessionRes.data) {
         setActiveSession(sessionRes.data);
-        // Предзаполняем оператора из сессии
-        if (sessionRes.data.operator_id) {
-          setFormData(prev => ({ ...prev, operator_id: sessionRes.data.operator_id }));
-        }
+        // Предзаполняем операторов из сессии
+        setFormData(prev => ({
+          ...prev,
+          operator_id: sessionRes.data.operator_id || '',
+          operator_id_2: sessionRes.data.operator_id_2 || '',
+        }));
       }
     } finally {
       setPageLoading(false);
@@ -101,6 +104,25 @@ function StrapsProductionContent() {
   const totalWeight = (activeSession?.total_weight || 0) + Number(formData.weight || 0);
   const weightDiff = totalWeight - theoreticalWeight;
   const weightDiffPct = theoreticalWeight > 0 ? ((weightDiff / theoreticalWeight) * 100).toFixed(1) : '0';
+
+  const toggleOperator = (empId: string) => {
+    setFormData(prev => {
+      if (prev.operator_id === empId) {
+        return { ...prev, operator_id: prev.operator_id_2, operator_id_2: '' };
+      }
+      if (prev.operator_id_2 === empId) {
+        return { ...prev, operator_id_2: '' };
+      }
+      if (!prev.operator_id) {
+        return { ...prev, operator_id: empId };
+      }
+      if (!prev.operator_id_2) {
+        return { ...prev, operator_id_2: empId };
+      }
+      // Оба слота заняты — заменяем первого
+      return { ...prev, operator_id: empId };
+    });
+  };
 
   const handleSubmit = async () => {
     if (!formData.operator_id || !formData.length) {
@@ -131,6 +153,7 @@ function StrapsProductionContent() {
           .insert({
             machine_id: machineId,
             operator_id: formData.operator_id,
+            operator_id_2: formData.operator_id_2 || null,
             spec_name: selectedSpec!.nazvanie,
             status: 'active',
             weft_item_id: formData.weft_item_id,
@@ -155,6 +178,7 @@ function StrapsProductionContent() {
         shift: formData.shift,
         machine_id: machineId,
         operator_id: formData.operator_id,
+        operator_id_2: formData.operator_id_2 || null,
         spec_name: currentSpec?.nazvanie || '',
         produced_length: length,
         produced_weight: weight,
@@ -488,32 +512,45 @@ function StrapsProductionContent() {
                 </div>
               )}
 
-              {/* Оператор */}
+              {/* Операторы */}
               <div>
-                <Label className="text-zinc-400 mb-3 block">Оператор *</Label>
+                <Label className="text-zinc-400 mb-3 block">Операторы * (до 2 человек)</Label>
                 <div className="flex flex-wrap gap-2">
                   {operators.length === 0 && <p className="text-zinc-500 text-sm">Нет операторов строп в справочнике</p>}
                   {operators.map(emp => {
-                    const isSelected = formData.operator_id === emp.id;
+                    const isFirst = formData.operator_id === emp.id;
+                    const isSecond = formData.operator_id_2 === emp.id;
                     const initials = emp.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2);
                     return (
                       <button
                         key={emp.id}
                         type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, operator_id: emp.id }))}
+                        onClick={() => toggleOperator(emp.id)}
                         className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 transition-all text-sm font-medium ${
-                          isSelected ? 'bg-blue-600 border-blue-500 text-white shadow-lg scale-105' : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-white'
+                          isFirst ? 'bg-blue-600 border-blue-500 text-white shadow-lg scale-105'
+                          : isSecond ? 'bg-violet-600 border-violet-500 text-white shadow-lg scale-105'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-white'
                         }`}
                       >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${isSelected ? 'bg-white text-blue-600' : 'bg-zinc-700 text-zinc-400'}`}>
-                          {initials}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                          isFirst ? 'bg-white text-blue-600'
+                          : isSecond ? 'bg-white text-violet-600'
+                          : 'bg-zinc-700 text-zinc-400'
+                        }`}>
+                          {isFirst ? '1' : isSecond ? '2' : initials}
                         </div>
                         <span>{emp.full_name}</span>
-                        {isSelected && <CheckCircle2 size={16} />}
+                        {(isFirst || isSecond) && <CheckCircle2 size={16} />}
                       </button>
                     );
                   })}
                 </div>
+                {(formData.operator_id || formData.operator_id_2) && (
+                  <div className="mt-2 text-xs text-zinc-500 flex items-center gap-3">
+                    {formData.operator_id && <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full bg-blue-600 inline-flex items-center justify-center text-[10px] font-bold">1</span> {operators.find(o => o.id === formData.operator_id)?.full_name}</span>}
+                    {formData.operator_id_2 && <span className="flex items-center gap-1"><span className="w-4 h-4 rounded-full bg-violet-600 inline-flex items-center justify-center text-[10px] font-bold">2</span> {operators.find(o => o.id === formData.operator_id_2)?.full_name}</span>}
+                  </div>
+                )}
               </div>
 
             </CardContent>

@@ -3,12 +3,20 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Wrench, Plus, Trash2, Calendar, Clock, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Wrench, Plus, Trash2, Calendar, Clock, X, ChevronDown, ChevronUp, Pencil } from 'lucide-react';
 
 function getToday() {
   const d = new Date();
   return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
 }
+
+// Роли сотрудников, соответствующие типу оборудования
+const EQUIPMENT_ROLES: Record<string, string[]> = {
+  extruder: ['operator_extruder', 'operator_winder', 'mixer'],
+  weaving: ['operator_loom', 'weaver', 'master_weaving', 'operator_weaver'],
+  lamination: ['operator_lamination', 'master_lamination'],
+  loom_flat: ['operator_straps'],
+};
 
 const MAINTENANCE_TYPES = [
   { value: 'maintenance', label: 'ТО', color: 'bg-blue-600' },
@@ -93,6 +101,8 @@ export function MaintenancePage({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [date, setDate] = useState(getToday());
@@ -122,11 +132,11 @@ export function MaintenancePage({
         .eq('type', equipmentType)
         .eq('is_active', true)
         .order('name'),
-      supabase
-        .from('employees')
-        .select('id, full_name')
-        .eq('is_active', true)
-        .order('full_name'),
+      (() => {
+        const roles = EQUIPMENT_ROLES[equipmentType] || [];
+        const q = supabase.from('employees').select('id, full_name').eq('is_active', true).order('full_name');
+        return roles.length > 0 ? q.in('role', roles) : q;
+      })(),
       supabase
         .from('equipment_maintenance')
         .select('*, equipment(name, code)')
@@ -205,6 +215,34 @@ export function MaintenancePage({
       toast.error('Ошибка сохранения', { description: err.message });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const emp = employees.find(e => e.id === editingRecord.performed_by);
+      const { error } = await supabase
+        .from('equipment_maintenance')
+        .update({
+          date: editingRecord.date,
+          equipment_id: editingRecord.equipment_id || null,
+          maintenance_type: editingRecord.maintenance_type,
+          description: editingRecord.description,
+          performed_by: editingRecord.performed_by || null,
+          performed_by_name: emp?.full_name || editingRecord.performed_by_name || null,
+          downtime_hours: Number(editingRecord.downtime_hours) || 0,
+          notes: editingRecord.notes || null,
+        })
+        .eq('id', editingRecord.id);
+      if (error) throw error;
+      toast.success('Запись обновлена');
+      setEditingRecord(null);
+      fetchData();
+    } catch (err: any) {
+      toast.error('Ошибка сохранения', { description: err.message });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -542,19 +580,97 @@ export function MaintenancePage({
                     )}
                   </div>
 
-                  {/* Кнопка удаления */}
-                  <button
-                    onClick={() => handleDelete(record.id)}
-                    className="p-2 text-zinc-600 hover:text-red-400 transition-colors shrink-0"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {/* Кнопки редактирования и удаления */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => setEditingRecord({ ...record })}
+                      className="p-2 text-zinc-600 hover:text-blue-400 transition-colors"
+                      title="Редактировать"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(record.id)}
+                      className="p-2 text-zinc-600 hover:text-red-400 transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Модальное окно редактирования */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setEditingRecord(null)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h2 className="text-lg font-bold">Редактировать запись обслуживания</h2>
+              <button onClick={() => setEditingRecord(null)} className="p-1 text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 overflow-y-auto max-h-[65vh] space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Дата</label>
+                  <input type="date" value={editingRecord.date} onChange={e => setEditingRecord({ ...editingRecord, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Тип работы</label>
+                  <select value={editingRecord.maintenance_type} onChange={e => setEditingRecord({ ...editingRecord, maintenance_type: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                    {MAINTENANCE_TYPES.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Оборудование</label>
+                <select value={editingRecord.equipment_id || ''}
+                  onChange={e => setEditingRecord({ ...editingRecord, equipment_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                  <option value="">— не указано —</option>
+                  {equipment.map(eq => <option key={eq.id} value={eq.id}>{eq.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Исполнитель</label>
+                <select value={editingRecord.performed_by || ''}
+                  onChange={e => setEditingRecord({ ...editingRecord, performed_by: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                  <option value="">— не указано —</option>
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Описание работ</label>
+                <textarea rows={3} value={editingRecord.description} onChange={e => setEditingRecord({ ...editingRecord, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Время простоя (часы)</label>
+                <input type="number" step="0.5" min="0" value={editingRecord.downtime_hours || 0} onChange={e => setEditingRecord({ ...editingRecord, downtime_hours: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Примечания</label>
+                <input type="text" value={editingRecord.notes || ''} onChange={e => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-zinc-800">
+              <button onClick={() => setEditingRecord(null)} className="flex-1 py-2 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors">Отмена</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 rounded-lg font-bold transition-colors">
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

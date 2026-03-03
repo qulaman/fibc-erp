@@ -6,16 +6,34 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Scissors, Calendar, User, Factory, Trash2 } from "lucide-react";
+import { Scissors, Calendar, User, Factory, Trash2, Pencil, X } from "lucide-react";
+import { toast } from 'sonner';
 
 export default function StrapsHistoryPage() {
   const { isAdmin } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [machines, setMachines] = useState<any[]>([]);
+  const [strapSpecs, setStrapSpecs] = useState<any[]>([]);
 
   useEffect(() => {
     fetchHistory();
+    fetchReferenceData();
   }, []);
+
+  const fetchReferenceData = async () => {
+    const [{ data: emp }, { data: mach }, { data: specs }] = await Promise.all([
+      supabase.from('employees').select('id, full_name').eq('is_active', true).order('full_name'),
+      supabase.from('equipment').select('id, name').eq('type', 'loom_flat').eq('is_active', true).order('name'),
+      supabase.from('strop_specifications').select('nazvanie').eq('is_active', true).order('nazvanie'),
+    ]);
+    if (emp) setEmployees(emp);
+    if (mach) setMachines(mach);
+    if (specs) setStrapSpecs(specs);
+  };
 
   const fetchHistory = async () => {
     // Загружаем основные данные с лимитом (последние 200 записей)
@@ -41,7 +59,10 @@ export default function StrapsHistoryPage() {
     // Собираем уникальные ID для batch-запросов
     const uniqueSpecNames = [...new Set(data.map(r => r.spec_name).filter(Boolean))];
     const uniqueMachineIds = [...new Set(data.map(r => r.machine_id).filter(Boolean))];
-    const uniqueOperatorIds = [...new Set(data.map(r => r.operator_id).filter(Boolean))];
+    const uniqueOperatorIds = [...new Set([
+      ...data.map(r => r.operator_id),
+      ...data.map(r => r.operator_id_2),
+    ].filter(Boolean))];
 
     // Параллельная загрузка всех связанных данных одним пакетом
     const [specsResponse, machinesResponse, operatorsResponse] = await Promise.all([
@@ -75,7 +96,8 @@ export default function StrapsHistoryPage() {
       ...record,
       specification: record.spec_name ? specsMap.get(record.spec_name) : null,
       equipment: record.machine_id ? machinesMap.get(record.machine_id) : null,
-      employees: record.operator_id ? operatorsMap.get(record.operator_id) : null
+      employees: record.operator_id ? operatorsMap.get(record.operator_id) : null,
+      employees2: record.operator_id_2 ? operatorsMap.get(record.operator_id_2) : null,
     }));
 
     setRecords(enrichedData);
@@ -84,7 +106,7 @@ export default function StrapsHistoryPage() {
 
   const handleDelete = async (id: string, date: string) => {
     if (!isAdmin) {
-      alert('Только администраторы могут удалять записи');
+      toast.error('Только администраторы могут удалять записи');
       return;
     }
 
@@ -100,15 +122,43 @@ export default function StrapsHistoryPage() {
 
       if (error) throw error;
 
-      alert('Запись успешно удалена');
+      toast.success('Запись успешно удалена');
       fetchHistory();
     } catch (err: any) {
-      console.error('Error deleting record:', err);
       if (err.code === '23503') {
-        alert(`Невозможно удалить запись.\n\nЭта запись связана с другими данными в системе.`);
+        toast.error('Невозможно удалить запись. Она связана с другими данными.');
       } else {
-        alert('Ошибка удаления: ' + err.message);
+        toast.error('Ошибка удаления: ' + err.message);
       }
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('production_straps')
+        .update({
+          date: editingRecord.date,
+          shift: editingRecord.shift,
+          spec_name: editingRecord.spec_name || null,
+          machine_id: editingRecord.machine_id || null,
+          operator_id: editingRecord.operator_id || null,
+          operator_id_2: editingRecord.operator_id_2 || null,
+          produced_length: Number(editingRecord.produced_length),
+          produced_weight: Number(editingRecord.produced_weight),
+          defect_weight: Number(editingRecord.defect_weight) || 0,
+          notes: editingRecord.notes || null,
+        })
+        .eq('id', editingRecord.id);
+      if (error) throw error;
+      toast.success('Запись обновлена');
+      setEditingRecord(null);
+      fetchHistory();
+    } catch (err: any) {
+      toast.error('Ошибка сохранения: ' + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -230,9 +280,17 @@ export default function StrapsHistoryPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-zinc-400 text-sm">
-                          <div className="flex items-center gap-1">
-                            <User size={12} />
-                            {record.employees?.full_name || '-'}
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1">
+                              <User size={12} />
+                              {record.employees?.full_name || '-'}
+                            </div>
+                            {record.employees2 && (
+                              <div className="flex items-center gap-1 text-violet-400">
+                                <User size={12} />
+                                {record.employees2.full_name}
+                              </div>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-xs text-zinc-500 max-w-xs truncate" title={record.notes}>
@@ -240,13 +298,22 @@ export default function StrapsHistoryPage() {
                         </TableCell>
                         {isAdmin && (
                           <TableCell className="text-center">
-                            <button
-                              onClick={() => handleDelete(record.id, record.date)}
-                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
-                              title="Удалить запись"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => setEditingRecord({ ...record })}
+                                className="p-2 text-zinc-400 hover:text-blue-400 hover:bg-blue-950 rounded transition-colors"
+                                title="Редактировать"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(record.id, record.date)}
+                                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                                title="Удалить запись"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
@@ -257,6 +324,104 @@ export default function StrapsHistoryPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Модальное окно редактирования */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setEditingRecord(null)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <h2 className="text-lg font-bold">Редактировать запись строп</h2>
+              <button onClick={() => setEditingRecord(null)} className="p-1 text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 overflow-y-auto max-h-[65vh] space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Дата</label>
+                  <input type="date" value={editingRecord.date} onChange={e => setEditingRecord({ ...editingRecord, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Смена</label>
+                  <select value={editingRecord.shift} onChange={e => setEditingRecord({ ...editingRecord, shift: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                    <option value="День">☀️ День</option>
+                    <option value="Ночь">🌙 Ночь</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Тип стропы</label>
+                <select value={editingRecord.spec_name || ''}
+                  onChange={e => setEditingRecord({ ...editingRecord, spec_name: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                  <option value="">— не указано —</option>
+                  {strapSpecs.map(s => <option key={s.nazvanie} value={s.nazvanie}>{s.nazvanie}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Станок</label>
+                <select value={editingRecord.machine_id || ''}
+                  onChange={e => setEditingRecord({ ...editingRecord, machine_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                  <option value="">— не указано —</option>
+                  {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Оператор 1</label>
+                  <select value={editingRecord.operator_id || ''}
+                    onChange={e => setEditingRecord({ ...editingRecord, operator_id: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                    <option value="">—</option>
+                    {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Оператор 2</label>
+                  <select value={editingRecord.operator_id_2 || ''}
+                    onChange={e => setEditingRecord({ ...editingRecord, operator_id_2: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                    <option value="">—</option>
+                    {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="border-t border-zinc-800 pt-4">
+                <p className="text-xs text-zinc-500 uppercase font-medium tracking-wide mb-3">Показатели</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1">Длина (м)</label>
+                    <input type="number" step="0.1" value={editingRecord.produced_length} onChange={e => setEditingRecord({ ...editingRecord, produced_length: e.target.value })}
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1">Факт. вес (кг)</label>
+                    <input type="number" step="0.1" value={editingRecord.produced_weight} onChange={e => setEditingRecord({ ...editingRecord, produced_weight: e.target.value })}
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1">Брак (кг)</label>
+                    <input type="number" step="0.1" value={editingRecord.defect_weight || 0} onChange={e => setEditingRecord({ ...editingRecord, defect_weight: e.target.value })}
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Примечания</label>
+                <textarea rows={2} value={editingRecord.notes || ''} onChange={e => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm resize-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-zinc-800">
+              <button onClick={() => setEditingRecord(null)} className="flex-1 py-2 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors">Отмена</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 rounded-lg font-bold transition-colors">
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

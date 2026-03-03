@@ -6,17 +6,32 @@ import { useAuth } from '@/lib/auth-context';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Layers, Calendar, User, Factory, Trash2, ChevronDown, ChevronRight, ArrowRight } from "lucide-react";
+import { Layers, Calendar, User, Factory, Trash2, ChevronDown, ChevronRight, ArrowRight, Pencil, X } from "lucide-react";
+import { toast } from 'sonner';
 
 export default function LaminationHistoryPage() {
   const { isAdmin } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedShifts, setExpandedShifts] = useState<Set<string>>(new Set());
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [machines, setMachines] = useState<any[]>([]);
 
   useEffect(() => {
     fetchHistory();
+    fetchReferenceData();
   }, []);
+
+  const fetchReferenceData = async () => {
+    const [{ data: emp }, { data: mach }] = await Promise.all([
+      supabase.from('employees').select('id, full_name').eq('is_active', true).order('full_name'),
+      supabase.from('equipment').select('id, name').eq('type', 'laminator').eq('is_active', true).order('name'),
+    ]);
+    if (emp) setEmployees(emp);
+    if (mach) setMachines(mach);
+  };
 
   const fetchHistory = async () => {
     const { data, error } = await supabase
@@ -47,7 +62,7 @@ export default function LaminationHistoryPage() {
 
   const handleDelete = async (id: string, docNumber: string) => {
     if (!isAdmin) {
-      alert('Только администраторы могут удалять записи');
+      toast.error('Только администраторы могут удалять записи');
       return;
     }
 
@@ -63,15 +78,40 @@ export default function LaminationHistoryPage() {
 
       if (error) throw error;
 
-      alert('Смена успешно удалена');
+      toast.success('Смена успешно удалена');
       fetchHistory();
     } catch (err: any) {
-      console.error('Error deleting record:', err);
       if (err.code === '23503') {
-        alert(`Невозможно удалить смену ${docNumber}.\n\nЭта запись связана с другими данными в системе (ламинированные рулоны).`);
+        toast.error(`Невозможно удалить смену ${docNumber}. Запись связана с ламинированными рулонами.`);
       } else {
-        alert('Ошибка удаления: ' + err.message);
+        toast.error('Ошибка удаления: ' + err.message);
       }
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('production_lamination_shifts')
+        .update({
+          date: editingRecord.date,
+          shift: editingRecord.shift,
+          machine_id: editingRecord.machine_id || null,
+          operator1_id: editingRecord.operator1_id || null,
+          operator2_id: editingRecord.operator2_id || null,
+          operator3_id: editingRecord.operator3_id || null,
+          notes: editingRecord.notes || null,
+        })
+        .eq('id', editingRecord.id);
+      if (error) throw error;
+      toast.success('Запись обновлена');
+      setEditingRecord(null);
+      fetchHistory();
+    } catch (err: any) {
+      toast.error('Ошибка сохранения: ' + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -210,13 +250,22 @@ export default function LaminationHistoryPage() {
                             </TableCell>
                             {isAdmin && (
                               <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  onClick={() => handleDelete(record.id, record.doc_number)}
-                                  className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
-                                  title="Удалить смену"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => setEditingRecord({ ...record })}
+                                    className="p-2 text-zinc-400 hover:text-blue-400 hover:bg-blue-950 rounded transition-colors"
+                                    title="Редактировать"
+                                  >
+                                    <Pencil size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(record.id, record.doc_number)}
+                                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                                    title="Удалить смену"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </TableCell>
                             )}
                           </TableRow>
@@ -265,6 +314,82 @@ export default function LaminationHistoryPage() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Модальное окно редактирования */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setEditingRecord(null)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <div>
+                <h2 className="text-lg font-bold">Редактировать смену ламинации</h2>
+                <p className="text-xs text-zinc-500 font-mono mt-0.5">{editingRecord.doc_number}</p>
+              </div>
+              <button onClick={() => setEditingRecord(null)} className="p-1 text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 overflow-y-auto max-h-[65vh] space-y-4">
+              {/* Дата и смена */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Дата</label>
+                  <input type="date" value={editingRecord.date} onChange={e => setEditingRecord({ ...editingRecord, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Смена</label>
+                  <select value={editingRecord.shift} onChange={e => setEditingRecord({ ...editingRecord, shift: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                    <option value="День">☀️ День</option>
+                    <option value="Ночь">🌙 Ночь</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Станок */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Станок (ламинатор)</label>
+                <select value={editingRecord.machine_id || ''}
+                  onChange={e => setEditingRecord({ ...editingRecord, machine_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                  <option value="">— не указано —</option>
+                  {machines.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+
+              {/* Операторы */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-2">Операторы</label>
+                <div className="space-y-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i}>
+                      <label className="block text-[10px] text-zinc-500 mb-1">Оператор {i}</label>
+                      <select
+                        value={editingRecord[`operator${i}_id`] || ''}
+                        onChange={e => setEditingRecord({ ...editingRecord, [`operator${i}_id`]: e.target.value })}
+                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                        <option value="">—</option>
+                        {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.full_name}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Примечания */}
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Примечания</label>
+                <textarea rows={3} value={editingRecord.notes || ''} onChange={e => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm resize-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-zinc-800">
+              <button onClick={() => setEditingRecord(null)} className="flex-1 py-2 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors">Отмена</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 rounded-lg font-bold transition-colors">
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

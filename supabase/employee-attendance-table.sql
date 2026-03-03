@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS employee_attendance (
   notes TEXT,
   created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT unique_employee_date UNIQUE(employee_id, date)
+  CONSTRAINT unique_employee_date_shift UNIQUE(employee_id, date, shift_type)
 );
 
 -- 2. Индексы для производительности
@@ -109,7 +109,7 @@ COMMENT ON VIEW view_department_attendance_summary IS 'Сводка посеща
 -- FROM employees, generate_series(0, 20) AS s
 -- WHERE is_active = true
 -- LIMIT 1
--- ON CONFLICT (employee_id, date) DO NOTHING;
+-- ON CONFLICT (employee_id, date, shift_type) DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- ПРОВЕРКА

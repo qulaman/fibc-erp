@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil, X } from 'lucide-react';
 
 interface PrintingRecord {
   id: string;
@@ -30,6 +30,8 @@ export default function PrintingHistoryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPaint, setFilterPaint] = useState('');
   const [filterShift, setFilterShift] = useState('');
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchRecords();
@@ -79,6 +81,32 @@ export default function PrintingHistoryPage() {
       fetchRecords();
     } catch (err: any) {
       alert('Ошибка удаления: ' + err.message);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('production_printing')
+        .update({
+          date: editingRecord.date,
+          shift: editingRecord.shift,
+          operator: editingRecord.operator || null,
+          paint_name: editingRecord.paint_name || null,
+          category: editingRecord.category || null,
+          quantity: Number(editingRecord.quantity),
+          status: editingRecord.status,
+          notes: editingRecord.notes || null,
+        })
+        .eq('id', editingRecord.id);
+      if (error) throw error;
+      setEditingRecord(null);
+      fetchRecords();
+    } catch (err: any) {
+      alert('Ошибка сохранения: ' + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -234,20 +262,104 @@ export default function PrintingHistoryPage() {
                     </td>
                     {isAdmin && (
                       <td className="px-2 md:px-4 py-2 md:py-3 text-center">
-                        <button
-                          onClick={() => handleDelete(record.id, record.doc_number)}
-                          className="p-1.5 md:p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
-                          title="Удалить запись"
-                        >
-                          <Trash2 size={14} className="md:hidden" />
-                          <Trash2 size={16} className="hidden md:block" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => setEditingRecord({ ...record })}
+                            className="p-1.5 md:p-2 text-zinc-400 hover:text-blue-400 hover:bg-blue-950 rounded transition-colors"
+                            title="Редактировать"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(record.id, record.doc_number)}
+                            className="p-1.5 md:p-2 text-red-400 hover:text-red-300 hover:bg-red-950 rounded transition-colors"
+                            title="Удалить запись"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно редактирования */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setEditingRecord(null)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+              <div>
+                <h2 className="text-lg font-bold">Редактировать запись печати</h2>
+                <p className="text-xs text-zinc-500 font-mono mt-0.5">{editingRecord.doc_number}</p>
+              </div>
+              <button onClick={() => setEditingRecord(null)} className="p-1 text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="px-6 py-5 overflow-y-auto max-h-[65vh] space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Дата</label>
+                  <input type="date" value={editingRecord.date} onChange={e => setEditingRecord({ ...editingRecord, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Смена</label>
+                  <select value={editingRecord.shift} onChange={e => setEditingRecord({ ...editingRecord, shift: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                    <option value="День">☀️ День</option>
+                    <option value="Ночь">🌙 Ночь</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Оператор</label>
+                  <input type="text" value={editingRecord.operator || ''} onChange={e => setEditingRecord({ ...editingRecord, operator: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Краска</label>
+                  <input type="text" value={editingRecord.paint_name || ''} onChange={e => setEditingRecord({ ...editingRecord, paint_name: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Категория</label>
+                  <input type="text" value={editingRecord.category || ''} onChange={e => setEditingRecord({ ...editingRecord, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Кол-во (шт)</label>
+                  <input type="number" value={editingRecord.quantity} onChange={e => setEditingRecord({ ...editingRecord, quantity: e.target.value })}
+                    className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Статус</label>
+                <select value={editingRecord.status || ''} onChange={e => setEditingRecord({ ...editingRecord, status: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm">
+                  <option value="Проведено">Проведено</option>
+                  <option value="В работе">В работе</option>
+                  <option value="Отменено">Отменено</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Примечания</label>
+                <textarea rows={2} value={editingRecord.notes || ''} onChange={e => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm resize-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-zinc-800">
+              <button onClick={() => setEditingRecord(null)} className="flex-1 py-2 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors">Отмена</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 rounded-lg font-bold transition-colors">
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
           </div>
         </div>
       )}

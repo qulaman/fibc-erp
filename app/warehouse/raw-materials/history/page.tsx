@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, FileText, Trash2, CheckSquare, Square, XSquare } from "lucide-react";
+import { ArrowLeft, FileText, Trash2, CheckSquare, Square, XSquare, Pencil, X } from "lucide-react";
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString('ru-RU', {
@@ -21,6 +21,8 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
@@ -81,6 +83,29 @@ export default function HistoryPage() {
       toast.error('Ошибка удаления: ' + err.message);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('inventory_transactions')
+        .update({
+          quantity: Number(editingRecord.quantity),
+          counterparty: editingRecord.counterparty || null,
+          batch_number: editingRecord.batch_number || null,
+          notes: editingRecord.notes || null,
+        })
+        .eq('id', editingRecord.id);
+      if (error) throw error;
+      toast.success('Запись обновлена');
+      setEditingRecord(null);
+      fetchTransactions();
+    } catch (err: any) {
+      toast.error('Ошибка сохранения: ' + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -157,6 +182,9 @@ export default function HistoryPage() {
                   <th className="px-3 md:px-6 py-3 md:py-4 text-right text-[10px] md:text-xs font-bold text-zinc-400 uppercase">Кол-во</th>
                   <th className="px-3 md:px-6 py-3 md:py-4 text-left text-[10px] md:text-xs font-bold text-zinc-400 uppercase hidden lg:table-cell">Партия</th>
                   <th className="px-3 md:px-6 py-3 md:py-4 text-left text-[10px] md:text-xs font-bold text-zinc-400 uppercase hidden md:table-cell">Контрагент</th>
+                  {isAdmin && (
+                    <th className="px-3 md:px-6 py-3 md:py-4 text-center text-[10px] md:text-xs font-bold text-zinc-400 uppercase">Изменить</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800 text-xs md:text-sm">
@@ -207,11 +235,67 @@ export default function HistoryPage() {
                       <td className="px-3 md:px-6 py-2.5 md:py-4 whitespace-nowrap text-zinc-300 text-[11px] md:text-sm hidden md:table-cell">
                         {item.counterparty}
                       </td>
+                      {isAdmin && (
+                        <td className="px-3 md:px-6 py-2.5 md:py-4 text-center" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => setEditingRecord({ ...item })}
+                            className="p-1.5 text-zinc-500 hover:text-blue-400 hover:bg-blue-950 rounded transition-colors"
+                            title="Редактировать"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно редактирования */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setEditingRecord(null)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold">Редактировать операцию</h2>
+              <button onClick={() => setEditingRecord(null)} className="p-1 text-zinc-500 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="text-xs text-zinc-500 mb-2">
+              <span className="font-mono text-zinc-400">{editingRecord.doc_number}</span>
+              {' · '}
+              {editingRecord.type === 'in' ? '📥 Приход' : '📤 Расход'}
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Количество</label>
+                <input type="number" step="0.001" value={editingRecord.quantity} onChange={e => setEditingRecord({ ...editingRecord, quantity: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Контрагент</label>
+                <input type="text" value={editingRecord.counterparty || ''} onChange={e => setEditingRecord({ ...editingRecord, counterparty: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Номер партии</label>
+                <input type="text" value={editingRecord.batch_number || ''} onChange={e => setEditingRecord({ ...editingRecord, batch_number: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-400 mb-1">Примечания</label>
+                <textarea rows={2} value={editingRecord.notes || ''} onChange={e => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm resize-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setEditingRecord(null)} className="flex-1 py-2 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white transition-colors">Отмена</button>
+              <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-700 rounded-lg font-bold transition-colors">
+                {saving ? 'Сохранение...' : 'Сохранить'}
+              </button>
+            </div>
           </div>
         </div>
       )}
