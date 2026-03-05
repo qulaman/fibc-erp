@@ -43,8 +43,10 @@ export default function NewOrderPage() {
   const [saving, setSaving] = useState(false);
 
   // --- Тип продукции ---
-  const [productType, setProductType] = useState<'bigbag_4strap' | 'bigbag_2strap' | 'vvmr'>('bigbag_4strap');
+  const [productType, setProductType] = useState<'bigbag_4strap' | 'bigbag_4strap_u' | 'bigbag_2strap' | 'vvmr'>('bigbag_4strap');
   const is2Strap = productType === 'bigbag_2strap';
+  const is4Strap = productType === 'bigbag_4strap' || productType === 'bigbag_4strap_u';
+  const isUCut = productType === 'bigbag_4strap_u';
   const isVVMR = productType === 'vvmr';
 
   // --- Шаг 1: Заказ ---
@@ -83,7 +85,12 @@ export default function NewOrderPage() {
   const [vvmrWallHeight, setVvmrWallHeight] = useState(190);
   const [vvmrLidLongHeight, setVvmrLidLongHeight] = useState(160);
   const [vvmrLidShortHeight, setVvmrLidShortHeight] = useState(170);
-  const [vvmrSurfaceDensity, setVvmrSurfaceDensity] = useState(95);
+  // Ткани ВВМР (5 отдельных спецификаций)
+  const [selectedTkanBottom, setSelectedTkanBottom] = useState<TkanSpec | null>(null);
+  const [selectedTkanLongWall, setSelectedTkanLongWall] = useState<TkanSpec | null>(null);
+  const [selectedTkanShortWall, setSelectedTkanShortWall] = useState<TkanSpec | null>(null);
+  const [selectedTkanLongLid, setSelectedTkanLongLid] = useState<TkanSpec | null>(null);
+  const [selectedTkanShortLid, setSelectedTkanShortLid] = useState<TkanSpec | null>(null);
   const [vvmrTapeWeight, setVvmrTapeWeight] = useState(0.05);
   const [vvmrLoopHeight, setVvmrLoopHeight] = useState(15);
   const [vvmrLoopCount, setVvmrLoopCount] = useState(92);
@@ -96,7 +103,8 @@ export default function NewOrderPage() {
 
   // --- Шаг 3: Стропы + Ткань ---
   const [fabricTipType, setFabricTipType] = useState<'falts' | 'rukav'>('falts');
-  const [strapRatioType, setStrapRatioType] = useState<'1/3' | '2/3'>('2/3');
+  const [strapLayer1, setStrapLayer1] = useState<'1/1' | '2/3' | '1/3'>('1/3');
+  const [strapLayer2, setStrapLayer2] = useState<'1/1' | '2/3' | '1/3'>('2/3');
   const [strapLoopHeight, setStrapLoopHeight] = useState(25);
   const [threadWeightPerCm, setThreadWeightPerCm] = useState(0.077);
 
@@ -104,6 +112,7 @@ export default function NewOrderPage() {
   const [tkanSpecs, setTkanSpecs] = useState<TkanSpec[]>([]);
   const [stropSpecs, setStropSpecs] = useState<StropSpec[]>([]);
   const [selectedTkanSpec, setSelectedTkanSpec] = useState<TkanSpec | null>(null);
+  const [selectedTkanSpecAux, setSelectedTkanSpecAux] = useState<TkanSpec | null>(null);
   const [selectedStropSpec, setSelectedStropSpec] = useState<StropSpec | null>(null);
 
   // Результат
@@ -133,12 +142,20 @@ export default function NewOrderPage() {
       toast.error('Выберите спецификацию ткани');
       return;
     }
-    if (!is2Strap && !selectedStropSpec) {
+    if (is4Strap && !selectedStropSpec) {
       toast.error('Выберите спецификацию стропы');
+      return;
+    }
+    if (isUCut && !selectedTkanSpecAux) {
+      toast.error('Выберите спецификацию ткани для боковинок');
       return;
     }
 
     if (isVVMR) {
+      if (!selectedTkanBottom || !selectedTkanLongWall || !selectedTkanShortWall || !selectedTkanLongLid || !selectedTkanShortLid) {
+        toast.error('Выберите ткань для всех 5 компонентов ВВМР');
+        return;
+      }
       const vvmrParams: VVMRParams = {
         productType: 'vvmr',
         width: vvmrWidth,
@@ -146,8 +163,12 @@ export default function NewOrderPage() {
         wallHeight: vvmrWallHeight,
         lidLongHeight: vvmrLidLongHeight,
         lidShortHeight: vvmrLidShortHeight,
-        surfaceDensity: vvmrSurfaceDensity,
-        tapeWeightPerCm: vvmrTapeWeight,
+        densityBottom:    selectedTkanBottom.plotnost_polotna_gr_m2,
+        densityLongWall:  selectedTkanLongWall.plotnost_polotna_gr_m2,
+        densityShortWall: selectedTkanShortWall.plotnost_polotna_gr_m2,
+        densityLongLid:   selectedTkanLongLid.plotnost_polotna_gr_m2,
+        densityShortLid:  selectedTkanShortLid.plotnost_polotna_gr_m2,
+        tapeWeightPerCm: selectedStropSpec ? selectedStropSpec.plotnost_gr_mp / 100 : vvmrTapeWeight,
         loopHeight: vvmrLoopHeight,
         loopCount: vvmrLoopCount,
         ropeWallLength: vvmrRopeWallLen,
@@ -159,25 +180,25 @@ export default function NewOrderPage() {
         threadWeightPerCm: 0.05,
         laminationDensity,
       };
-      if (selectedStropSpec) {
-        vvmrParams.tapeWeightPerCm = selectedStropSpec.plotnost_gr_mp / 100;
-      }
-      const result = calculateVVMRNeeds(vvmrParams, quantity, selectedTkanSpec, selectedStropSpec);
+      const result = calculateVVMRNeeds(vvmrParams, quantity,
+        selectedTkanBottom, selectedTkanLongWall, selectedTkanShortWall,
+        selectedTkanLongLid, selectedTkanShortLid, selectedStropSpec);
       setCalculation(result);
       setStep(4);
       return;
     }
 
     const params: BigBagParams = {
-      productType: productType as 'bigbag_4strap' | 'bigbag_2strap',
+      productType: productType as 'bigbag_4strap' | 'bigbag_4strap_u' | 'bigbag_2strap',
       height, width, bottomSize: is2Strap ? width : bottomSize,
       mainDensity: selectedTkanSpec.plotnost_polotna_gr_m2,
-      auxDensity,
+      auxDensity: isUCut && selectedTkanSpecAux ? selectedTkanSpecAux.plotnost_polotna_gr_m2 : auxDensity,
       topType, topSpoutDia, topSpoutHeight, skirtHeight,
       hasBottomSpout,
       bottomSpoutDia, bottomSpoutHeight,
       tieWeightPerM, tieLength,
-      strapRatioType,
+      strapLayer1,
+      strapLayer2,
       strapWeightPerM: selectedStropSpec?.plotnost_gr_mp || 0,
       strapLoopHeight,
       threadWeightPerCm,
@@ -185,14 +206,14 @@ export default function NewOrderPage() {
       hasPeLiner, peLinerLength, peLinerWidth, peLinerDensity,
       hasPrinting, hasDocPocket,
     };
-    const result = calculateProductionNeeds(params, quantity, selectedTkanSpec, is2Strap ? null : selectedStropSpec);
+    const result = calculateProductionNeeds(params, quantity, selectedTkanSpec, is2Strap ? null : selectedStropSpec, isUCut ? selectedTkanSpecAux : null);
     setCalculation(result);
     setStep(4);
   };
 
   const handleCreateOrder = async () => {
     if (!calculation || !selectedTkanSpec) return;
-    if (!is2Strap && !selectedStropSpec) return;
+    if (is4Strap && !selectedStropSpec) return;
     setSaving(true);
 
     try {
@@ -206,14 +227,22 @@ export default function NewOrderPage() {
         width: vvmrWidth, length: vvmrLength,
         wallHeight: vvmrWallHeight,
         lidLongHeight: vvmrLidLongHeight, lidShortHeight: vvmrLidShortHeight,
-        surfaceDensity: vvmrSurfaceDensity,
+        densityBottom:    selectedTkanBottom?.plotnost_polotna_gr_m2,
+        densityLongWall:  selectedTkanLongWall?.plotnost_polotna_gr_m2,
+        densityShortWall: selectedTkanShortWall?.plotnost_polotna_gr_m2,
+        densityLongLid:   selectedTkanLongLid?.plotnost_polotna_gr_m2,
+        densityShortLid:  selectedTkanShortLid?.plotnost_polotna_gr_m2,
         tapeWeightPerCm: vvmrTapeWeight,
         loopHeight: vvmrLoopHeight, loopCount: vvmrLoopCount,
         ropeWallLength: vvmrRopeWallLen, ropeWallCount: vvmrRopeWallCount,
         ropeBottomLength: vvmrRopeBottomLen, ropeBottomCount: vvmrRopeBottomCount,
         ropeTopLength: vvmrRopeTopLen, ropeTopCount: vvmrRopeTopCount,
         laminationDensity,
-        tkanSpecName: selectedTkanSpec.nazvanie_tkani,
+        tkanBottomName:    selectedTkanBottom?.nazvanie_tkani,
+        tkanLongWallName:  selectedTkanLongWall?.nazvanie_tkani,
+        tkanShortWallName: selectedTkanShortWall?.nazvanie_tkani,
+        tkanLongLidName:   selectedTkanLongLid?.nazvanie_tkani,
+        tkanShortLidName:  selectedTkanShortLid?.nazvanie_tkani,
         stropSpecName: selectedStropSpec?.nazvanie || null,
       } : {
         productType,
@@ -222,12 +251,13 @@ export default function NewOrderPage() {
         auxDensity, topType, topSpoutDia, topSpoutHeight, skirtHeight,
         hasBottomSpout,
         bottomSpoutDia, bottomSpoutHeight,
-        tieWeightPerM, tieLength, strapRatioType,
+        tieWeightPerM, tieLength, strapLayer1, strapLayer2,
         strapWeightPerM: selectedStropSpec?.plotnost_gr_mp || 0,
         strapLoopHeight, threadWeightPerCm, laminationDensity,
         hasPeLiner, peLinerLength, peLinerWidth, peLinerDensity,
         hasPrinting, hasDocPocket,
         tkanSpecName: selectedTkanSpec.nazvanie_tkani,
+        tkanSpecAuxName: selectedTkanSpecAux?.nazvanie_tkani || null,
         stropSpecName: selectedStropSpec?.nazvanie || null,
       };
 
@@ -389,7 +419,8 @@ export default function NewOrderPage() {
                 <Label className="text-zinc-400 text-sm mb-2 block">Тип продукции</Label>
                 <div className="flex gap-2">
                   {([
-                    { value: 'bigbag_4strap' as const, label: '4х стропный ББ' },
+                    { value: 'bigbag_4strap' as const, label: 'ББ 4с (рукав)' },
+                    { value: 'bigbag_4strap_u' as const, label: 'ББ 4с (U-крой)' },
                     { value: 'bigbag_2strap' as const, label: '2х стропный ББ' },
                     { value: 'vvmr' as const, label: 'ВВМР' },
                   ]).map((pt) => (
@@ -399,11 +430,11 @@ export default function NewOrderPage() {
                         setProductType(pt.value);
                         if (pt.value === 'bigbag_2strap') {
                           setStrapLoopHeight(50);
-                        } else if (pt.value === 'bigbag_4strap') {
+                        } else if (pt.value === 'bigbag_4strap' || pt.value === 'bigbag_4strap_u') {
                           setStrapLoopHeight(25);
                         }
                       }}
-                      className={`flex-1 py-4 rounded-lg font-bold border-2 transition-all ${
+                      className={`flex-1 py-4 rounded-lg font-bold border-2 transition-all text-sm ${
                         productType === pt.value
                           ? 'bg-indigo-600 text-white border-indigo-500'
                           : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500'
@@ -456,11 +487,6 @@ export default function NewOrderPage() {
               <div>
                 <Label className="text-zinc-400 text-sm">Высота короткой крышки</Label>
                 <Input type="number" value={vvmrLidShortHeight} onChange={(e) => setVvmrLidShortHeight(Number(e.target.value))}
-                  className="bg-zinc-800 border-zinc-700 text-white text-lg font-bold mt-1" />
-              </div>
-              <div>
-                <Label className="text-zinc-400 text-sm">Плотность ткани (г/м²)</Label>
-                <Input type="number" value={vvmrSurfaceDensity} onChange={(e) => setVvmrSurfaceDensity(Number(e.target.value))}
                   className="bg-zinc-800 border-zinc-700 text-white text-lg font-bold mt-1" />
               </div>
             </div>
@@ -824,78 +850,126 @@ export default function NewOrderPage() {
       {/* STEP 3: Ткань и Стропы */}
       {step === 3 && (
         <div className="space-y-6">
-          {/* Спецификация ткани */}
-          <Card className="bg-zinc-900 border-zinc-800 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <Grid3x3 size={20} className="text-amber-400" />
-                Спецификация ткани
-              </h2>
-              {/* Выбор типа ткани: фальц или рукав */}
-              {!isVVMR && (
+          {/* Спецификация ткани — для ББ/ВВМР разные блоки */}
+          {isVVMR ? (
+            <>
+              {[
+                { label: 'Дно', hint: `${vvmrWidth + 10}×${vvmrLength + 10} см`, selected: selectedTkanBottom, setSelected: setSelectedTkanBottom, color: 'amber' as const },
+                { label: 'Торец длинный ×2', hint: `${vvmrWallHeight + 30}×${vvmrLength + 10} см`, selected: selectedTkanLongWall, setSelected: setSelectedTkanLongWall, color: 'amber' as const },
+                { label: 'Торец короткий ×2', hint: `${vvmrWallHeight + 24}×${vvmrWidth + 10} см`, selected: selectedTkanShortWall, setSelected: setSelectedTkanShortWall, color: 'amber' as const },
+                { label: 'Крышка длинная ×2', hint: `${vvmrLidLongHeight + 26}×${vvmrLength + 10} см`, selected: selectedTkanLongLid, setSelected: setSelectedTkanLongLid, color: 'amber' as const },
+                { label: 'Крышка короткая ×2', hint: `${vvmrLidShortHeight + 22}×${vvmrWidth + 10} см`, selected: selectedTkanShortLid, setSelected: setSelectedTkanShortLid, color: 'amber' as const },
+              ].map(({ label, hint, selected, setSelected }) => (
+                <Card key={label} className="bg-zinc-900 border-zinc-800 p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-bold flex items-center gap-2">
+                      <Grid3x3 size={18} className="text-amber-400" />
+                      Ткань: {label}
+                    </h2>
+                    <span className="text-zinc-500 text-xs font-mono">{hint}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {tkanSpecs.map((spec) => (
+                      <button key={spec.id} onClick={() => setSelected(spec)}
+                        className={`p-3 rounded-lg border-2 text-left transition-all ${
+                          selected?.id === spec.id
+                            ? 'bg-amber-900/30 border-amber-600 text-white'
+                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                        }`}>
+                        <div className="font-bold text-sm">{spec.nazvanie_tkani}</div>
+                        <div className="text-xs mt-0.5 opacity-70">{spec.plotnost_polotna_gr_m2} г/м² · {spec.shirina_polotna_sm} см</div>
+                      </button>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </>
+          ) : (
+            <Card className="bg-zinc-900 border-zinc-800 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Grid3x3 size={20} className="text-amber-400" />
+                  {isUCut ? 'Ткань U-панели (полотно + дно)' : 'Спецификация ткани'}
+                </h2>
                 <div className="flex items-center gap-2">
                   <span className="text-zinc-500 text-xs">Тип ткани:</span>
                   {([
                     { value: 'falts' as const, label: 'Фальц', hint: `ш.=${width / 2}см` },
                     { value: 'rukav' as const, label: 'Рукав', hint: `ш.=${width}см` },
                   ]).map((t) => (
-                    <button
-                      key={t.value}
-                      onClick={() => { setFabricTipType(t.value); setSelectedTkanSpec(null); }}
+                    <button key={t.value} onClick={() => { setFabricTipType(t.value); setSelectedTkanSpec(null); }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                        fabricTipType === t.value
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                      }`}
-                    >
+                        fabricTipType === t.value ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                      }`}>
                       {t.label} <span className="opacity-60">{t.hint}</span>
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(() => {
+                  const neededWidth = fabricTipType === 'falts' ? width / 2 : width;
+                  const matchingSpecs = tkanSpecs.filter(spec => spec.shirina_polotna_sm === neededWidth);
+                  if (matchingSpecs.length === 0) {
+                    const allWidths = [...new Set(tkanSpecs.map(s => s.shirina_polotna_sm))].sort((a, b) => a - b);
+                    return (
+                      <div className="col-span-full p-4 rounded-lg bg-red-900/30 border border-red-700 text-red-300 text-sm">
+                        Нет тканей с шириной {neededWidth} см. Доступные: {allWidths.join(', ')} см.
+                      </div>
+                    );
+                  }
+                  return matchingSpecs.map((spec) => (
+                    <button key={spec.id} onClick={() => setSelectedTkanSpec(spec)}
+                      className={`p-4 rounded-lg border-2 text-left transition-all ${
+                        selectedTkanSpec?.id === spec.id
+                          ? 'bg-amber-900/30 border-amber-600 text-white'
+                          : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+                      }`}>
+                      <div className="font-bold text-sm">{spec.nazvanie_tkani}</div>
+                      <div className="text-xs mt-1 opacity-70">
+                        {spec.plotnost_polotna_gr_m2} г/м² · {spec.shirina_polotna_sm} см
+                        <span className="ml-1 text-amber-500">({fabricTipType === 'falts' ? `фальц ${spec.shirina_polotna_sm}` : `рукав ${spec.shirina_polotna_sm}`})</span>
+                      </div>
+                    </button>
+                  ));
+                })()}
+              </div>
+            </Card>
+          )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {(() => {
-                // Рукав N: ширина ткани = N = ширина мешка
-                // Фальц N: реальная ширина = N×2 = ширина мешка, в БД хранится N = width/2
-                const neededWidth = isVVMR ? null : fabricTipType === 'falts' ? width / 2 : width;
-                const matchingSpecs = isVVMR
-                  ? tkanSpecs
-                  : tkanSpecs.filter(spec => spec.shirina_polotna_sm === neededWidth);
-                if (!isVVMR && matchingSpecs.length === 0) {
-                  const allWidths = [...new Set(tkanSpecs.map(s => s.shirina_polotna_sm))].sort((a, b) => a - b);
-                  return (
-                    <div className="col-span-full p-4 rounded-lg bg-red-900/30 border border-red-700 text-red-300 text-sm">
-                      Нет тканей с шириной {neededWidth} см ({fabricTipType === 'falts' ? 'фальц' : 'рукав'}).
-                      Доступные ширины: {allWidths.join(', ')} см.
-                      Попробуйте изменить тип ткани или ширину мешка.
-                    </div>
-                  );
-                }
-                return matchingSpecs.map((spec) => (
+          {/* Спецификация ткани боковинок (только U-крой) */}
+          {isUCut && (
+            <Card className="bg-zinc-900 border-zinc-800 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <Grid3x3 size={20} className="text-orange-400" />
+                  Ткань боковинок
+                </h2>
+                {/* Тип ткани боковинок — всегда плоская (не рукав/фальц фильтр) */}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {tkanSpecs.map((spec) => (
                   <button
                     key={spec.id}
-                    onClick={() => setSelectedTkanSpec(spec)}
+                    onClick={() => setSelectedTkanSpecAux(spec)}
                     className={`p-4 rounded-lg border-2 text-left transition-all ${
-                      selectedTkanSpec?.id === spec.id
-                        ? 'bg-amber-900/30 border-amber-600 text-white'
+                      selectedTkanSpecAux?.id === spec.id
+                        ? 'bg-orange-900/30 border-orange-600 text-white'
                         : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
                     }`}
                   >
                     <div className="font-bold text-sm">{spec.nazvanie_tkani}</div>
                     <div className="text-xs mt-1 opacity-70">
                       {spec.plotnost_polotna_gr_m2} г/м² · {spec.shirina_polotna_sm} см
-                      {!isVVMR && <span className="ml-1 text-amber-500">({fabricTipType === 'falts' ? `фальц ${spec.shirina_polotna_sm}` : `рукав ${spec.shirina_polotna_sm}`})</span>}
                     </div>
                   </button>
-                ));
-              })()}
-            </div>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* Спецификация стропы (4х стропный и ВВМР) */}
-          {!is2Strap && (
+          {(is4Strap || isVVMR) && (
             <Card className="bg-zinc-900 border-zinc-800 p-6">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <Ribbon size={20} className="text-blue-400" />
@@ -923,21 +997,36 @@ export default function NewOrderPage() {
           )}
 
           {/* Параметры строп (только 4х стропный) */}
-          {isVVMR ? null : !is2Strap ? (
+          {isVVMR ? null : is4Strap ? (
             <Card className="bg-zinc-900 border-zinc-800 p-6">
               <h2 className="text-lg font-bold mb-4">Параметры строп</h2>
               <div className="space-y-4">
-                <div>
-                  <Label className="text-zinc-400 text-sm mb-2 block">Тип пришива</Label>
-                  <div className="flex gap-2">
-                    {(['2/3', '1/3'] as const).map((val) => (
-                      <button key={val} onClick={() => setStrapRatioType(val)}
-                        className={`flex-1 py-3 rounded-lg font-medium transition-all ${
-                          strapRatioType === val ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-                        }`}>
-                        {val} высоты
-                      </button>
-                    ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-zinc-400 text-sm mb-2 block">Слой 1 (вверх)</Label>
+                    <div className="flex gap-1">
+                      {(['1/3', '2/3', '1/1'] as const).map((val) => (
+                        <button key={val} onClick={() => setStrapLayer1(val)}
+                          className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                            strapLayer1 === val ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                          }`}>
+                          {val}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-zinc-400 text-sm mb-2 block">Слой 2 (вниз)</Label>
+                    <div className="flex gap-1">
+                      {(['1/3', '2/3', '1/1'] as const).map((val) => (
+                        <button key={val} onClick={() => setStrapLayer2(val)}
+                          className={`flex-1 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                            strapLayer2 === val ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                          }`}>
+                          {val}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -978,7 +1067,10 @@ export default function NewOrderPage() {
               <ArrowLeft size={20} className="mr-2" /> Назад
             </Button>
             <Button onClick={handleCalculate}
-              disabled={!selectedTkanSpec || (!is2Strap && !selectedStropSpec)}
+              disabled={
+                (isVVMR && (!selectedTkanBottom || !selectedTkanLongWall || !selectedTkanShortWall || !selectedTkanLongLid || !selectedTkanShortLid || !selectedStropSpec)) ||
+                (!isVVMR && (!selectedTkanSpec || (is4Strap && !selectedStropSpec) || (isUCut && !selectedTkanSpecAux)))
+              }
               className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-6 text-lg">
               Рассчитать
             </Button>
@@ -993,7 +1085,7 @@ export default function NewOrderPage() {
           <Card className="bg-gradient-to-r from-indigo-900/40 to-indigo-950/40 border-indigo-800 border-2 p-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <p className="text-indigo-300 text-sm">{isVVMR ? 'ВВМР (Вагонный вкладыш)' : is2Strap ? '2х стропный Биг-Бэг' : '4х стропный Биг-Бэг'}</p>
+                <p className="text-indigo-300 text-sm">{isVVMR ? 'ВВМР (Вагонный вкладыш)' : is2Strap ? '2х стропный Биг-Бэг' : isUCut ? '4х стропный ББ (U-крой)' : '4х стропный ББ (рукав)'}</p>
                 <p className="text-4xl font-bold text-white">{quantity} шт</p>
               </div>
               <div className="text-right">
@@ -1014,9 +1106,19 @@ export default function NewOrderPage() {
             <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
               <h3 className="text-sm font-bold text-zinc-400 uppercase">Расчёт веса 1 изделия</h3>
               {isVVMR ? (
-                <span className="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-2 py-1 rounded">
-                  K: {vvmrSurfaceDensity / 10000} ({vvmrSurfaceDensity} г/м²)
-                </span>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { label: 'Дно', spec: selectedTkanBottom },
+                    { label: 'Т.дл.', spec: selectedTkanLongWall },
+                    { label: 'Т.кор.', spec: selectedTkanShortWall },
+                    { label: 'К.дл.', spec: selectedTkanLongLid },
+                    { label: 'К.кор.', spec: selectedTkanShortLid },
+                  ].map(({ label, spec }) => spec ? (
+                    <span key={label} className="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-2 py-1 rounded">
+                      {label}: {spec.plotnost_polotna_gr_m2}г/м²
+                    </span>
+                  ) : null)}
+                </div>
               ) : (
                 <div className="flex gap-2">
                   <span className="text-[10px] font-mono text-zinc-500 bg-zinc-800 px-2 py-1 rounded">
@@ -1039,14 +1141,18 @@ export default function NewOrderPage() {
               <tbody className="divide-y divide-zinc-800">
                 {(() => {
                   const uw = calculation.unitWeight as any;
-                  const K = isVVMR ? vvmrSurfaceDensity / 10000 : 0;
                   if (isVVMR) {
+                    const Kb  = (selectedTkanBottom?.plotnost_polotna_gr_m2  || 0) / 10000;
+                    const Klw = (selectedTkanLongWall?.plotnost_polotna_gr_m2  || 0) / 10000;
+                    const Ksw = (selectedTkanShortWall?.plotnost_polotna_gr_m2 || 0) / 10000;
+                    const Kll = (selectedTkanLongLid?.plotnost_polotna_gr_m2   || 0) / 10000;
+                    const Ksl = (selectedTkanShortLid?.plotnost_polotna_gr_m2  || 0) / 10000;
                     return [
-                      { label: 'Дно (ткань)', formula: `(${vvmrWidth}+10)×(${vvmrLength}+10)×${K}`, value: uw.bottomFabric_g },
-                      { label: 'Торец длинный ×2 (ткань)', formula: `(${vvmrWallHeight}+30)×(${vvmrLength}+10)×2×${K}`, value: uw.longWallFabric_g },
-                      { label: 'Торец короткий ×2 (ткань)', formula: `(${vvmrWallHeight}+24)×(${vvmrWidth}+10)×2×${K}`, value: uw.shortWallFabric_g },
-                      { label: 'Крышка длинная ×2 (ткань)', formula: `(${vvmrLidLongHeight}+26)×(${vvmrLength}+10)×2×${K}`, value: uw.longLidFabric_g },
-                      { label: 'Крышка короткая ×2 (ткань)', formula: `(${vvmrLidShortHeight}+22)×(${vvmrWidth}+10)×2×${K}`, value: uw.shortLidFabric_g },
+                      { label: 'Дно (ткань)', formula: `(${vvmrWidth}+10)×(${vvmrLength}+10)×${Kb}`, value: uw.bottomFabric_g },
+                      { label: 'Торец длинный ×2 (ткань)', formula: `(${vvmrWallHeight}+30)×(${vvmrLength}+10)×2×${Klw}`, value: uw.longWallFabric_g },
+                      { label: 'Торец короткий ×2 (ткань)', formula: `(${vvmrWallHeight}+24)×(${vvmrWidth}+10)×2×${Ksw}`, value: uw.shortWallFabric_g },
+                      { label: 'Крышка длинная ×2 (ткань)', formula: `(${vvmrLidLongHeight}+26)×(${vvmrLength}+10)×2×${Kll}`, value: uw.longLidFabric_g },
+                      { label: 'Крышка короткая ×2 (ткань)', formula: `(${vvmrLidShortHeight}+22)×(${vvmrWidth}+10)×2×${Ksl}`, value: uw.shortLidFabric_g },
                       { label: 'Петли (стропа)', formula: `${vvmrLoopCount}×(${vvmrLoopHeight}×2+5)×${vvmrTapeWeight}`, value: uw.loops_g },
                       { label: 'Стропы на дно', formula: `${vvmrRopeWallCount}×${vvmrRopeWallLen}×${vvmrTapeWeight}`, value: uw.ropeWall_g },
                       { label: 'Стропы на торцы', formula: `${vvmrRopeBottomCount}×${vvmrRopeBottomLen}×${vvmrTapeWeight}`, value: uw.ropeBottom_g },
@@ -1064,12 +1170,12 @@ export default function NewOrderPage() {
                   return (
                     <>
                       {[
-                        { label: 'Тело (рукав)', formula: uw.formulas?.body, value: uw.body_g, show: true },
-                        { label: (is2Strap && !hasBottomSpout) ? 'Дно (звезда)' : 'Дно', formula: uw.formulas?.bottom, value: uw.bottom_g, show: true },
+                        { label: isUCut ? 'U-панель (тело+дно)' : 'Тело (рукав)', formula: uw.formulas?.body, value: uw.body_g, show: true },
+                        { label: isUCut ? 'Боковинки (2 шт)' : (is2Strap && !hasBottomSpout) ? 'Дно (звезда)' : 'Дно', formula: uw.formulas?.bottom, value: uw.bottom_g, show: true },
                         { label: topType === 'spout' ? 'Люк (верх)' : 'Юбка', formula: uw.formulas?.top, value: uw.top_g, show: uw.top_g > 0, color: 'emerald' },
                         { label: 'Люк (низ)', formula: uw.formulas?.bottomSpout, value: uw.bottomSpout_g, show: uw.bottomSpout_g > 0, color: 'emerald' },
                         { label: 'Завязки', formula: uw.formulas?.ties, value: uw.ties_g, show: uw.ties_g > 0, color: 'amber' },
-                        { label: 'Стропа (4 шт)', formula: uw.formulas?.straps, value: uw.straps_g, show: !is2Strap, color: 'blue' },
+                        { label: isUCut ? 'Стропа (4 шт) [U-крой]' : 'Стропа (4 шт)', formula: uw.formulas?.straps, value: uw.straps_g, show: !is2Strap, color: 'blue' },
                         { label: 'Чехол стропы (2 шт)', formula: uw.formulas?.strapSleeve, value: uw.strapSleeve_g, show: is2Strap, color: 'blue' },
                         { label: 'Узкая лента', formula: uw.formulas?.narrowRibbon, value: uw.narrowRibbon_g, show: true, color: 'amber' },
                         { label: 'Инф. карман', formula: uw.formulas?.infoPocket, value: uw.infoPocket_g, show: true, color: 'amber' },
@@ -1136,7 +1242,9 @@ export default function NewOrderPage() {
                         <div key={i} className="flex justify-between items-center">
                           <span className="text-white/80 text-sm">{item.name}</span>
                           <span className="text-white font-bold">
-                            {item.quantity.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} {item.unit}
+                            {item.unit === 'кг' && item.quantity > 0 && item.quantity < 1
+                              ? `${(item.quantity * 1000).toLocaleString('ru-RU', { maximumFractionDigits: 0 })} г`
+                              : `${item.quantity.toLocaleString('ru-RU', { maximumFractionDigits: 1 })} ${item.unit}`}
                           </span>
                         </div>
                       ))}

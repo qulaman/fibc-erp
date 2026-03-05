@@ -105,8 +105,7 @@ export default function ExtrusionInputPage() {
         const dateStr = formData.date.replace(/-/g, '').slice(2);
         const shiftCode = formData.shift === 'День' ? '1' : '2';
         const machineCode = machines.find(m => m.id === formData.machine_id)?.code || 'EX';
-        const colorCode = formData.yarn_color ? formData.yarn_color.charAt(0).toUpperCase() : 'X';
-        const batchNum = `${dateStr}-${shiftCode}-${machineCode}-${formData.yarn_denier}${colorCode}`;
+        const batchNum = `${dateStr}-${shiftCode}-${machineCode}-${formData.yarn_denier}D`;
 
         const yarnName = `Нить ПП ${formData.yarn_denier}D ${formData.yarn_color} (${formData.yarn_width}мм)`;
 
@@ -541,15 +540,18 @@ export default function ExtrusionInputPage() {
                {/* 1. ДЕНЬЕ */}
                <div className="space-y-2">
                  <Label className="text-zinc-300">Тип Нити (Денье)</Label>
-                 <Select onValueChange={(v) => setFormData({...formData, yarn_denier: v})}>
-                    <SelectTrigger className="h-12 bg-zinc-950 border-zinc-700 text-white font-bold text-lg">
-                      <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#E60012]"></div>
-                          <SelectValue placeholder="Выберите денье..." />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>{yarnDeniers.map(y => <SelectItem key={y.denier} value={y.denier.toString()}>{y.name}</SelectItem>)}</SelectContent>
-                 </Select>
+                 <div className="flex items-center gap-2 h-12 px-3 bg-zinc-950 border border-zinc-700 rounded-md">
+                   <div className="w-2 h-2 rounded-full bg-[#E60012] shrink-0"></div>
+                   <input
+                     type="number"
+                     min="1"
+                     placeholder="Введите денье..."
+                     value={formData.yarn_denier}
+                     onChange={e => setFormData({...formData, yarn_denier: e.target.value})}
+                     className="flex-1 bg-transparent text-white font-bold text-lg outline-none placeholder:text-zinc-600"
+                   />
+                   <span className="text-zinc-500 text-sm">D</span>
+                 </div>
                </div>
 
                {/* РЕЦЕПТУРА */}

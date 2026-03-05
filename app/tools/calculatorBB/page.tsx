@@ -43,7 +43,8 @@ export default function FibcCalculatorPage() {
 
   // 6. Стропы
   const [strapLoopHeight, setStrapLoopHeight] = useState<number>(25);
-  const [strapRatioType, setStrapRatioType] = useState<"1/3" | "2/3">("2/3"); 
+  const [strapLayer1, setStrapLayer1] = useState<"1/1" | "2/3" | "1/3">("1/3");
+  const [strapLayer2, setStrapLayer2] = useState<"1/1" | "2/3" | "1/3">("2/3");
   const [strapWeightPerM, setStrapWeightPerM] = useState<number>(35);
 
   // 7. Нить
@@ -110,15 +111,15 @@ export default function FibcCalculatorPage() {
 
     // === 6. СТРОПЫ ===
     const strapWeightPerCm = strapWeightPerM / 100;
-    let sewnLength = 0;
-    if (strapRatioType === "2/3") sewnLength = height * (2 / 3);
-    else sewnLength = height * (1 / 3);
+    const f1 = strapLayer1 === '1/1' ? 1 : strapLayer1 === '2/3' ? 2/3 : 1/3;
+    const f2 = strapLayer2 === '1/1' ? 1 : strapLayer2 === '2/3' ? 2/3 : 1/3;
+    const layer1Len = Math.round(height * f1 * 100) / 100;
+    const layer2Len = Math.round(height * f2 * 100) / 100;
 
-    const oneStrapLen = (sewnLength * 2) + (strapLoopHeight * 2);
+    const oneStrapLen = layer1Len + strapLoopHeight + layer2Len;
     const totalStrapGrams = oneStrapLen * 4 * strapWeightPerCm;
-    
-    const ratioStr = strapRatioType === "2/3" ? "2/3" : "1/3";
-    const strapFormula = `((${height}×${ratioStr}×2)+${strapLoopHeight}×2)×4 × ${strapWeightPerCm}`;
+
+    const strapFormula = `(${height}×${strapLayer1}+${strapLoopHeight}+${height}×${strapLayer2})×4 × ${strapWeightPerCm}`;
 
     // === 7. НИТЬ (МЕТОД ТЕХНОЛОГА) ===
     
@@ -153,16 +154,17 @@ export default function FibcCalculatorPage() {
         botThreadDesc = "Пришив дна (360)";
     }
 
-    // В. Стропы (Одинарный проход)
-    const seamStraps = sewnLength * 4; 
-    
+    // В. Стропы (пришитая часть — оба слоя)
+    const sewnTotal = layer1Len + layer2Len;
+    const seamStraps = sewnTotal * 4;
+
     const totalSeamCm = seamTopPart + seamBotPart + seamStraps;
     const totalThreadGrams = totalSeamCm * threadWeightPerCm;
-    
+
     const threadFormulaDetails = `
        Верх: ${seamTopPart.toFixed(0)} ${topThreadDesc}
        Низ: ${seamBotPart.toFixed(0)} ${botThreadDesc}
-       Стропы: ${seamStraps.toFixed(0)} (${sewnLength.toFixed(1)}×4)
+       Стропы: ${seamStraps.toFixed(0)} (${sewnTotal.toFixed(1)}×4)
     `;
     const threadFormulaFinal = `${totalSeamCm.toFixed(1)} см × ${threadWeightPerCm} г/см`;
 
@@ -195,7 +197,7 @@ export default function FibcCalculatorPage() {
       totalKg: (totalWeightGrams / 1000).toFixed(3)
     });
 
-  }, [height, width, bottomSize, mainDensity, auxDensity, topType, topSpoutDia, topSpoutHeight, skirtHeight, hasBottomSpout, bottomSpoutDia, bottomSpoutHeight, strapLoopHeight, strapRatioType, strapWeightPerM, threadWeightPerCm, tieWeightPerM, tieLength]);
+  }, [height, width, bottomSize, mainDensity, auxDensity, topType, topSpoutDia, topSpoutHeight, skirtHeight, hasBottomSpout, bottomSpoutDia, bottomSpoutHeight, strapLoopHeight, strapLayer1, strapLayer2, strapWeightPerM, threadWeightPerCm, tieWeightPerM, tieLength]);
 
   const handlePrint = () => window.print();
 
@@ -302,12 +304,23 @@ export default function FibcCalculatorPage() {
           <Card className="bg-zinc-900 border-zinc-800">
              <CardHeader className="pb-3 border-b border-zinc-800"><CardTitle className="text-white text-lg">3. Стропы / Нить</CardTitle></CardHeader>
              <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="col-span-2"><Label>Тип пришива стропы</Label>
-                   <Select value={strapRatioType} onValueChange={(v:any) => setStrapRatioType(v)}>
+                <div><Label>Слой 1 (вверх)</Label>
+                   <Select value={strapLayer1} onValueChange={(v:any) => setStrapLayer1(v)}>
                       <SelectTrigger className="bg-zinc-950 border-zinc-700 mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
                          <SelectItem value="1/3">1/3 высоты</SelectItem>
                          <SelectItem value="2/3">2/3 высоты</SelectItem>
+                         <SelectItem value="1/1">1/1 высоты</SelectItem>
+                      </SelectContent>
+                   </Select>
+                </div>
+                <div><Label>Слой 2 (вниз)</Label>
+                   <Select value={strapLayer2} onValueChange={(v:any) => setStrapLayer2(v)}>
+                      <SelectTrigger className="bg-zinc-950 border-zinc-700 mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                         <SelectItem value="1/3">1/3 высоты</SelectItem>
+                         <SelectItem value="2/3">2/3 высоты</SelectItem>
+                         <SelectItem value="1/1">1/1 высоты</SelectItem>
                       </SelectContent>
                    </Select>
                 </div>

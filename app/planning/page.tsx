@@ -40,7 +40,8 @@ const PRIORITY_MAP: Record<string, { color: string }> = {
 };
 
 const PRODUCT_TYPE_MAP: Record<string, string> = {
-  bigbag_4strap: '4х стропный Биг-Бэг',
+  bigbag_4strap: '4х стропный Биг-Бэг (рукав)',
+  bigbag_4strap_u: '4х стропный Биг-Бэг (U-крой)',
   bigbag_2strap: '2х стропный Биг-Бэг',
 };
 

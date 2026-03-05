@@ -41,7 +41,8 @@ interface OrderTask {
 }
 
 const PRODUCT_TYPE_MAP: Record<string, string> = {
-  bigbag_4strap: '4х стропный ББ',
+  bigbag_4strap: '4х стропный ББ (рукав)',
+  bigbag_4strap_u: '4х стропный ББ (U-крой)',
   bigbag_2strap: '2х стропный ББ',
 };
 

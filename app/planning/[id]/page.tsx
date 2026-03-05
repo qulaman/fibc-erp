@@ -59,7 +59,8 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 };
 
 const PRODUCT_TYPE_MAP: Record<string, string> = {
-  bigbag_4strap: '4х стропный Биг-Бэг',
+  bigbag_4strap: '4х стропный Биг-Бэг (рукав)',
+  bigbag_4strap_u: '4х стропный Биг-Бэг (U-крой)',
   bigbag_2strap: '2х стропный Биг-Бэг',
 };
 
@@ -334,7 +335,7 @@ export default function OrderDetailsPage() {
             </div>
             <div className="bg-zinc-800 rounded-lg p-3">
               <div className="text-xs text-zinc-500">Пришив строп</div>
-              <div className="text-white font-bold">{p.strapRatioType} высоты</div>
+              <div className="text-white font-bold">{p.strapLayer1 || p.strapRatioType || '—'} / {p.strapLayer2 || '—'}</div>
             </div>
             {p.needsLamination && (
               <div className="bg-orange-900/30 rounded-lg p-3 border border-orange-800">
